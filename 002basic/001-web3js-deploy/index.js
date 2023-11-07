@@ -51,6 +51,10 @@ const accounts = web3.eth.accounts.wallet.add(privatekey);
 const Deploy = async () => {
   // Create contract instance
   // 创建合约实例
+  /*
+  The web3.eth.Contract object makes it easy to interact with smart contracts on the ethereum blockchain. 
+  When you create a new contract object you give it the json interface of the respective smart contract and web3 will auto convert all calls into low level ABI calls over RPC for you.
+  */
   const deployContract = new web3.eth.Contract(abi);
   console.log("1111111111111111111");
   // Create Tx
