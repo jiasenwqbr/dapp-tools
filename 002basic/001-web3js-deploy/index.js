@@ -56,20 +56,18 @@ const Deploy = async () => {
   When you create a new contract object you give it the json interface of the respective smart contract and web3 will auto convert all calls into low level ABI calls over RPC for you.
   */
   const deployContract = new web3.eth.Contract(abi);
-  console.log("1111111111111111111");
   // Create Tx
   // 创建交易
   const deployTx = deployContract.deploy({
     data: "0x" + bytecode,
     arguments: [0],
   });
-  console.log("2222222222222222222");
+
   // optionally, estimate the gas that will be used for development and log it
   // 可选地，估计将用于开发的gas并记录
   const gas = await deployTx.estimateGas({
     from: accounts,
   });
-  console.log("3333333333333333333333");
   console.log("estimated gas:", gas);
   try {
     // Deploy the contract to the INFURA network
@@ -80,7 +78,7 @@ const Deploy = async () => {
     // 您可以将上面url中的sepolia更改为您选择的测试网。
     const tx = await deployTx.send({
       from: accounts[0].address,
-      gas,
+      gas: 1176272,
     });
     console.log("Contract deployed at address: " + tx.options.address);
   } catch (error) {

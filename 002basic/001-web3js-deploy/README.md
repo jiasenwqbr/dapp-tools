@@ -183,6 +183,49 @@ const tx = await deployTx.send({
 });
 ```
 
+## FAQ
+### TransactionBlockTimeoutError
+```bash
+TransactionBlockTimeoutError: Transaction started at 4651045 but was not mined within 50 blocks. Please make sure your transaction was properly sent and there are no previous pending transaction for the same account. However, be aware that it might still be mined!
+        Transaction Hash: 0xaee6a685bb6086993f9cfce65698035e1e2a3526c63e0a3065d8b00dd32e9d60
+    at /Users/a1234/Desktop/Markdown/dapp-tools/002basic/001-web3js-deploy/node_modules/web3-eth/lib/commonjs/utils/reject_if_block_timeout.js:31:20
+    at Generator.next (<anonymous>)
+    at fulfilled (/Users/a1234/Desktop/Markdown/dapp-tools/002basic/001-web3js-deploy/node_modules/web3-eth/lib/commonjs/utils/reject_if_block_timeout.js:5:58)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5) {
+  innerError: undefined,
+  code: 432
+}
+````
+The error message you provided is related to Ethereum blockchain transactions and it indicates that a transaction you initiated was not mined within a certain number of blocks. This can happen for several reasons, and it's important to understand the possible causes and how to address them:
+你提供的错误消息与以太坊区块链交易相关，它表明你发起的交易在一定数量的区块内未被打包。这可能由多种原因引起，重要的是要了解可能的原因以及如何解决：
+
+- Transaction Queuing: Ethereum transactions are processed in a queue, and if there are many transactions pending ahead of yours, it may take some time for your transaction to be included in a block. This is particularly common during periods of high network congestion.
+交易排队：以太坊交易在队列中处理，如果有许多在你之前等待处理的交易，你的交易可能需要一些时间才能被打包到区块中。这在网络拥堵时特别常见。
+
+- Gas Price: Transactions require a fee called gas, and the gas price you set can affect how quickly your transaction is processed. If you set a low gas price, miners may prioritize other transactions with higher fees. You can increase the gas price to potentially speed up confirmation.
+燃气价格：交易需要支付燃气费，你设置的燃气价格会影响交易被处理的速度。如果你设置了较低的燃气价格，矿工可能会优先处理具有更高手续费的其他交易。你可以增加燃气价格以加快确认速度。
+- Pending Transactions: If there are other pending transactions from the same account, they can potentially block subsequent transactions. Make sure there are no previous pending transactions associated with the same account, as the error message suggests.
+待处理交易：如果同一帐户存在其他待处理的交易，它们可能会阻止后续交易的处理。确保同一帐户没有先前未处理的待处理交易，正如错误消息所建议的那样。
+- Network Congestion: High network congestion can lead to delays in transaction processing. This is especially common during periods of high demand, such as ICO launches or decentralized application (DApp) usage spikes.
+网络拥堵：高度拥堵的网络可能导致交易处理延迟。这在需求高峰期，如ICO发布或去中心化应用（DApp）使用高峰时尤其常见。
+- Network Issues: Sometimes, the issue might not be with your transaction but with the Ethereum network itself. Network issues, outages, or software bugs can cause delays in transaction confirmation.
+网络问题：有时问题可能不是由于你的交易，而是由于以太坊网络本身。网络问题、故障或软件错误可能导致交易确认延迟。
+To address this issue:
+要解决此问题：
+- Check the status of your transaction using the transaction hash provided. You can use an Ethereum block explorer like Etherscan to monitor your transaction's status.
+使用提供的交易哈希检查交易的状态。你可以使用以太坊区块浏览器（如Etherscan）来监视交易的状态。
+- If you see your transaction as pending on a block explorer, you can wait for it to be mined. Be patient, as it might take some time, especially during network congestion.
+如果在区块浏览器上看到交易处于挂起状态，可以等待它被打包。要有耐心，特别是在网络拥堵时可能需要一些时间。
+- If you believe your transaction is stuck due to a low gas price or other issues, you can attempt to send a new transaction with a higher gas price and the same nonce (if applicable) to replace the stuck transaction. This new transaction may get mined more quickly.
+如果你认为交易由于低燃气价格或其他原因而卡住，可以尝试发送一个具有更高燃气价格的新交易，并具有相同的nonce（如果适用），以替代卡住的交易。这个新交易可能会更快地被打包。
+- Ensure there are no pending transactions from the same account that might be blocking the new transaction.
+确保没有来自同一帐户的待处理交易可能会阻止新交易。
+- If the Ethereum network is experiencing widespread issues, you might have to wait until the network stabilizes.
+如果以太坊网络存在广泛问题，你可能需要等待网络稳定。
+It's important to note that Ethereum transaction processing times can vary, and you might not always have control over the timing. Be cautious when increasing the gas price, as setting it too high can result in unnecessary fees. Make sure to use a reliable library or tool to handle your transactions and handle any potential errors gracefully in your application.
+重要的是要注意，以太坊交易处理时间可能有所不同，你可能无法始终控制时机。在增加燃气价格时要小心，因为设置得太高可能会导致不必要的费用。确保使用可靠的库或工具来处理你的交易，并在你的应用程序中优雅地处理潜在的错误。
+
+
 # References
 
 - Web3js Official Documents: https://web3js.readthedocs.io/en/v1.2.11/getting-started.html
