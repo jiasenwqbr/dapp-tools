@@ -182,6 +182,14 @@ const tx = await deployTx.send({
   // gasPrice: 10000000000,
 });
 ```
+### deployed successful 部署成功
+```bash
+node index.js
+estimated gas: 176272n
+Contract deployed at address: ..................
+```
+Your deployed contrac can be viewed at: https://sepolia.etherscan.io/address/${tx.options.address}
+你部署的合约可以在这里看到: https://sepolia.etherscan.io/address/${tx.options.address}
 
 ## FAQ
 ### TransactionBlockTimeoutError
