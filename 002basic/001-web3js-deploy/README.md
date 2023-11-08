@@ -190,6 +190,8 @@ Contract deployed at address: ..................
 ```
 Your deployed contrac can be viewed at: https://sepolia.etherscan.io/address/${tx.options.address}
 你部署的合约可以在这里看到: https://sepolia.etherscan.io/address/${tx.options.address}
+Like this：如下图：
+![Alt text](images/WX20231108-104216@2x.png)
 
 ## FAQ
 ### TransactionBlockTimeoutError
