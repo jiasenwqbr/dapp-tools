@@ -1,4 +1,4 @@
-const Web23 = require("web3");
+const { Web3 } = require("web3");
 const fs = require("fs");
 const contractOfIncrementer = require("./compile");
 require("dotenv").config();
@@ -37,11 +37,12 @@ const Trans = async () => {
     data: bytecode,
     arguments: [5],
   });
+
   // Sign Tx
   const createTransaction = await web3.eth.accounts.signTransaction(
     {
       data: deployTx.encodeABI(),
-      gas: 8000000,
+      gas: 80000000,
     },
     account_from.privateKey
   );
@@ -82,22 +83,9 @@ const Trans = async () => {
   );
   const _value = 3;
   let incrementTx = incrementer.methods.increment(_value);
-
-  // Sign with Pk
-  let incrementTransaction = await web3.eth.accounts.signTransaction(
-    {
-      to: createReceipt.contractAddress,
-      data: incrementTx.encodeABI(),
-      gas: 8000000,
-    },
-    account_from.privateKey
+  console.log(
+    "============================ 3. Call Contract Interface increment"
   );
-
-  // Send Transactoin and Get TransactionHash
-  const incrementReceipt = await web3.eth.sendSignedTransaction(
-    incrementTransaction.rawTransaction
-  );
-  console.log(`Tx successful with hash: ${incrementReceipt.transactionHash}`);
 
   number = await incrementer.methods.getNumber().call();
   console.log(`After increment, the current number stored is: ${number}`);
@@ -179,7 +167,7 @@ const Trans = async () => {
       {
         to: createReceipt.contractAddress,
         data: incrementTx.encodeABI(),
-        gas: 8000000,
+        gas: 80000000,
       },
       account_from.privateKey
     );
