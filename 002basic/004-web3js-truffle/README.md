@@ -17,5 +17,25 @@ Truffle 是基于 Solidity 语言的一套开发框架，它简化了去中心�
 - Package management with NPM, using the ERC190 standard.<br>使用ERC190标准的NPM包管理。
 - Configurable build pipeline with support for tight integration.<br>支持紧密集成的可配置构建管道。
 
-## How to run this project 运行工程
+## Introduction about Project 项目说明
+### Structure 项目结构
+- `contracts/`: Directory for Solidity contracts  合约目录
+- `migrations/`: Directory for scriptable deployment files 部署脚本文件目录
+- `test/`: Directory for test files for testing your application and contracts 测试脚本目录
+- `truffle-config.js`: Truffle configuration file 配置文件
 
+### Files
+
+1. `contracts/SimpleToken.sol`: It is an `erc20` smart contract written in `Solidity`.这是一个用 Solidity 编写的 erc20 代币 智能合约.
+2. `migrations/1_initial_migration.js`: This file is the migration (deployment) script for the `Migrations` contract found in the `Migrations.sol` file.这是一个部署脚本，用来部署 Migrations 合约，对应 Migrations.sol 文件。
+
+   > 1. Note that the filename is prefixed with a number and is suffixed by a description. The numbered prefix is required in order to record whether the migration ran successfully. The suffix is purely for human readability and comprehension.请注意，文件名以数字为前缀，并以描述为后缀。需要编号前缀才能记录迁移是否成功运行。后缀纯粹是为了便于阅读和理解。
+   > 2. `Migrations.sol` is a separate Solidity file that manages and updates the status of your deployed smart contract. This file comes with every Truffle project, and is usually **not edited**.`Migrations.sol`是一个单独的Solidity文件，用于管理和更新已部署智能合约的状态。此文件随每个Truffle项目一起提供，通常不会进行编辑。
+
+3. `truffle-config.js`: This is the Truffle configuration file, for setting network information and other project-related settings. The file is blank, but this is okay, as we'll be using a Truffle command that has some defaults built-in.Truffle 配置文件, 用来设置网络信息，和其他项目相关的设置。当我们使用内建的默认的 Truffle 命令时，这个文件留空也是可以的。
+
+## How to run this project 运行工程
+### 1. Install `Truffle`
+```bash
+   npm install -g truffle
+```
