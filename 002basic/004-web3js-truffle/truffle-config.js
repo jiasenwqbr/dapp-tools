@@ -27,6 +27,16 @@ module.exports = {
     //    network_id: "*"
     //  }
     //},
+    sepolia: {
+      provider: () =>
+        new HDWalletProvider(
+          process.env.PRIVATE_KEY,
+          "https://sepolia.infura.io/v3/" + process.env.INFURA_ID
+        ),
+      network_id: "*",
+      gas: 8000000,
+      gasPrice: 10000000000,
+    },
     ropsten: {
       provider: () =>
         new HDWalletProvider(
