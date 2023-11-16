@@ -78,7 +78,7 @@ Truffle 是基于 Solidity 语言的一套开发框架，它简化了去中心�
 <br>在 truffle-config.js 里面，可以配置 truffle 使用的以太网络，其中就包括 truffle test 使用的 "test" 网络。
 这里，直接执行 truffle migrate 报没有找到 test 网络，因为 truffle 不会启动内置的 test 网络。所以这里我们使用 sepolia 进行 truffle 合约部署
    ```bash
-   truffle migrate --network goerli
+   truffle migrate --network sepolia
    ```
 
    > If we run `truffle migrate` frequently, it may shows `Network update to date` and doesn't deploy the contracts. At that time, we need to run `truffle migrate --network goerli --reset` to reset the migration status.
