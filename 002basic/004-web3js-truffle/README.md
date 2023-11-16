@@ -39,3 +39,52 @@ Truffle 是基于 Solidity 语言的一套开发框架，它简化了去中心�
 ```bash
    npm install -g truffle
 ```
+
+### 2. Input your project ID and private key to the `.env` file. 配置env
+
+   ```sh
+   cp .env.example .env
+
+   PRIVATE_KEY=xxxxxxxxxxxxxxxx
+   INFURA_ID=yyyyyyyy
+   ```
+### 3. Test smart contracts 测试合约  
+
+   ```bash
+   truffle test
+   ```
+
+   > After running `truffle test` command, `truffle` will launch the built-in `test` network and run the test scripts in `test/` folder at the same time. If you want to run a specific test script, you can use `truffle test ./test/simpletoken.js` command.
+   <br>这里，使用 "truffle test" 后，truffle 会启动内置的 test 网络，同时执行 测试 test 目录下的所有脚本，如果想单独测试某个脚本，可以
+执行 "truffle test ./test/simpletoken.js"
+
+### 4. Compile smart contracts 编译合约
+
+   ```bash
+   truffle compile
+   ```
+
+   > After running `truffle compile` command successfully, `truffle` will compile the smart contracts in `contracts/` folder and save the compiled bytecode in `build/contracts/` folder.
+   > Here is the output:
+
+   ```text
+   Compiling .\contracts\SimpleToken.sol...
+
+   Writing artifacts to .\build\contracts
+   ```
+
+### 5. Deploy smart contracts 部署合约
+   In `truffle-config.js`, we can specify truffle to use the eth test network. However, after running `trffle migrate`, it reported there is no test network, so truffle didn't launch the built-in test network. We need to specify the test network as `sepolia` to deploy contracts manually.
+<br>在 truffle-config.js 里面，可以配置 truffle 使用的以太网络，其中就包括 truffle test 使用的 "test" 网络。
+这里，直接执行 truffle migrate 报没有找到 test 网络，因为 truffle 不会启动内置的 test 网络。所以这里我们使用 sepolia 进行 truffle 合约部署
+   ```bash
+   truffle migrate --network goerli
+   ```
+
+   > If we run `truffle migrate` frequently, it may shows `Network update to date` and doesn't deploy the contracts. At that time, we need to run `truffle migrate --network goerli --reset` to reset the migration status.
+
+
+
+
+
+
