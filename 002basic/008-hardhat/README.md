@@ -225,13 +225,17 @@ npx hardhat compile
 
 ### Test
 
-Run the command, hardhat will compile all test files in directory of `tests`, the default path is `./test`
+Run the command, hardhat will compile all test files in directory of `tests`, the default path is `./test`<br>
+
+运行如下命令，hardhat 会自动运行配置中 `tests` 路径下的所有测试文件，默认是 `./test` 路径。
 
 ```sh
 npx hardhat test
 ```
 
-you could also specify some test files to run it
+you could also specify some test files to run it<br>
+
+也可以指定运行某个特定测试文件
 
 ```sh
 npx hardhat test ./test/Greeter.test.js
@@ -239,13 +243,13 @@ npx hardhat test ./test/Greeter.test.js
 
 ### Run
 
-Run the specified script. If you are not, it will run on hardhat's build-in network by default(Hardhat Network).
+Run the specified script. If you are not, it will run on hardhat's build-in network by default(Hardhat Network).<br>运行指定脚本。如果不指定运行网络，会默认在 hardhat 内置网络内运行 (Hardhat Network)。
 
 ```sh
 npx hardhat run ./scripts/deploy.js
 ```
 
-Run the specified network, such as the contract deployed on goerli test network(make sure that the wallet could pay the gas)
+Run the specified network, such as the contract deployed on goerli test network(make sure that the wallet could pay the gas)<br>指定运行的网络，例如在 goerli 测试网部署合约(请确保钱包地址在 goerli 测试网有足够的 gas 才能成功部署)
 
 ```sh
 npx hardhat run ./scripts/deploy.js --network goerli
@@ -253,7 +257,7 @@ npx hardhat run ./scripts/deploy.js --network goerli
 
 ### Verify
 
-Verify the smart contract, here is an example of `goerli`.
+Verify the smart contract, here is an example of `goerli`.<br>验证智能合约，这里以`goerli`举例。
 
 Add the following configuration to `hardhat.config.js`:
 
@@ -271,9 +275,13 @@ npx hardhat verify --network goerli <your contract address>
 
 ### Task
 
-hardhat preset some task itself, such as compiling contract, running testing scripts. Those are build-in hardhat tasks.
+hardhat preset some task itself, such as compiling contract, running testing scripts. Those are build-in hardhat tasks.hardhat
+
+ 本身预设了一些程序任务，例如编译合约，运行测试文件，这些其实在 hardhat 中是预先配置好的任务。
 
 Actually you could also customize some tasks, such as printing status of the current network's account
+
+实际上你也可以自定义一些 task，比如打印一下当前网络中的账户状态：
 
 ```js
 // hardhat.config.js
@@ -298,6 +306,8 @@ npx hardhat accounts
 
 terminal will print 10 addresses of testing account
 
+命令行会打印出 10 个测试账户地址
+
 ```sh
 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
 ...
@@ -307,11 +317,15 @@ terminal will print 10 addresses of testing account
 
 The console mode of hardhat could interact with chain in real-time, where the hardhat build-in network is started by default.
 
+hardhat 的控制台模式，实时与链上交互。默认会启动 hardhat 内置网络。
+
 ```sh
 npx hardhat console
 ```
 
 we can directly use build-in ethers and web3 library, no need to import.
+
+控制内置 ethers 和 web3 库，可以直接使用，无须引入。
 
 ```js
 // hardhat console mode:
@@ -323,7 +337,11 @@ we can directly use build-in ethers and web3 library, no need to import.
 
 hardhat provide the `console.log()` method to print logs, debug and test when running the contract . **Only valid in hardhat build-int network**
 
+hardhat 提供了一个 `console.log()` 方法，可以在合约运行时打印日志，方便调试和测试。**此方法仅在 hardhat 内置网络中运行有效。**
+
 you can use is by importing `hardhat/console.sol` in your contract
+
+在合约中引入 `hardhat/console.sol` 即可使用：
 
 ```solidity
 import "hardhat/console.sol";
@@ -345,23 +363,23 @@ When running test scripts, you can check logs:
 Changing greeting from 'Hello, world!' to 'hello Dapp-Learning!'
 ```
 
-## Steps
+## Steps 实操流程
 
-### Compile and test
+### Compile and test 编译和测试
 
-1. compile the contract
+1. compile the contract 编译合约
 
    ```bash
    npx hardhat compile
    ```
 
-2. batch run test scripts
+2. batch run test scripts 批量运行测试脚本
 
    ```bash
    npx hardhat test
    ```
 
-3. deploy to test network
+3. deploy to test network 部署到测试网：
 
    ```bash
    npx hardhat run scripts/deploy.js --network <network-name>
@@ -369,7 +387,7 @@ Changing greeting from 'Hello, world!' to 'hello Dapp-Learning!'
 
    `network-name` should be replaced with your networks, `goerli` is a choice which exists in the config file.
 
-4. Verify smart contract
+4. Verify smart contract 验证智能合约
 
    ```bash
    npx hardhat verify --network goerli <network-name> <contract-address>
@@ -377,7 +395,11 @@ Changing greeting from 'Hello, world!' to 'hello Dapp-Learning!'
 
     `network-name` : the name of the network you specify, here you can replace it with `goerli`, which corresponds to the network name in the configuration file.
 
+    `network-name` ：你指定的网络名称，这里可以换成 `goerli`，对应配置文件中的网络名称。
+   
    `contract-address` : The address of the contract deployed in the previous step.
+   
+   `contract-address` ：上一步部署的合约地址。
 
 ## Reference
 
