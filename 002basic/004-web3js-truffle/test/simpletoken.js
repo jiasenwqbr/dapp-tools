@@ -3,12 +3,12 @@ contract("SimpleToken", (accounts) => {
   it(`Should put 100000 to the ${accounts[0]}`, async () => {
     const SimpleTokenIns = await SimpleToken.deployed();
     const balance = (
-      await simpleTokenIns.balanceOf.call(accounts[0])
+      await SimpleTokenIns.balanceOf.call(accounts[0])
     ).toNumber();
+    assert.equal(
+      balance,
+      100000,
+      `the balance of ${accounts[0]} wasn not 100000`
+    );
   });
-  assert.equal(
-    balance,
-    100000,
-    `the balance of ${accounts[0]} wasn not 100000`
-  );
 });

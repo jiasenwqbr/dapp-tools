@@ -34,8 +34,9 @@ module.exports = {
           "https://sepolia.infura.io/v3/" + process.env.INFURA_ID
         ),
       network_id: "*",
-      gas: 8000000,
+      gas: 16000000,
       gasPrice: 10000000000,
+      networkCheckTimeout: 1000000,
     },
     ropsten: {
       provider: () =>
