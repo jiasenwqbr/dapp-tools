@@ -28,18 +28,18 @@ npm install --save-dev hardhat
 
 To use your local installation of Hardhat, you need to use npx to run it (i.e. npx hardhat init)<br>要使用本地安装的Hardhat，需要使用npx来运行它（如：npx hardhat）。
 
-## Preparation
+## Preparation准备工作
 
-Before learning hardhat, you need to understand some Knowledge points as follows:
+Before learning hardhat, you need to understand some Knowledge points as follows:<br>在开始学习 hardhat 之前，你需要提前了解以下知识点：
 
-- dotenv place private key in `.env` files, which could prevent exposure on cloud server, formatted with "PRIVATE_KEY=xxxx". It will be read by code automaticily. Refer to [dotenv](https://www.npmjs.com/package/dotenv)
-- The main problem npx want to resolve is to invoke modules installed internally in the project. Refer to [npx Tutorials](https://www.ruanyifeng.com/blog/2019/02/npx.html)
-- Compared to web3.js, the interfaces of ethers.js and ethereum network library is easily used(note the interface difference between v5 and v4) [ethers.js v5 document](https://docs.ethers.io/v5/)
-- mocha.js test framework is used to write the solution for contracts Interaction. [mochajs document](https://mochajs.org/#getting-started)
-- chai.js assert framework is used to help to write testing scripts, refer to [ethereum-waffle chai document](https://ethereum-waffle.readthedocs.io/en/latest/matchers.html)
-- infura is a node internet service provider to connect to block chain, which allow some free use amounts. It is enough to develop and debug. [infura offical site](https://infura.io/)
+- dotenv place private key in `.env` files, which could prevent exposure on cloud server, formatted with "PRIVATE_KEY=xxxx". It will be read by code automaticily. Refer to [dotenv](https://www.npmjs.com/package/dotenv)<br>dotenv 将私钥存放在 `.env` 文件中可以避免将私钥暴露在服务器上，格式为 "PRIVATE_KEY=xxxx", 然后代码自动从中读取，详情参考 [dotenv](https://www.npmjs.com/package/dotenv)
+- The main problem npx want to resolve is to invoke modules installed internally in the project. Refer to [npx Tutorials](https://www.ruanyifeng.com/blog/2019/02/npx.html)<br>npx 想要解决的主要问题，就是调用项目内部安装的模块。详情参考 [npx 使用教程](https://www.ruanyifeng.com/blog/2019/02/npx.html)
+- Compared to web3.js, the interfaces of ethers.js and ethereum network library is easily used(note the interface difference between v5 and v4) [ethers.js v5 document](https://docs.ethers.io/v5/)<br>ethers.js 与以太坊网络交互的工具库，相比 web3.js 接口设计更加易于使用（注意 v5 和 v4 接口差别较大） [ethers.js v5 文档](https://docs.ethers.io/v5/)
+- mocha.js test framework is used to write the solution for contracts Interaction. [mochajs document](https://mochajs.org/#getting-started)<br>mocha.js 测试框架，用于编写合约交互的测试案例 [mochajs 文档](https://mochajs.org/#getting-started)
+- chai.js assert framework is used to help to write testing scripts, refer to [ethereum-waffle chai document](https://ethereum-waffle.readthedocs.io/en/latest/matchers.html)<br>chai.js 断言库，辅助测试脚本编写，使用方法参考 [ethereum-waffle chai 使用文档](https://ethereum-waffle.readthedocs.io/en/latest/matchers.html)
+- infura is a node internet service provider to connect to block chain, which allow some free use amounts. It is enough to develop and debug. [infura offical site](https://infura.io/)<br>infura 连接区块链的节点服务商，有免费的使用额度，足够开发调试使用 [infura 官网](https://infura.io/)
 
-## Project structure and configuration hardhat
+## Project structure and configuration hardhat<br>项目结构和配置 hardhat
 
 ```sh
 mkdir 07-hardhat                // create folder
@@ -48,9 +48,10 @@ npm install --save-dev hardhat  // install hardhat
 npx hardhat                     // initialize hardhat
 ```
 
-Finished in inputing `npx hardhat`, it will show in the terminal:
+Finished in inputing `npx hardhat`, it will show in the terminal:<br>输入`npx hardhat`后，命令行中会出现如下的界面:
 
 ```sh
+ npx hardhat
 888    888                      888 888               888
 888    888                      888 888               888
 888    888                      888 888               888
@@ -60,21 +61,39 @@ Finished in inputing `npx hardhat`, it will show in the terminal:
 888    888 888  888 888    Y88b 888 888  888 888  888 Y88b.
 888    888 "Y888888 888     "Y88888 888  888 "Y888888  "Y888
 
-Welcome to Hardhat v2.9.0
+👷 Welcome to Hardhat v2.19.1 👷‍
 
-? What do you want to do? ...
-> Create a basic sample project
-  Create an advanced sample project
-  Create an advanced sample project that uses TypeScript
-  Create an empty hardhat.config.js
-  Quit
+✔ What do you want to do? · Create a JavaScript project
+✔ Hardhat project root: · /Users/a1234/Desktop/Markdown/dapp-tools/002basic/008-hardhat
+✔ Do you want to add a .gitignore? (Y/n) · y
+✔ Do you want to install this sample project's dependencies with npm (@nomicfoundation/hardhat-toolbox)? (Y/n) · y
+
+
+npm install --save-dev @nomicfoundation/hardhat-toolbox@^4.0.0
+
+added 257 packages, and changed 2 packages in 3m
+
+✨ Project created ✨
+
+See the README.md file for some example tasks you can run
+
+Give Hardhat a star on Github if you're enjoying it! ⭐️✨
+
+     https://github.com/NomicFoundation/hardhat
+
+
+DEPRECATION WARNING
+
+ Initializing a project with npx hardhat is deprecated and will be removed in the future.
+ Please use npx hardhat init instead.
+
 ```
 
-We select 'Create a basic sample project' options to initialize a basic project, click enter directly in the next 2 steps.
+We select 'Create a JavaScript project' options to initialize a basic project, click enter directly in the next 2 steps.<br>我们使用'Create a JavaScript project'选项，创建一个基础项目，后面的两个选项直接敲回车选择默认值。
 
-### Project stucture
+### Project stucture 项目结构
 
-A standard project build in hardhat is as follow:
+A standard project build in hardhat is as follow:<br>一个标准的使用 hardhat 构建的项目通常是这样的：
 
 ```sh
 contracts/
@@ -83,12 +102,12 @@ test/
 hardhat.config.js
 ```
 
-- palce fileds write in solidity in contracts
-- palce scripts files such as deploying contracts in scripts
-- palce testing scripts named with `contractName.test.js` in test
-- `hardhat.config.js` is config file of hardhat
+-  palce fileds write in solidity in contracts<br>用于存放 solidity 合约文件
+-  palce scripts files such as deploying contracts in scripts<br>用于存放脚本文件，如部署合约的脚本
+-  palce testing scripts named with `contractName.test.js` in test<br>用于存放测试脚本，通常以 `contractName.test.js` 的形式命名
+- `hardhat.config.js` is config file of hardhat<br>是 hardhat 的配置文件
 
-### Configuration of hardhat
+### Configuration of hardhat 配置 hardhat
 
 `hardhat.config.js` config file example
 
