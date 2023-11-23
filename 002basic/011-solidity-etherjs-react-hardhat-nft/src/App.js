@@ -37,13 +37,60 @@ function App() {
       provider
     );
     setDappcord(dappcord);
+    const totalChannels = await dappcord.totalChannels();
+    const channels = [];
+    for (var i = 1; i <= totalChannels; i++) {
+      const channel = await dappcord.getChannel(i);
+      channels.push(channel);
+    }
+    setChannels(channels);
+    window.ethereum.on("accountsChanged", async () => {
+      window.location.reload();
+    });
   };
+  useEffect(() => {
+    loadBlockchainData();
+    // --> https://socket.io/how-to/use-with-react-hooks
+
+    socket.on("connect", () => {
+      socket.emit("get messages");
+    });
+
+    socket.on("new message", (messages) => {
+      setMessages(messages);
+    });
+
+    socket.on("get messages", (messages) => {
+      setMessages(messages);
+    });
+
+    return () => {
+      socket.off("connect");
+      socket.off("new message");
+      socket.off("get messages");
+    };
+  }, []);
 
   return (
     <div>
       <Navigation account={account} setAccount={setAccount} />
 
-      <main></main>
+      <main>
+        <Servers />
+        <Channels
+          provider={provider}
+          account={account}
+          dappcord={dappcord}
+          channels={channels}
+          currentChannel={currentChannel}
+          setCurrentChannel={setCurrentChannel}
+        />
+        <Messages
+          account={account}
+          messages={messages}
+          currentChannel={currentChannel}
+        />
+      </main>
     </div>
   );
 }
