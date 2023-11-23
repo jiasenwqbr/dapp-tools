@@ -6,7 +6,7 @@ const tokens = (n) => {
 
 async function main() {
   // Setup accounts & variables
-  const [deployer] = await ethers.getSigers();
+  const [deployer] = await ethers.getSigners();
   const NAME = "Dappcord";
   const SYMBOL = "DC";
   // Deploy contract
