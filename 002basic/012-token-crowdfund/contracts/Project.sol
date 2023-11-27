@@ -12,7 +12,7 @@ contract Project {
     // State variables
     address payable  public creator;
     uint public amountGoal;
-    uint public complateAt;
+    uint public completeAt;
     uint256 public currentBalance;
     uint public raiseBy;
     string public title;
@@ -41,7 +41,7 @@ contract Project {
         string memory projectDesc,
         uint fundRaisingDeadline,
         uint goalAmount
-    ) public {
+    )  {
         creator = projectStarter;
         title = projectTitle;
         description = projectDesc;
@@ -67,7 +67,7 @@ contract Project {
         } else if (block.timestamp > raiseBy){
             state = State.Expired;
         } 
-        complateAt = block.timestamp;
+        completeAt = block.timestamp;
     }
      /** @dev Function to give the received funds to project starter.
       * 将收到的资金交给项目启动人的功能。
