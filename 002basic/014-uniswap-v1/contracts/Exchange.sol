@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 contract Exchange {
     address public tokenAddress;
@@ -41,8 +41,8 @@ contract Exchange {
     function ethToTokenSwap(uint256 _minTokens) public payable {
         uint256 tokenReserve = getReserve();
         uint256 tokenBought = getAmount(msg.value, address(this).balance-msg.value, tokenReserve);
-        require(tokensBought >= _minTokens, "insufficient output amount");
-        IERC20(tokenAddress).transfer(msg.sender, tokensBought);
+        require(tokenBought >= _minTokens, "insufficient output amount");
+        IERC20(tokenAddress).transfer(msg.sender, tokenBought);
     }
     function tokenToEthSwap(uint256 _tokenSold,uint256 _minEth) public {
         uint256 tokenReserve = getReserve();
@@ -51,7 +51,7 @@ contract Exchange {
         IERC20(tokenAddress).transferFrom(
             msg.sender,
             address(this),
-            _tokensSold
+            _tokenSold
         );
         payable(msg.sender).transfer(ethBought);
     }
