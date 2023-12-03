@@ -2,11 +2,24 @@
 pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+interface IExchange {
+    function ethToTokenSwap(uint256 _minTokens) external payable;
+
+    function ethToTokenTransfer(uint256 _minTokens, address _recipient)
+        external
+        payable;
+}
+
+interface IFactory {
+    function getExchange(address _tokenAddress) external returns (address);
+}
 contract Exchange is ERC20 {
     address public tokenAddress;
+    address public factoryAddress;
     constructor(address _token) ERC20("Zuniswap-V1", "ZUNI-V1") {
         require(_token != address(0),"invalid token address");
         tokenAddress = _token;
+        factoryAddress = msg.sender;
     }
 
     // function addLiquidity(uint256 _tokenAmount) public payable {
@@ -60,22 +73,91 @@ contract Exchange is ERC20 {
         return getAmount(_tokenSold, tokenReserve, address(this).balance);
     }
 
-    function ethToTokenSwap(uint256 _minTokens) public payable {
+    function ethToToken(uint256 _minTokens, address recipient) private {
         uint256 tokenReserve = getReserve();
-        uint256 tokenBought = getAmount(msg.value, address(this).balance-msg.value, tokenReserve);
-        require(tokenBought >= _minTokens, "insufficient output amount");
-        IERC20(tokenAddress).transfer(msg.sender, tokenBought);
+        uint256 tokensBought = getAmount(
+            msg.value,
+            address(this).balance - msg.value,
+            tokenReserve
+        );
+
+        require(tokensBought >= _minTokens, "insufficient output amount");
+
+        IERC20(tokenAddress).transfer(recipient, tokensBought);
     }
-    function tokenToEthSwap(uint256 _tokenSold,uint256 _minEth) public {
+    function ethToTokenTransfer(uint256 _minTokens, address _recipient)
+        public
+        payable
+    {
+        ethToToken(_minTokens, _recipient);
+    }
+
+    function ethToTokenSwap(uint256 _minTokens) public payable {
+        ethToToken(_minTokens, msg.sender);
+    }
+
+    function tokenToEthSwap(uint256 _tokensSold, uint256 _minEth) public {
         uint256 tokenReserve = getReserve();
-        uint256 ethBought = getAmount(_tokenSold, tokenReserve, address(this).balance);
+        uint256 ethBought = getAmount(
+            _tokensSold,
+            tokenReserve,
+            address(this).balance
+        );
+
         require(ethBought >= _minEth, "insufficient output amount");
+
         IERC20(tokenAddress).transferFrom(
             msg.sender,
             address(this),
-            _tokenSold
+            _tokensSold
         );
         payable(msg.sender).transfer(ethBought);
+    }
+
+    function tokenToTokenSwap(
+        uint256 _tokensSold,
+        uint256 _minTokensBought,
+        address _tokenAddress
+    ) public {
+        address exchangeAddress = IFactory(factoryAddress).getExchange(
+            _tokenAddress
+        );
+        require(
+            exchangeAddress != address(this) && exchangeAddress != address(0),
+            "invalid exchange address"
+        );
+
+        uint256 tokenReserve = getReserve();
+        uint256 ethBought = getAmount(
+            _tokensSold,
+            tokenReserve,
+            address(this).balance
+        );
+
+        IERC20(tokenAddress).transferFrom(
+            msg.sender,
+            address(this),
+            _tokensSold
+        );
+
+        IExchange(exchangeAddress).ethToTokenTransfer{value: ethBought}(
+            _minTokensBought,
+            msg.sender
+        );
+    }
+
+    function getAmount(
+        uint256 inputAmount,
+        uint256 inputReserve,
+        uint256 outputReserve
+    ) private pure returns (uint256) {
+        require(inputReserve > 0 && outputReserve > 0, "invalid reserves");
+
+        uint256 inputAmountWithFee = inputAmount * 99;
+        uint256 numerator = inputAmountWithFee * outputReserve;
+        uint256 denominator = (inputReserve * 100) + inputAmountWithFee;
+
+        return numerator / denominator;
     }
 
     function removeLiquidity(uint256 _amount) public returns(uint256, uint256){
