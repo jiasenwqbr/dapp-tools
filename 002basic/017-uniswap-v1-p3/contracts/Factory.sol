@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.9;
-import "./Exchange.sol"
+pragma solidity ^0.8.20;
+import "./Exchange.sol";
 contract Factory {
     mapping(address => address) public tokenToExchange;
 
@@ -13,7 +13,7 @@ contract Factory {
         require(tokenToExchange[_tokenAddress] == address(0),"exchange already exist");
 
         Exchange exchange = new Exchange(_tokenAddress);
-        tokenToExchange[_tokenAddress] = address(exchange);
+        tokenToExchange[_tokenAddress] = address(exchange);
 
         return address(exchange);
     }

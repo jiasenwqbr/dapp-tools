@@ -21,12 +21,6 @@ contract Exchange is ERC20 {
         tokenAddress = _token;
         factoryAddress = msg.sender;
     }
-
-    // function addLiquidity(uint256 _tokenAmount) public payable {
-    //     IERC20 token = IERC20(tokenAddress);
-    //     token.transferFrom(msg.sender,address(this),_tokenAmount);
-    // }
-
     function addLiquidity(uint256 _tokenAmount) public payable returns(uint256){
         if (getReserve() == 0){
             IERC20 token = IERC20(tokenAddress);
@@ -49,18 +43,6 @@ contract Exchange is ERC20 {
     
     function getReserve() public view returns (uint256) {
         return IERC20(tokenAddress).balanceOf(address(this));
-    }
-    function getAmount(
-        uint256 inputAmount,
-        uint256 inputReserve,
-        uint256 outputReserve
-    ) private pure returns(uint256){
-        require(inputReserve > 0 && outputReserve > 0, "invalid reserves");
-        uint256 inputAmountWithFee = inputAmount * 99;
-        uint256 numerator = inputAmountWithFee * outputReserve;
-        uint256 denominator = (inputReserve * 100) + inputAmountWithFee;
-
-        return numerator / denominator;
     }
     function getTokenAmount(uint256 _ethSold) public view returns (uint256) {
         require(_ethSold > 0, "ethSold is too small");
