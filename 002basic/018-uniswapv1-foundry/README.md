@@ -148,3 +148,6 @@ Test result: ok. 2 passed; 0 failed; 0 skipped; finished in 22.97ms
 Ran 1 test suites: 2 tests passed, 0 failed, 0 skipped (2 total tests)
 ```
 
+```shell
+forge install OpenZeppelin/openzeppelin-contracts --no-commit 
+```
