@@ -9,9 +9,8 @@ contract Factory {
     }
 
     function createExchange(address _tokenAddress) public returns(address){
-        require(_tokenAddress != address(0),"Invalid token address");
-        require(tokenExchange[_tokenAddress] != address(0),"exchange exist");
-
+        require(_tokenAddress != address(0), "invalid address");
+        require(tokenExchange[_tokenAddress] == address(0), "exchange exist");
         Exchange exchange = new Exchange(_tokenAddress);
         tokenExchange[_tokenAddress] = address(exchange);
         return address(exchange);
