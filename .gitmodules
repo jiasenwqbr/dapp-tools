@@ -4,3 +4,6 @@
 [submodule "002basic/018-uniswapv1-foundry/lib/openzeppelin-contracts"]
 	path = 002basic/018-uniswapv1-foundry/lib/openzeppelin-contracts
 	url = https://github.com/OpenZeppelin/openzeppelin-contracts
+[submodule "002basic/019-uniswapv2-p1/lib/forge-std"]
+	path = 002basic/019-uniswapv2-p1/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
