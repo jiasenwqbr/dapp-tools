@@ -10,7 +10,7 @@ interface IERC20 {
 error InsufficientLiquidityMinted();
 error InsufficientLiquidityBurned();
 error TransferFailed();
-contract ZuniswapV2Pair is ERC20, Math {
+contract JuniswapV2Pair is ERC20, Math {
     uint256 constant MINIMUM_LIQUIDITY = 1000;
 
     address public token0;
@@ -97,7 +97,7 @@ contract ZuniswapV2Pair is ERC20, Math {
     function _safeTransfer (
         address token,
         address to,
-        address value
+        uint256 value
     ) private {
         (bool success,bytes memory data) = token.call(
             abi.encodeWithSignature("transfer(address,uint256)", to, value)

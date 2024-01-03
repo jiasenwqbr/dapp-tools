@@ -313,9 +313,117 @@ In the first branch, we’re subtracting `MINIMUM_LIQUIDITY` (which is a constan
 
 To solidify our understanding of minting, let’s write tests.
 
+## Writing tests in Solidity 在 Solidity 中编写测试
+
+As I said above, I’ll be using Foundry to test our smart contracts–this will allow us to quickly set up our tests and not have any business with JavaScript. Our smart contracts tests will simply be other smart contracts. That’s it: **smart contracts that test smart contracts**.
+
+正如我上面所说，我将使用 Foundry 来测试我们的智能合约——这将使我们能够快速设置我们的测试和 与 JavaScript 没有任何业务往来。我们的智能合约测试将只是其他智能合约。就是这样：智能 测试智能合约的合约。
+
+This is all we need to set up testing of the pair contract:
+
+这就是我们设置货币对合约测试所需的全部内容：
+
+```solidity
+contract ZuniswapV2PairTest is Test {
+  ERC20Mintable token0;
+  ERC20Mintable token1;
+  ZuniswapV2Pair pair;
+
+  function setUp() public {
+    token0 = new ERC20Mintable("Token A", "TKNA");
+    token1 = new ERC20Mintable("Token B", "TKNB");
+    pair = new ZuniswapV2Pair(address(token0), address(token1));
+
+    token0.mint(10 ether);
+    token1.mint(10 ether);
+  }
+
+  // Any function starting with "test" is a test case.
+}
+```
 
 
 
+Let’s add a test for pair bootstrapping (providing initial liquidity):
+
+让我们添加一个对引导测试（提供初始流动性）：
+
+```solidity
+function testMintBootstrap() public {
+  token0.transfer(address(pair), 1 ether);
+  token1.transfer(address(pair), 1 ether);
+
+  pair.mint();
+
+  assertEq(pair.balanceOf(address(this)), 1 ether - 1000);
+  assertReserves(1 ether, 1 ether);
+  assertEq(pair.totalSupply(), 1 ether);
+}
+```
 
 
+
+1 ether of `token0` and 1 ether of `token1` are added to the test pool. As a result, 1 ether of LP-tokens is issued and we get 1 ether - 1000 (minus the minimal liquidity). Pool reserves and total supply get changed accordingly.
+
+将 1 个以太币和 1 个以太"token0"币 "token1" 添加到测试池中。结果，发行了 1 个 LP 代币以太币，我们 获得 1 个以太币 - 1000（减去最低流动性）。池储备和总供应量会相应变化。
+
+What happens when balanced liquidity is provided to a pool that already has some liquidity? Let’s see:
+
+当向已经拥有一定流动性的池提供平衡流动性时会发生什么？我看看：
+
+```solidity
+function testMintWhenTheresLiquidity() public {
+  token0.transfer(address(pair), 1 ether);
+  token1.transfer(address(pair), 1 ether);
+
+  pair.mint(); // + 1 LP
+
+  token0.transfer(address(pair), 2 ether);
+  token1.transfer(address(pair), 2 ether);
+
+  pair.mint(); // + 2 LP
+
+  assertEq(pair.balanceOf(address(this)), 3 ether - 1000);
+  assertEq(pair.totalSupply(), 3 ether);
+  assertReserves(3 ether, 3 ether);
+}
+```
+
+Everything looks correct here. Let’s see what happens when unbalanced liquidity is provided:
+
+这里的一切看起来都是正确的。让我们看看当提供不平衡的流动性时会发生什么：
+
+```solidity
+function testMintUnbalanced() public {
+  token0.transfer(address(pair), 1 ether);
+  token1.transfer(address(pair), 1 ether);
+
+  pair.mint(); // + 1 LP
+  assertEq(pair.balanceOf(address(this)), 1 ether - 1000);
+  assertReserves(1 ether, 1 ether);
+
+  token0.transfer(address(pair), 2 ether);
+  token1.transfer(address(pair), 1 ether);
+
+  pair.mint(); // + 1 LP
+  assertEq(pair.balanceOf(address(this)), 2 ether - 1000);
+  assertReserves(3 ether, 2 ether);
+}
+```
+
+
+
+This is what we talked about: even though user provided more `token0` liquidity than `token1` liquidity, they still got only 1 LP-token.
+
+这就是我们所讨论的：即使用户提供的"token0"流动性多于流动性 "token1" ， 他们仍然只得到了 1 个 LP 代币。
+
+Alright, liquidity provision looks good. Let’s now move to liquidity removal.
+
+好吧，流动性供应看起来不错。现在让我们转向流动性移除。
+
+## Removing liquidity消除流动性
+
+Liquidity removal is opposite to provision. Likewise, burning is opposite to minting. Removing liquidity from pool means burning of LP-tokens in exchange for proportional amount of underlying tokens. The amount of tokens returned to liquidity provided is calculated like that:
+
+流动性移除与拨备相反。同样，燃烧与铸币相反。从资金池中移除流动性意味着 销毁LP代币以换取一定比例数量的基础代币。返回流动性的代币数量 提供的计算方式如下：
 

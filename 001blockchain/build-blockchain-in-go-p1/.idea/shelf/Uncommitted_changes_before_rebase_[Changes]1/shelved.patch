@@ -1,0 +1,52 @@
+Index: .idea/workspace.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<project version=\"4\">\n  <component name=\"AutoImportSettings\">\n    <option name=\"autoReloadType\" value=\"ALL\" />\n  </component>\n  <component name=\"ChangeListManager\">\n    <list default=\"true\" id=\"b1e984d9-88f9-4121-93f3-2f559d43745a\" name=\"Changes\" comment=\"\">\n      <change afterPath=\"$PROJECT_DIR$/../001build-blockchain-in-go-p1/.idea/.gitignore\" afterDir=\"false\" />\n      <change afterPath=\"$PROJECT_DIR$/../001build-blockchain-in-go-p1/.idea/build-blockchain-in-go-p1.iml\" afterDir=\"false\" />\n      <change afterPath=\"$PROJECT_DIR$/../001build-blockchain-in-go-p1/.idea/modules.xml\" afterDir=\"false\" />\n      <change afterPath=\"$PROJECT_DIR$/../001build-blockchain-in-go-p1/.idea/vcs.xml\" afterDir=\"false\" />\n      <change afterPath=\"$PROJECT_DIR$/../001build-blockchain-in-go-p1/block.go\" afterDir=\"false\" />\n      <change afterPath=\"$PROJECT_DIR$/../001build-blockchain-in-go-p1/blockchain.go\" afterDir=\"false\" />\n      <change afterPath=\"$PROJECT_DIR$/../001build-blockchain-in-go-p1/go.mod\" afterDir=\"false\" />\n      <change afterPath=\"$PROJECT_DIR$/../001build-blockchain-in-go-p1/main.go\" afterDir=\"false\" />\n    </list>\n    <option name=\"SHOW_DIALOG\" value=\"false\" />\n    <option name=\"HIGHLIGHT_CONFLICTS\" value=\"true\" />\n    <option name=\"HIGHLIGHT_NON_ACTIVE_CHANGELIST\" value=\"false\" />\n    <option name=\"LAST_RESOLUTION\" value=\"IGNORE\" />\n  </component>\n  <component name=\"GOROOT\" url=\"file:///usr/local/go\" />\n  <component name=\"Git.Settings\">\n    <option name=\"RECENT_GIT_ROOT_PATH\" value=\"$PROJECT_DIR$/../..\" />\n  </component>\n  <component name=\"ProjectId\" id=\"2ZhPZ4ATeOucuHe8ijYWnYsD7gr\" />\n  <component name=\"ProjectViewState\">\n    <option name=\"hideEmptyMiddlePackages\" value=\"true\" />\n    <option name=\"showLibraryContents\" value=\"true\" />\n  </component>\n  <component name=\"PropertiesComponent\"><![CDATA[{\n  \"keyToString\": {\n    \"RunOnceActivity.OpenProjectViewOnStart\": \"true\",\n    \"RunOnceActivity.ShowReadmeOnStart\": \"true\",\n    \"RunOnceActivity.go.formatter.settings.were.checked\": \"true\",\n    \"RunOnceActivity.go.migrated.go.modules.settings\": \"true\",\n    \"RunOnceActivity.go.modules.automatic.dependencies.download\": \"true\",\n    \"RunOnceActivity.go.modules.go.list.on.any.changes.was.set\": \"true\",\n    \"WebServerToolWindowFactoryState\": \"false\",\n    \"go.import.settings.migrated\": \"true\",\n    \"last_opened_file_path\": \"/Users/a1234\",\n    \"node.js.detected.package.eslint\": \"true\",\n    \"node.js.selected.package.eslint\": \"(autodetect)\"\n  }\n}]]></component>\n  <component name=\"RunManager\">\n    <configuration default=\"true\" type=\"GoApplicationRunConfiguration\" factoryName=\"Go Application\">\n      <module name=\"build-blockchain-in-go-p1\" />\n      <working_directory value=\"$PROJECT_DIR$\" />\n      <kind />\n      <directory value=\"$PROJECT_DIR$\" />\n      <filePath value=\"$PROJECT_DIR$\" />\n      <method v=\"2\" />\n    </configuration>\n    <configuration name=\"go build build-blockchain-in-go-p1\" type=\"GoApplicationRunConfiguration\" factoryName=\"Go Application\" temporary=\"true\" nameIsGenerated=\"true\">\n      <module name=\"build-blockchain-in-go-p1\" />\n      <working_directory value=\"$PROJECT_DIR$\" />\n      <kind value=\"PACKAGE\" />\n      <package value=\"build-blockchain-in-go-p1\" />\n      <directory value=\"$PROJECT_DIR$\" />\n      <filePath value=\"$PROJECT_DIR$/main.go\" />\n      <method v=\"2\" />\n    </configuration>\n    <configuration default=\"true\" type=\"GoTestRunConfiguration\" factoryName=\"Go Test\">\n      <module name=\"build-blockchain-in-go-p1\" />\n      <working_directory value=\"$PROJECT_DIR$\" />\n      <kind />\n      <directory value=\"$PROJECT_DIR$\" />\n      <filePath value=\"$PROJECT_DIR$\" />\n      <framework value=\"gotest\" />\n      <method v=\"2\" />\n    </configuration>\n    <recent_temporary>\n      <list>\n        <item itemvalue=\"Go Build.go build build-blockchain-in-go-p1\" />\n      </list>\n    </recent_temporary>\n  </component>\n  <component name=\"SpellCheckerSettings\" RuntimeDictionaries=\"0\" Folders=\"0\" CustomDictionaries=\"0\" DefaultDictionary=\"application-level\" UseSingleDictionary=\"true\" transferred=\"true\" />\n  <component name=\"TypeScriptGeneratedFilesManager\">\n    <option name=\"version\" value=\"3\" />\n  </component>\n  <component name=\"VgoProject\">\n    <settings-migrated>true</settings-migrated>\n  </component>\n</project>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/workspace.xml b/.idea/workspace.xml
+--- a/.idea/workspace.xml	(revision d9c6045f4e737f4092b4717dc3965fffadc3bdc2)
++++ b/.idea/workspace.xml	(date 1702875912012)
+@@ -4,15 +4,8 @@
+     <option name="autoReloadType" value="ALL" />
+   </component>
+   <component name="ChangeListManager">
+-    <list default="true" id="b1e984d9-88f9-4121-93f3-2f559d43745a" name="Changes" comment="">
+-      <change afterPath="$PROJECT_DIR$/../001build-blockchain-in-go-p1/.idea/.gitignore" afterDir="false" />
+-      <change afterPath="$PROJECT_DIR$/../001build-blockchain-in-go-p1/.idea/build-blockchain-in-go-p1.iml" afterDir="false" />
+-      <change afterPath="$PROJECT_DIR$/../001build-blockchain-in-go-p1/.idea/modules.xml" afterDir="false" />
+-      <change afterPath="$PROJECT_DIR$/../001build-blockchain-in-go-p1/.idea/vcs.xml" afterDir="false" />
+-      <change afterPath="$PROJECT_DIR$/../001build-blockchain-in-go-p1/block.go" afterDir="false" />
+-      <change afterPath="$PROJECT_DIR$/../001build-blockchain-in-go-p1/blockchain.go" afterDir="false" />
+-      <change afterPath="$PROJECT_DIR$/../001build-blockchain-in-go-p1/go.mod" afterDir="false" />
+-      <change afterPath="$PROJECT_DIR$/../001build-blockchain-in-go-p1/main.go" afterDir="false" />
++    <list default="true" id="b1e984d9-88f9-4121-93f3-2f559d43745a" name="Changes" comment="Building Blockchain in Go. Part 1: Basic Prototype">
++      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+     </list>
+     <option name="SHOW_DIALOG" value="false" />
+     <option name="HIGHLIGHT_CONFLICTS" value="true" />
+@@ -21,6 +14,12 @@
+   </component>
+   <component name="GOROOT" url="file:///usr/local/go" />
+   <component name="Git.Settings">
++    <option name="PUSH_TAGS">
++      <GitPushTagMode>
++        <option name="argument" value="--tags" />
++        <option name="title" value="All" />
++      </GitPushTagMode>
++    </option>
+     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/../.." />
+   </component>
+   <component name="ProjectId" id="2ZhPZ4ATeOucuHe8ijYWnYsD7gr" />
+@@ -79,6 +78,10 @@
+   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+   <component name="TypeScriptGeneratedFilesManager">
+     <option name="version" value="3" />
++  </component>
++  <component name="VcsManagerConfiguration">
++    <MESSAGE value="Building Blockchain in Go. Part 1: Basic Prototype" />
++    <option name="LAST_COMMIT_MESSAGE" value="Building Blockchain in Go. Part 1: Basic Prototype" />
+   </component>
+   <component name="VgoProject">
+     <settings-migrated>true</settings-migrated>
