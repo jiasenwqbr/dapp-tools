@@ -57,8 +57,6 @@ contract JuniswapV2Pair is ERC20, Math {
         _update(balance0, balance1);
 
         emit Mint(msg.sender, amount0, amount1);
-
-
     }
 
     function burn() public {

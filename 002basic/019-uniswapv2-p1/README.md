@@ -426,4 +426,145 @@ Alright, liquidity provision looks good. Let’s now move to liquidity removal.
 Liquidity removal is opposite to provision. Likewise, burning is opposite to minting. Removing liquidity from pool means burning of LP-tokens in exchange for proportional amount of underlying tokens. The amount of tokens returned to liquidity provided is calculated like that:
 
 流动性移除与拨备相反。同样，燃烧与铸币相反。从资金池中移除流动性意味着 销毁LP代币以换取一定比例数量的基础代币。返回流动性的代币数量 提供的计算方式如下：
+$$
+Amount_{token} = Reserve_{token} * {\frac {Balance_{LP}}{TotalSupply_{LP}}}
+$$
+In plain English: the amount of tokens returned is proportional to the amount of LP-tokens held over total supply of LP tokens. The bigger your share of LP-tokens, the bigger share of reserve you get after burning.
 
+简单来说：返回的代币数量与持有的 LP 代币数量占 LP 总供应量成正比 令 牌。您的LP代币份额越大，销毁后获得的储备份额就越大。
+
+And this is all we need to know to implement `burn` function:
+
+这就是我们实现函数需要知道的全部内容 "burn" ：
+
+```solidity
+function burn() public {
+  uint256 balance0 = IERC20(token0).balanceOf(address(this));
+  uint256 balance1 = IERC20(token1).balanceOf(address(this));
+  uint256 liquidity = balanceOf[msg.sender];
+
+  uint256 amount0 = (liquidity * balance0) / totalSupply;
+  uint256 amount1 = (liquidity * balance1) / totalSupply;
+
+  if (amount0 <= 0 || amount1 <= 0) revert InsufficientLiquidityBurned();
+
+  _burn(msg.sender, liquidity);
+
+  _safeTransfer(token0, msg.sender, amount0);
+  _safeTransfer(token1, msg.sender, amount1);
+
+  balance0 = IERC20(token0).balanceOf(address(this));
+  balance1 = IERC20(token1).balanceOf(address(this));
+
+  _update(balance0, balance1);
+
+  emit Burn(msg.sender, amount0, amount1);
+}
+```
+
+As you can see, UniswapV2 doesn’t support partial removal of liquidity.
+
+如您所见，UniswapV2 不支持部分移除流动性。
+
+> **Update**: the above statement is wrong! I made a logical bug in this function, can you spot it? If not, I explained and fixed it in [Part 4](https://jeiwan.net/posts/programming-defi-uniswapv2-4/) ([commit](https://github.com/Jeiwan/zuniswapv2/commit/babf8509b8be96796e2d944710bfcb22cc1fe77d#diff-835d3f34100b5508951336ba5a961932492eaa6923e3c5299f77007019bf2b6fR84))
+>
+> 更新：上述说法是错误的！我在这个函数中犯了一个逻辑错误，你能发现它吗？如果没有，我解释说 并在第 4 部分（提交）中修复了它
+
+Let’s test it:
+
+让我们来测试一下：
+
+```solidity
+function testBurn() public {
+  token0.transfer(address(pair), 1 ether);
+  token1.transfer(address(pair), 1 ether);
+
+  pair.mint();
+  pair.burn();
+
+  assertEq(pair.balanceOf(address(this)), 0);
+  assertReserves(1000, 1000);
+  assertEq(pair.totalSupply(), 1000);
+  assertEq(token0.balanceOf(address(this)), 10 ether - 1000);
+  assertEq(token1.balanceOf(address(this)), 10 ether - 1000);
+}
+```
+
+We see that the pool returns to its uninitialized state except the minimum liquidity that was sent to the zero address– it cannot be claimed.
+
+我们看到池子恢复到未初始化的状态，除了发送到零地址的最小流动性—— 它不能被认领。
+
+Now, let’s see what happens when we burn after providing unbalanced liquidity:
+
+现在，让我们看看在提供不平衡的流动性后销毁时会发生什么：
+
+```solidity
+function testBurnUnbalanced() public {
+  token0.transfer(address(pair), 1 ether);
+  token1.transfer(address(pair), 1 ether);
+
+  pair.mint();
+
+  token0.transfer(address(pair), 2 ether);
+  token1.transfer(address(pair), 1 ether);
+
+  pair.mint(); // + 1 LP
+
+  pair.burn();
+
+  assertEq(pair.balanceOf(address(this)), 0);
+  assertReserves(1500, 1000);
+  assertEq(pair.totalSupply(), 1000);
+  assertEq(token0.balanceOf(address(this)), 10 ether - 1500);
+  assertEq(token1.balanceOf(address(this)), 10 ether - 1000);
+}
+```
+
+What we see here is that we have lost 500 wei of `token0`! This is the punishment for price manipulation we talked above. But the amount is ridiculously small, it doesn’t seem significant at all. This so because our current user (the test contract) is the only liquidity provider. What if we provide unbalanced liquidity to a pool that was initialized by another user? Let’s see:
+
+我们在这里看到的是，我们已经损失了 500 wei 的"token0"！这是我们谈到的对价格操纵的惩罚 以上。但数量少得离谱，似乎一点也不重要。之所以如此，是因为我们当前的用户（ 测试合约）是唯一的流动性提供者。如果我们向初始化的池提供不平衡的流动性怎么办 由其他用户？我看看：
+
+```solidity
+function testBurnUnbalancedDifferentUsers() public {
+  testUser.provideLiquidity(
+    address(pair),
+    address(token0),
+    address(token1),
+    1 ether,
+    1 ether
+  );
+
+  assertEq(pair.balanceOf(address(this)), 0);
+  assertEq(pair.balanceOf(address(testUser)), 1 ether - 1000);
+  assertEq(pair.totalSupply(), 1 ether);
+
+  token0.transfer(address(pair), 2 ether);
+  token1.transfer(address(pair), 1 ether);
+
+  pair.mint(); // + 1 LP
+
+  assertEq(pair.balanceOf(address(this)), 1);
+
+  pair.burn();
+
+  assertEq(pair.balanceOf(address(this)), 0);
+  assertReserves(1.5 ether, 1 ether);
+  assertEq(pair.totalSupply(), 1 ether);
+  assertEq(token0.balanceOf(address(this)), 10 ether - 0.5 ether);
+  assertEq(token1.balanceOf(address(this)), 10 ether);
+}
+```
+
+This looks completely different! We’ve now lost 0.5 ether of `token0`, which is 1/4 of what we deposited. Now that’s a significant amount!
+
+这看起来完全不同！我们现在已经损失了 0.5 个以太"token0"币，这是我们存入的 1/4。现在是 一大笔钱！
+
+Try to figure out who eventually gets that 0.5 ether: the pair or the test user? 😉
+
+试着弄清楚谁最终得到了那 0.5 个以太币：这对还是测试用户？😉
+
+## Conclusion结论
+
+Well, enough for today. Feel free experimenting with the code and, for example, choosing the bigger amount of LP-tokens when adding liquidity to a pool.
+
+好了，今天就够了。随意尝试代码，例如，选择更多数量的 LP 代币 向资金池添加流动性时。
