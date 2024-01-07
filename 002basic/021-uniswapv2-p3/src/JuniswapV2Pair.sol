@@ -52,20 +52,14 @@ contract JuniswapV2Pair is ERC20, Math {
         token1 = token1_;
     }
 
-    function mint() public {
-        // The purpose of this function is to fetch the current reserves of the liquidity pool.
-        //这个函数的目的是获取交易对当前的资金池储备（reserves）。
-        (uint112 reserve0_,uint112 reserve1_,) = getReserves();
-        // These lines respectively fetch the balances of the token0 and token1 tokens held by the current smart contract address.
-        // 这两行代码分别获取当前智能合约地址持有的 token0 和 token1 代币的余额
+    function mint(address to) public returns (uint256 liquidity)  {
+        (uint112 reserve0_, uint112 reserve1_, ) = getReserves();
         uint256 balance0 = IERC20(token0).balanceOf(address(this));
         uint256 balance1 = IERC20(token1).balanceOf(address(this));
-        // these lines calculate the changes in balance for each token relative to the reserves.
-        // 这两行代码计算了每个代币相对于储备的余额变化量。
         uint256 amount0 = balance0 - reserve0_;
         uint256 amount1 = balance1 - reserve1_;
-        uint256 liquidity;
-        if (totalSupply == 0){
+
+        if (totalSupply == 0) {
             liquidity = Math.sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
             _mint(address(0), MINIMUM_LIQUIDITY);
         } else {
@@ -76,10 +70,12 @@ contract JuniswapV2Pair is ERC20, Math {
         }
 
         if (liquidity <= 0) revert InsufficientLiquidityMinted();
-        _mint(msg.sender, liquidity);
+
+        _mint(to, liquidity);
 
         _update(balance0, balance1, reserve0_, reserve1_);
-        emit Mint(msg.sender, amount0, amount1);
+
+        emit Mint(to, amount0, amount1);
     }
 
     function burn() public {
