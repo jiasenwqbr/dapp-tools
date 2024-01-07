@@ -7,6 +7,7 @@ interface IERC20 {
     function balanceOf(address) external returns (uint256);
     function transfer(address to, uint256 amount) external;
 }
+error AlreadyInitialized();
 error BalanceOverflow();
 error InsufficientLiquidityMinted();
 error InsufficientLiquidityBurned();
@@ -40,6 +41,13 @@ contract JuniswapV2Pair is ERC20, Math {
     );
 
     constructor(address token0_,address token1_) ERC20("Juinswapv2","JUNIV2",18){
+        token0 = token0_;
+        token1 = token1_;
+    }
+    function initialize(address token0_, address token1_) public {
+        if (token0 != address(0) || token1 != address(0))
+            revert AlreadyInitialized();
+
         token0 = token0_;
         token1 = token1_;
     }
