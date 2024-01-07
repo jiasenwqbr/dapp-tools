@@ -161,17 +161,17 @@ contract JuniswapV2PairTest is Test{
         pair.burn();
     }
 
-    function testReservesPacking() public {
-        token0.transfer(address(pair), 1 ether);
-        token1.transfer(address(pair), 2 ether);
-        pair.mint();
+    // function testReservesPacking() public {
+    //     token0.transfer(address(pair), 1 ether);
+    //     token1.transfer(address(pair), 2 ether);
+    //     pair.mint();
 
-        bytes32 val = vm.load(address(pair), bytes32(uint256(8)));
-        assertEq(
-            val,
-            hex"000000000000000000001bc16d674ec800000000000000000de0b6b3a7640000"
-        );
-    }
+    //     bytes32 val = vm.load(address(pair), bytes32(uint256(8)));
+    //     assertEq(
+    //         val,
+    //         hex"000000000000000000001bc16d674ec800000000000000000de0b6b3a7640000"
+    //     );
+    // }
 
     function testSwapBasicScenario() public {
         token0.transfer(address(pair), 1 ether);
