@@ -308,7 +308,290 @@ err := bc.db.View(func(tx *bolt.Tx) error {
 })
 ```
 
+This is the other (read-only) type of BoltDB transactions. Here we get the last block hash from the DB to use it to mine a new block hash.
 
+```go
+newBlock := NewBlock(data, lastHash)
+b := tx.Bucket([]byte(blocksBucket))
+err := b.Put(newBlock.Hash, newBlock.Serialize())
+err = b.Put([]byte("l"), newBlock.Hash)
+bc.tip = newBlock.Hash
+```
 
+After mining a new block, we save its serialized representation into the DB and update the `l` key, which now stores the new block’s hash.
 
+Done! It wasn’t hard, was it?
+
+## Inspecting Blockchain 检查区块链
+
+All new blocks are now saved in a database, so we can reopen a blockchain and add a new block to it. But after implementing this, we lost a nice feature: we cannot print out blockchain blocks anymore because we don’t store blocks in an array any longer. Let’s fix this flaw!
+
+现在，所有新区块都保存在数据库中，因此我们可以重新打开区块链并向其添加新区块。但是在实现这一点之后，我们失去了一个很好的功能：我们不能再打印出区块链区块了，因为我们不再将区块存储在数组中。让我们修复这个缺陷！
+
+BoltDB allows to iterate over all the keys in a bucket, but the keys are stored in byte-sorted order, and we want blocks to be printed in the order they take in a blockchain. Also, because we don’t want to load all the blocks into memory (our blockchain DB could be huge!.. or let’s just pretend it could), we’ll read them one by one. For this purpose, we’ll need a blockchain iterator:
+
+BoltDB 允许遍历存储桶中的所有密钥，但密钥是按字节排序顺序存储的，我们希望区块按照它们在区块链中的顺序打印。此外，因为我们不想将所有块加载到内存中（我们的区块链数据库可能很大..或者让我们假装可以），我们将一个接一个地读取它们。为此，我们需要一个区块链迭代器：
+
+```go
+type BlockchainIterator struct {
+	currentHash []byte
+	db          *bolt.DB
+}
+```
+
+An iterator will be created each time we want to iterate over blocks in a blockchain and it’ll store the block hash of the current iteration and a connection to a DB. Because of the latter, an iterator is logically attached to a blockchain (it’s a `Blockchain` instance that stores a DB connection) and, thus, is created in a `Blockchain` method:
+
+每次我们想遍历区块链中的区块时，都会创建一个迭代器，它将存储当前迭代的区块哈希值和与数据库的连接。由于后者，迭代器在逻辑上附加到区块链（它是 "Blockchain" 存储数据库连接的实例），因此在方法中创建 "Blockchain" ：
+
+```go
+func (bc *Blockchain) Iterator() *BlockchainIterator {
+	bci := &BlockchainIterator{bc.tip, bc.db}
+
+	return bci
+}
+```
+
+Notice that an iterator initially points at the tip of a blockchain, thus blocks will be obtained from top to bottom, from newest to oldest. In fact, **choosing a tip means “voting” for a blockchain**. A blockchain can have multiple branches, and it’s the longest of them that’s considered main. After getting a tip (it can be any block in the blockchain) we can reconstruct the whole blockchain and find its length and the work required to build it. This fact also means that a tip is a kind of an identifier of a blockchain.
+
+请注意，迭代器最初指向区块链的顶端，因此区块将从上到下，从最新到最旧获得。事实上，选择小费意味着为区块链“投票”。区块链可以有多个分支，其中最长的分支被认为是主要的。在获得提示（可以是区块链中的任何区块）后，我们可以重建整个区块链并找到其长度和构建它所需的工作。这一事实也意味着小费是区块链的一种标识符。
+
+`BlockchainIterator` will do only one thing: it’ll return the next block from a blockchain.
+
+"BlockchainIterator"只会做一件事：它将从区块链返回下一个区块。
+
+```go
+func (i *BlockchainIterator) Next() *Block {
+	var block *Block
+
+	err := i.db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(blocksBucket))
+		encodedBlock := b.Get(i.currentHash)
+		block = DeserializeBlock(encodedBlock)
+
+		return nil
+	})
+
+	i.currentHash = block.PrevBlockHash
+
+	return block
+}
+```
+
+That’s it for the DB part!
+
+DB部分就到此为止！
+
+## CLI
+
+Until now our implementation hasn’t provided any interface to interact with the program: we’ve simply executed `NewBlockchain`, `bc.AddBlock` in the `main` function. Time to improve this! We want to have these commands:
+
+到目前为止，我们的实现还没有提供任何与程序交互的接口：我们只是 "NewBlockchain" 在函数中"bc.AddBlock"执行了 。 "main"是时候改进这一点了！我们希望有这些命令：
+
+```
+blockchain_go addblock "Pay 0.031337 for a coffee"
+blockchain_go printchain
+```
+
+All command-line related operations will be processed by the `CLI` struct:
+
+所有与命令行相关的操作都将由结构体处理 "CLI" ：
+
+```go
+type CLI struct {
+	bc *Blockchain
+}
+```
+
+Its “entrypoint” is the `Run` function:
+
+它的“入口点”是 "Run" 函数：
+
+```go
+func (cli *CLI) Run() {
+	cli.validateArgs()
+
+	addBlockCmd := flag.NewFlagSet("addblock", flag.ExitOnError)
+	printChainCmd := flag.NewFlagSet("printchain", flag.ExitOnError)
+
+	addBlockData := addBlockCmd.String("data", "", "Block data")
+
+	switch os.Args[1] {
+	case "addblock":
+		err := addBlockCmd.Parse(os.Args[2:])
+	case "printchain":
+		err := printChainCmd.Parse(os.Args[2:])
+	default:
+		cli.printUsage()
+		os.Exit(1)
+	}
+
+	if addBlockCmd.Parsed() {
+		if *addBlockData == "" {
+			addBlockCmd.Usage()
+			os.Exit(1)
+		}
+		cli.addBlock(*addBlockData)
+	}
+
+	if printChainCmd.Parsed() {
+		cli.printChain()
+	}
+}
+```
+
+We’re using the standard [flag](https://golang.org/pkg/flag/) package to parse command-line arguments.
+
+我们使用标准标志包来解析命令行参数。
+
+```go
+addBlockCmd := flag.NewFlagSet("addblock", flag.ExitOnError)
+printChainCmd := flag.NewFlagSet("printchain", flag.ExitOnError)
+addBlockData := addBlockCmd.String("data", "", "Block data")
+```
+
+First, we create two subcommands, `addblock` and `printchain`, then we add `-data` flag to the former. `printchain` won’t have any flags.
+
+首先，我们创建两个子命令， "addblock" 然后"printchain"为"-data"前者添加标志。 "printchain" 不会有任何标志。
+
+```go
+switch os.Args[1] {
+case "addblock":
+	err := addBlockCmd.Parse(os.Args[2:])
+case "printchain":
+	err := printChainCmd.Parse(os.Args[2:])
+default:
+	cli.printUsage()
+	os.Exit(1)
+}
+```
+
+Next we check the command provided by user and parse related `flag` subcommand.
+
+接下来，我们检查用户提供的命令并解析相关的 "flag" 子命令。
+
+```go
+if addBlockCmd.Parsed() {
+	if *addBlockData == "" {
+		addBlockCmd.Usage()
+		os.Exit(1)
+	}
+	cli.addBlock(*addBlockData)
+}
+
+if printChainCmd.Parsed() {
+	cli.printChain()
+}
+```
+
+Next we check which of the subcommands were parsed and run related functions.
+
+接下来，我们检查解析了哪些子命令并运行相关函数。
+
+```go
+func (cli *CLI) addBlock(data string) {
+	cli.bc.AddBlock(data)
+	fmt.Println("Success!")
+}
+
+func (cli *CLI) printChain() {
+	bci := cli.bc.Iterator()
+
+	for {
+		block := bci.Next()
+
+		fmt.Printf("Prev. hash: %x\n", block.PrevBlockHash)
+		fmt.Printf("Data: %s\n", block.Data)
+		fmt.Printf("Hash: %x\n", block.Hash)
+		pow := NewProofOfWork(block)
+		fmt.Printf("PoW: %s\n", strconv.FormatBool(pow.Validate()))
+		fmt.Println()
+
+		if len(block.PrevBlockHash) == 0 {
+			break
+		}
+	}
+}
+```
+
+This piece is very similar to the one we had before. The only difference is that we’re now using a `BlockchainIterator` to iterate over blocks in a blockchain.
+
+这件作品与我们之前的作品非常相似。唯一的区别是，我们现在使用 a "BlockchainIterator" 来迭代区块链中的区块。
+
+Also let’s not forget to modify the `main` function accordingly:
+
+另外，我们不要忘记相应地修改 "main" 函数：
+
+```go
+func main() {
+	bc := NewBlockchain()
+	defer bc.db.Close()
+
+	cli := CLI{bc}
+	cli.Run()
+}
+```
+
+Note that a new `Blockchain` is created no matter what command-line arguments are provided.
+
+请注意"Blockchain"，无论提供什么命令行参数，都会创建一个新的参数。
+
+And that’s it! Let’s check that everything works as expected:
+
+就是这样！让我们检查一下一切是否按预期工作：
+
+```shell
+$ blockchain_go printchain
+No existing blockchain found. Creating a new one...
+Mining the block containing "Genesis Block"
+000000edc4a82659cebf087adee1ea353bd57fcd59927662cd5ff1c4f618109b
+
+Prev. hash:
+Data: Genesis Block
+Hash: 000000edc4a82659cebf087adee1ea353bd57fcd59927662cd5ff1c4f618109b
+PoW: true
+
+$ blockchain_go addblock -data "Send 1 BTC to Ivan"
+Mining the block containing "Send 1 BTC to Ivan"
+000000d7b0c76e1001cdc1fc866b95a481d23f3027d86901eaeb77ae6d002b13
+
+Success!
+
+$ blockchain_go addblock -data "Pay 0.31337 BTC for a coffee"
+Mining the block containing "Pay 0.31337 BTC for a coffee"
+000000aa0748da7367dec6b9de5027f4fae0963df89ff39d8f20fd7299307148
+
+Success!
+
+$ blockchain_go printchain
+Prev. hash: 000000d7b0c76e1001cdc1fc866b95a481d23f3027d86901eaeb77ae6d002b13
+Data: Pay 0.31337 BTC for a coffee
+Hash: 000000aa0748da7367dec6b9de5027f4fae0963df89ff39d8f20fd7299307148
+PoW: true
+
+Prev. hash: 000000edc4a82659cebf087adee1ea353bd57fcd59927662cd5ff1c4f618109b
+Data: Send 1 BTC to Ivan
+Hash: 000000d7b0c76e1001cdc1fc866b95a481d23f3027d86901eaeb77ae6d002b13
+PoW: true
+
+Prev. hash:
+Data: Genesis Block
+Hash: 000000edc4a82659cebf087adee1ea353bd57fcd59927662cd5ff1c4f618109b
+PoW: true
+```
+
+*(sound of a beer can opening)*
+
+## Conclusion
+
+Next time we’ll implement addresses, wallets, and (probably) transactions. So stay tuned!
+
+下次我们将实现地址、钱包和（可能）交易。敬请期待！
+
+## Links
+
+1. [Full source codes](https://github.com/Jeiwan/blockchain_go/tree/part_3)
+2. [Bitcoin Core Data Storage](https://en.bitcoin.it/wiki/Bitcoin_Core_0.11_(ch_2):_Data_Storage)
+3. [boltdb](https://github.com/boltdb/bolt)
+4. [encoding/gob](https://golang.org/pkg/encoding/gob/)
+5. [flag](https://golang.org/pkg/flag/)
 
