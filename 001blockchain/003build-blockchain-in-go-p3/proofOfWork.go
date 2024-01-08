@@ -8,14 +8,26 @@ import (
 	"math/big"
 )
 
-var maxNonce = math.MaxInt64
+var (
+	maxNonce = math.MaxInt64
+)
 
-const targetBits = 18
+const targetBits = 24
 
-// ProofOfWork represents a Proof-of-work
+// ProofOfWork represents a proof-of-work
 type ProofOfWork struct {
 	block  *Block
 	target *big.Int
+}
+
+// NewProofOfWork builds and returns a ProofOfWork
+func NewProofOfWork(b *Block) *ProofOfWork {
+	target := big.NewInt(1)
+	target.Lsh(target, uint(256-targetBits))
+
+	pow := &ProofOfWork{b, target}
+
+	return pow
 }
 
 func (pow *ProofOfWork) prepareData(nonce int) []byte {
@@ -29,6 +41,7 @@ func (pow *ProofOfWork) prepareData(nonce int) []byte {
 		},
 		[]byte{},
 	)
+
 	return data
 }
 
@@ -57,22 +70,15 @@ func (pow *ProofOfWork) Run() (int, []byte) {
 	return nonce, hash[:]
 }
 
-// NewProofOfWork builds and returns a ProofOfWork
-func NewProofOfWork(b *Block) *ProofOfWork {
-	target := big.NewInt(1)
-	target.Lsh(target, uint(256-targetBits))
-
-	pow := &ProofOfWork{b, target}
-
-	return pow
-}
-
 // Validate validates block's PoW
 func (pow *ProofOfWork) Validate() bool {
 	var hashInt big.Int
+
 	data := pow.prepareData(pow.block.Nonce)
 	hash := sha256.Sum256(data)
 	hashInt.SetBytes(hash[:])
+
 	isValid := hashInt.Cmp(pow.target) == -1
+
 	return isValid
 }

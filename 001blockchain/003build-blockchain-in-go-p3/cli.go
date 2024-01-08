@@ -8,6 +8,7 @@ import (
 	"strconv"
 )
 
+// CLI responsible for processing command line arguments
 type CLI struct {
 	bc *Blockchain
 }
@@ -24,6 +25,7 @@ func (cli *CLI) validateArgs() {
 		os.Exit(1)
 	}
 }
+
 func (cli *CLI) addBlock(data string) {
 	cli.bc.AddBlock(data)
 	fmt.Println("Success!")
@@ -31,6 +33,7 @@ func (cli *CLI) addBlock(data string) {
 
 func (cli *CLI) printChain() {
 	bci := cli.bc.Iterator()
+
 	for {
 		block := bci.Next()
 
@@ -48,12 +51,14 @@ func (cli *CLI) printChain() {
 }
 
 // Run parses command line arguments and processes commands
-// Run解析命令行参数并处理命令
 func (cli *CLI) Run() {
 	cli.validateArgs()
+
 	addBlockCmd := flag.NewFlagSet("addblock", flag.ExitOnError)
 	printChainCmd := flag.NewFlagSet("printchain", flag.ExitOnError)
+
 	addBlockData := addBlockCmd.String("data", "", "Block data")
+
 	switch os.Args[1] {
 	case "addblock":
 		err := addBlockCmd.Parse(os.Args[2:])
@@ -69,6 +74,7 @@ func (cli *CLI) Run() {
 		cli.printUsage()
 		os.Exit(1)
 	}
+
 	if addBlockCmd.Parsed() {
 		if *addBlockData == "" {
 			addBlockCmd.Usage()
