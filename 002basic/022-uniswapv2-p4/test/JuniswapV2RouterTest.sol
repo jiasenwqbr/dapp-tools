@@ -13,6 +13,7 @@ contract ZuniswapV2RouterTest is Test {
 
     ERC20Mintable tokenA;
     ERC20Mintable tokenB;
+    ERC20Mintable tokenC;
 
     function setUp() public {
         factory = new JuniswapV2Factory();
@@ -208,6 +209,244 @@ contract ZuniswapV2RouterTest is Test {
         assertEq(amountA, 1.8 ether);
         assertEq(amountB, 0.9 ether);
         assertEq(liquidity, 1272792206135785543);
+    }
+    function testRemoveLiquidity() public {
+        tokenA.approve(address(router), 1 ether);
+        tokenB.approve(address(router), 1 ether);
+
+        router.addLiquidity(
+            address(tokenA),
+            address(tokenB),
+            1 ether,
+            1 ether,
+            1 ether,
+            1 ether,
+            address(this)
+        );
+
+        address pairAddress = factory.pairs(address(tokenA), address(tokenB));
+        JuniswapV2Pair pair = JuniswapV2Pair(pairAddress);
+        uint256 liquidity = pair.balanceOf(address(this));
+
+        pair.approve(address(router), liquidity);
+
+        router.removeLiquidity(
+            address(tokenA),
+            address(tokenB),
+            liquidity,
+            1 ether - 1000,
+            1 ether - 1000,
+            address(this)
+        );
+
+        (uint256 reserve0, uint256 reserve1, ) = pair.getReserves();
+        assertEq(reserve0, 1000);
+        assertEq(reserve1, 1000);
+        assertEq(pair.balanceOf(address(this)), 0);
+        assertEq(pair.totalSupply(), 1000);
+        assertEq(tokenA.balanceOf(address(this)), 20 ether - 1000);
+        assertEq(tokenB.balanceOf(address(this)), 20 ether - 1000);
+    }
+
+    function testRemoveLiquidityPartially() public {
+        tokenA.approve(address(router), 1 ether);
+        tokenB.approve(address(router), 1 ether);
+
+        router.addLiquidity(
+            address(tokenA),
+            address(tokenB),
+            1 ether,
+            1 ether,
+            1 ether,
+            1 ether,
+            address(this)
+        );
+
+        address pairAddress = factory.pairs(address(tokenA), address(tokenB));
+        JuniswapV2Pair pair = JuniswapV2Pair(pairAddress);
+        uint256 liquidity = pair.balanceOf(address(this));
+
+        liquidity = (liquidity * 3) / 10;
+        pair.approve(address(router), liquidity);
+
+        router.removeLiquidity(
+            address(tokenA),
+            address(tokenB),
+            liquidity,
+            0.3 ether - 300,
+            0.3 ether - 300,
+            address(this)
+        );
+
+        (uint256 reserve0, uint256 reserve1, ) = pair.getReserves();
+        assertEq(reserve0, 0.7 ether + 300);
+        assertEq(reserve1, 0.7 ether + 300);
+        assertEq(pair.balanceOf(address(this)), 0.7 ether - 700);
+        assertEq(pair.totalSupply(), 0.7 ether + 300);
+        assertEq(tokenA.balanceOf(address(this)), 20 ether - 0.7 ether - 300);
+        assertEq(tokenB.balanceOf(address(this)), 20 ether - 0.7 ether - 300);
+    }
+
+    function testRemoveLiquidityInsufficientAAmount() public {
+        tokenA.approve(address(router), 1 ether);
+        tokenB.approve(address(router), 1 ether);
+
+        router.addLiquidity(
+            address(tokenA),
+            address(tokenB),
+            1 ether,
+            1 ether,
+            1 ether,
+            1 ether,
+            address(this)
+        );
+
+        address pairAddress = factory.pairs(address(tokenA), address(tokenB));
+        JuniswapV2Pair pair = JuniswapV2Pair(pairAddress);
+        uint256 liquidity = pair.balanceOf(address(this));
+
+        pair.approve(address(router), liquidity);
+
+        vm.expectRevert(encodeError("InsufficientAAmount()"));
+        router.removeLiquidity(
+            address(tokenA),
+            address(tokenB),
+            liquidity,
+            1 ether,
+            1 ether - 1000,
+            address(this)
+        );
+    }
+
+    function testRemoveLiquidityInsufficientBAmount() public {
+        tokenA.approve(address(router), 1 ether);
+        tokenB.approve(address(router), 1 ether);
+
+        router.addLiquidity(
+            address(tokenA),
+            address(tokenB),
+            1 ether,
+            1 ether,
+            1 ether,
+            1 ether,
+            address(this)
+        );
+
+        address pairAddress = factory.pairs(address(tokenA), address(tokenB));
+        JuniswapV2Pair pair = JuniswapV2Pair(pairAddress);
+        uint256 liquidity = pair.balanceOf(address(this));
+
+        pair.approve(address(router), liquidity);
+
+        vm.expectRevert(encodeError("InsufficientBAmount()"));
+        router.removeLiquidity(
+            address(tokenA),
+            address(tokenB),
+            liquidity,
+            1 ether - 1000,
+            1 ether,
+            address(this)
+        );
+    }
+
+    function testSwapExactTokensForTokens() public {
+        tokenA.approve(address(router), 1 ether);
+        tokenB.approve(address(router), 2 ether);
+        tokenC.approve(address(router), 1 ether);
+
+        router.addLiquidity(
+            address(tokenA),
+            address(tokenB),
+            1 ether,
+            1 ether,
+            1 ether,
+            1 ether,
+            address(this)
+        );
+
+        router.addLiquidity(
+            address(tokenB),
+            address(tokenC),
+            1 ether,
+            1 ether,
+            1 ether,
+            1 ether,
+            address(this)
+        );
+
+        address[] memory path = new address[](3);
+        path[0] = address(tokenA);
+        path[1] = address(tokenB);
+        path[2] = address(tokenC);
+
+        tokenA.approve(address(router), 0.3 ether);
+        router.swapExactTokensForTokens(
+            0.3 ether,
+            0.1 ether,
+            path,
+            address(this)
+        );
+
+        // Swap 0.3 TKNA for ~0.186 TKNB
+        assertEq(
+            tokenA.balanceOf(address(this)),
+            20 ether - 1 ether - 0.3 ether
+        );
+        assertEq(tokenB.balanceOf(address(this)), 20 ether - 2 ether);
+        assertEq(
+            tokenC.balanceOf(address(this)),
+            20 ether - 1 ether + 0.186691414219734305 ether
+        );
+    }
+
+    function testSwapTokensForExactTokens() public {
+        tokenA.approve(address(router), 1 ether);
+        tokenB.approve(address(router), 2 ether);
+        tokenC.approve(address(router), 1 ether);
+
+        router.addLiquidity(
+            address(tokenA),
+            address(tokenB),
+            1 ether,
+            1 ether,
+            1 ether,
+            1 ether,
+            address(this)
+        );
+
+        router.addLiquidity(
+            address(tokenB),
+            address(tokenC),
+            1 ether,
+            1 ether,
+            1 ether,
+            1 ether,
+            address(this)
+        );
+
+        address[] memory path = new address[](3);
+        path[0] = address(tokenA);
+        path[1] = address(tokenB);
+        path[2] = address(tokenC);
+
+        tokenA.approve(address(router), 0.3 ether);
+        router.swapTokensForExactTokens(
+            0.186691414219734305 ether,
+            0.3 ether,
+            path,
+            address(this)
+        );
+
+        // Swap 0.3 TKNA for ~0.186 TKNB
+        assertEq(
+            tokenA.balanceOf(address(this)),
+            20 ether - 1 ether - 0.3 ether
+        );
+        assertEq(tokenB.balanceOf(address(this)), 20 ether - 2 ether);
+        assertEq(
+            tokenC.balanceOf(address(this)),
+            20 ether - 1 ether + 0.186691414219734305 ether
+        );
     }
 
 }

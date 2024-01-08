@@ -6,8 +6,10 @@ import "./interfaces/IJuniswapV2Pair.sol";
 import "./JuniswapV2Library.sol";
 
 contract JuniswapV2Router {
+    error ExcessiveInputAmount();
     error InsufficientAAmount();
     error InsufficientBAmount();
+    error InsufficientOutputAmount();
     error SafeTransferFailed();
 
     IJuniswapV2Factory factory;
@@ -52,8 +54,26 @@ contract JuniswapV2Router {
         _safeTransferFrom(tokenB, msg.sender, pairAddress, amountB);
         liquidity = IJuniswapV2Pair(pairAddress).mint(to);
         }
+    function  removeLiquidity(
+        address tokenA,
+        address tokenB,
+        uint256 liquidity,
+        uint256 amountAMin,
+        uint256 amountBMin,
+        address to
+    ) public returns (uint256 amountA, uint256 amountB) {
+        address pair = JuniswapV2Library.pairFor(
+            address(factory),
+            tokenA,
+            tokenB
+        );
+        IJuniswapV2Pair(pair).transferFrom(msg.sender, pair, liquidity);
+        (amountA, amountB) = IJuniswapV2Pair(pair).burn(to);
+        if (amountA < amountAMin) revert InsufficientAAmount();
+        if (amountA < amountBMin) revert InsufficientBAmount();
+    }
 
-        function _safeTransferFrom(
+    function _safeTransferFrom(
         address token,
         address from,
         address to,
@@ -70,6 +90,51 @@ contract JuniswapV2Router {
         if (!success || (data.length != 0 && !abi.decode(data, (bool))))
             revert SafeTransferFailed();
     }
+
+    function swapExactTokensForTokens(
+        uint256 amountIn,
+        uint256 amountOutMin,
+        address[] calldata path,
+        address to
+    ) public returns (uint256[] memory amounts) {
+        amounts = JuniswapV2Library.getAmountsOut(
+            address(factory),
+            amountIn,
+            path
+        );
+        if (amounts[amounts.length - 1] < amountOutMin)
+            revert InsufficientOutputAmount();
+        _safeTransferFrom(
+            path[0],
+            msg.sender,
+            JuniswapV2Library.pairFor(address(factory), path[0], path[1]),
+            amounts[0]
+        );
+        _swap(amounts, path, to);
+    }
+
+    function swapTokensForExactTokens(
+        uint256 amountOut,
+        uint256 amountInMax,
+        address[] calldata path,
+        address to
+    ) public returns (uint256[] memory amounts) {
+        amounts = JuniswapV2Library.getAmountsIn(
+            address(factory),
+            amountOut,
+            path
+        );
+        if (amounts[amounts.length - 1] > amountInMax)
+            revert ExcessiveInputAmount();
+        _safeTransferFrom(
+            path[0],
+            msg.sender,
+            JuniswapV2Library.pairFor(address(factory), path[0], path[1]),
+            amounts[0]
+        );
+        _swap(amounts, path, to);
+    }
+
     function _calculateLiquidity(
         address tokenA,
         address tokenB,
@@ -108,5 +173,30 @@ contract JuniswapV2Router {
             }
         }
     }
+    function _swap(
+        uint256[] memory amounts,
+        address[] memory path,
+        address to_
+    ) internal {
+        for (uint256 i; i < path.length - 1; i++) {
+            (address input, address output) = (path[i], path[i + 1]);
+            (address token0, ) = JuniswapV2Library.sortTokens(input, output);
+            uint256 amountOut = amounts[i + 1];
+            (uint256 amount0Out, uint256 amount1Out) = input == token0
+                ? (uint256(0), amountOut)
+                : (amountOut, uint256(0));
+            address to = i < path.length - 2
+                ? JuniswapV2Library.pairFor(
+                    address(factory),
+                    output,
+                    path[i + 2]
+                )
+                : to_;
+            IJuniswapV2Pair(
+                JuniswapV2Library.pairFor(address(factory), input, output)
+            ).swap(amount0Out, amount1Out, to, "");
+        }
+    }
+
 
 }
