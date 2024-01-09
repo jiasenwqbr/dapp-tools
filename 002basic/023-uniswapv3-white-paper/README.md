@@ -26,6 +26,36 @@ In this paper,we present Uniswap v3,a novel AMM that gives liquidity providers m
 
 在本文中，我们提出了 Uniswap v3，这是一种新颖的 AMM，它使流动性提供者能够更好地控制其资本使用的价格范围，对流动性碎片化和 Gas 效率低下的影响有限。这种设计不依赖于任何关于流动性的共同假设 代币的价格行为。Uniswap v3 基于与早期版本[1]相同的恒定产品储备曲线，但提供了几个重要的新功能：
 
+- *Concentrated Liquidity*：
+
+  Liquidity providers(LPs) are given the ability to concentrate their liquidity by “bounding" it  within an arbitrary price range.This improves the pool’s capital effciency and allows LPs to approximate their pre-ferred reserves curve,while still being effciently aggregated  with the rest of the pool.We describe this feature in section 2 and its implementation in Section 6.
+
+- Fliexible Fees:The swap fee is nolonger locked at 0*.*30%.Rather,the fee tier for each pool(of which there can be multiple per asset pair) is set on initialization(Section 3.1).The initially supported fee tiers are 0.05%, 0.30%, and1%.UNI governance is able to add additional values to this set.
+
+- Improved Price Oracle:Uniswap v3 provides a way for users to query recent price accumulator values, thus avoiding the need to check point the accumulator value at the exact beginning and end of the period for which a  TWAP is being measured.(Section5.1).
+
+- Liquidity Oracle: The contracts expose a time-weighted average liquidity oracle(Section 5.3).
+
+  The Uniswap v2 core contracts are non-upgradeable by design,so Uniswap v3 is implemented as an entirely new set of contracts, available here.The Uniswap v3 core contracts are also non-upgradeable,with some parameters controlled by governance as described in Section 4.
+
+  
+
+  ## 2 **CONCENTRATED LIQUIDITY**
+
+  The defning idea of Uniswap v3 is that of *concentrated liquidity*:liquidity bounded within some price range.
+
+  In earlier versions,liquidity was distributed uniformly along the
+  $$
+  x*y=k
+  $$
+  reserves curve,where x and y are the respective reserves of two assets X and Y,and K is a constant[1].In other words,earlier versions were designed to provide liquidity across the entire price range(0,∞).This is simple to implement and allows liquidity to be efciently aggregated,but means that much of the assets held in a pool are never touched.
+
+  
+
+<img src="images/image-20240108223102765.png" alt="image-20240108223102765" style="zoom:50%;" />
+
+
+
 
 
 
