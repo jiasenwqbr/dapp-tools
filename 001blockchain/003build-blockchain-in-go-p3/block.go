@@ -51,7 +51,11 @@ func DeserializeBlock(d []byte) *Block {
 	var block Block
 
 	decoder := gob.NewDecoder(bytes.NewReader(d))
+	log.Print("decoder", decoder)
 	err := decoder.Decode(&block)
+	log.Print("&block", &block)
+	log.Print("err", err)
+
 	if err != nil {
 		log.Panic(err)
 	}

@@ -70,6 +70,7 @@ func (i *BlockchainIterator) Next() *Block {
 
 	err := i.db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(blocksBucket))
+		log.Println("i.currentHash:", i.currentHash)
 		encodedBlock := b.Get(i.currentHash)
 		block = DeserializeBlock(encodedBlock)
 
