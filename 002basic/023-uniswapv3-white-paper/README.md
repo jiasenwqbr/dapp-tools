@@ -44,29 +44,27 @@ In this paper,we present Uniswap v3,a novel AMM that gives liquidity providers m
 
   流动性预言机：合约公开了时间加权平均流动性预言机（第 5.3 节）。
 
-  
-
   The Uniswap v2 core contracts are non-upgradeable by design,so Uniswap v3 is implemented as an entirely new set of contracts, available here.The Uniswap v3 core contracts are also non-upgradeable,with some parameters controlled by governance as described in Section 4.
 
   Uniswap v2 核心合约在设计上是不可升级的，因此 Uniswap v3 是作为一套全新的合约实现的，可在此处获取。Uniswap v3 核心合约也是不可升级的，一些参数由治理控制，如第 4 节所述 。
 
   
 
-  ## 2 **CONCENTRATED LIQUIDITY** 集中流动性
+## 2 CONCENTRATED LIQUIDITY 集中流动性
 
-  The defning idea of Uniswap v3 is that of *concentrated liquidity*:liquidity bounded within some price range.
+The defning idea of Uniswap v3 is that of *concentrated liquidity*:liquidity bounded within some price range.
 
-  Uniswap v3 的定义理念是“集中流动性”：流动性限制在某个价格范围内。
+Uniswap v3 的定义理念是“集中流动性”：流动性限制在某个价格范围内。
 
-  In earlier versions,liquidity was distributed uniformly along the
-  $$
-  x*y=k
-  $$
-  reserves curve,where x and y are the respective reserves of two assets X and Y,and K is a constant[1].In other words,earlier versions were designed to provide liquidity across the entire price range(0,∞).This is simple to implement and allows liquidity to be efficiently aggregated,but means that much of the assets held in a pool are never touched.
+In earlier versions,liquidity was distributed uniformly along the
+$$
+x*y=k
+$$
+reserves curve,where x and y are the respective reserves of two assets X and Y,and K is a constant[1].In other words,earlier versions were designed to provide liquidity across the entire price range(0,∞).This is simple to implement and allows liquidity to be efficiently aggregated,but means that much of the assets held in a pool are never touched.
 
-  在早期版本中，流动性沿着准备金曲线均匀分布，其中x和y分别是两种资产X和Y的准备金，K是一个常数[1]。换句话说，早期版本旨在提供跨资产流动性 整个价格范围（0，∞）。这很容易实现，并且可以有效地聚合流动性，但这意味着池中持有的大部分资产从未被触及。
+在早期版本中，流动性沿着准备金曲线均匀分布，其中x和y分别是两种资产X和Y的准备金，K是一个常数[1]。换句话说，早期版本旨在提供跨资产流动性 整个价格范围（0，∞）。这很容易实现，并且可以有效地聚合流动性，但这意味着池中持有的大部分资产从未被触及。
 
-  
+
 
 <img src="images/image-20240108223102765.png" alt="image-20240108223102765" style="zoom:50%;" />
 
@@ -91,6 +89,122 @@ This curve is a translation of formula 2.1 such that the position is solvent exa
 该曲线是公式 2.1 的翻译，使得该位置恰好在其范围内（图 2）。
 
 <img src="images/image-20240109113417922.png" alt="image-20240109113417922" style="zoom: 50%;" />
+
+
+
+Liquidity providers are free to create as many positions as they see fit, each on its own price range. In this way, LPs can approximate any desired distribution of liquidity on the price space (see Fig. 3 for a few examples). Moreover, this serves as a mechanism to let the market decide where liquidity should be allocated. Rational LPs can reduce their capital costs by concentrating their liquidity in a narrow band around the current price, and adding or removing tokens as the price moves to keep their liquidity active.
+
+流动性提供者可以自由地创建他们认为合适的任意数量的头寸，每个头寸都有自己的价格范围。 通过这种方式，有限合伙人可以在价格空间上近似任何期望的流动性分布（参见图 3 中的几个示例）。 此外，这是一种让市场决定流动性配置的机制。 理性有限合伙人可以通过将流动性集中在当前价格附近的狭窄区间内，并随着价格变动添加或删除代币以保持流动性活跃来降低资本成本。
+
+### **2.1 Range Orders** 范围订单
+
+Positions on very small ranges act similarly to limit orders—if the range is crossed, the position flips from being composed entirely of one asset, to being composed entirely of the other asset (plus accrued fees). There are two differences between this *range order* and a traditional limit order:
+
+范围非常小的头寸的作用类似于限价单——如果超出范围，头寸就会从完全由一种资产组成，转变为完全由另一种资产组成（加上应计费用）。 此*范围订单*与传统限价订单之间有两个区别：
+
+- There is a limit to how narrow a position’s range can be.While the price is within that range, the limit order might be partially executed.
+
+​		头寸范围的狭窄程度是有限制的。当价格在该范围内时，限价单可能会被部分执行。
+
+- When the position has been crossed, it needs to be with drawn. If it is not, and the price crosses back across that range, the position will be traded back, effectively reversing the trade.
+
+​		当仓位被交叉时，需要平仓。 如果不是，并且价格重新穿越该范围，则头寸将被交易回来，从而有效地逆转交易。
+
+![image-20240109134026900](images/image-20240109134026900.png)
+
+## **3 ARCHITECTURAL CHANGES** 架构更改
+
+Uniswap v3 makes a number of architectural changes, some of which are necessitated by the inclusion of concentrated liquidity,and some of which are independent improvements.
+
+Uniswap v3 进行了许多架构更改，其中一些是由于包含集中流动性而必需的，还有一些是独立的改进。
+
+### **3.1 Multiple Pools Per Pair**
+
+In Uniswap v1 and v2, every pair of tokens corresponds to a single liquidity pool, which applies a uniform fee of 0*.*30% to all swaps. While this default fee tier historically worked well enough for many tokens, it is likely too high for some pools (such as pools between two stablecoins), and too low for others (such as pools that include highly volatile or rarely traded tokens).
+
+在 Uniswap v1 和 v2 中，每对代币对应一个流动性池，该池对所有互换统一收取 0*.*30% 的费用。 虽然这种默认费用等级历来对于许多代币来说效果很好，但对于某些矿池（例如两个稳定币之间的矿池）来说可能太高，而对于其他矿池（例如包含高波动性或很少交易代币的矿池）来说可能太低。
+
+Uniswap v3 introduces multiple pools for each pair of tokens, each with a different swap fee. All pools are created by the same factory contract. The factory contract initially allows pools to be created at three fee tiers: 0*.*05%, 0*.*30%, and 1%. Additional fee tiers can be enabled by UNI governance.
+
+Uniswap v3 为每对代币引入了多个池，每个池都有不同的交换费用。 所有池都是由同一个工厂合约创建的。 工厂合约最初允许以三个费用等级创建矿池：0*.*05%、0*.*30% 和 1%。 UNI 治理可以启用额外的费用等级。
+
+### **3.2 Non-Fungible Liquidity**
+
+*3.2.1 Non-Compounding Fees.* 非复利费用
+
+ Fees earned in earlier versions were continuously deposited in the pool as liquidity. This meant that liquidity in the pool would grow over time, even without explicit deposits, and that fee earnings compounded.
+
+早期版本中赚取的费用会作为流动性持续存入池中。 这意味着，即使没有明确的存款，资金池中的流动性也会随着时间的推移而增长，并且费用收入也会增加。
+
+In Uniswap v3, due to the non-fungible nature of positions, this is no longer possible. Instead, fee earnings are stored separately and held as the tokens in which the fees are paid (see Section 6.2.2).
+
+在 Uniswap v3 中，由于头寸的不可替代性，这不再可能。 相反，费用收入单独存储并作为支付费用的代币持有（参见第 6.2.2 节）。
+
+*3.2.2 Removal of Native Liquidity Tokens.* 移除原生流动性代币。
+
+In Uniswap v1 and v2, the pool contract is also an ERC-20 token contract, whose tokens represent liquidity held in the pool. While this is convenient, it actually sits uneasily with the Uniswap v2 philosophy that anything that does not need to be in the core contracts should be in the periphery, and blessing one “canonical" ERC-20 implementation discourages the creation of improved ERC-20 token wrappers. Arguably, the ERC-20 token implementation should have been in the periphery, as a wrapper on a single liquidity position in the core contract.
+
+在 Uniswap v1 和 v2 中，池合约也是 ERC-20 代币合约，其代币代表池中持有的流动性。 虽然这很方便，但它实际上与 Uniswap v2 的理念不一致，即任何不需要在核心合约中的东西都应该在外围，并且祝福一个“规范”的 ERC-20 实现会阻碍创建改进的 ERC-20 代币包装器：可以说，ERC-20 代币实施应该在外围，作为核心合约中单个流动性头寸的包装器。
+
+The changes made in Uniswap v3 force this issue by making completely fungible liquidity tokens impossible. Due to the custom liquidity provision feature, fees are now collected and held by the pool as individual tokens, rather than automatically reinvested as liquidity in the pool.
+
+Uniswap v3 中所做的更改使完全可替代的流动性代币成为不可能，从而迫使这个问题出现。 由于自定义流动性提供功能，费用现在由矿池作为单独的代币收取和持有，而不是自动作为流动性再投资于矿池中。
+
+As a result, in v3, the pool contract does not implement the ERC-20 standard. Anyone can create an ERC-20 token contract in the periphery that makes a liquidity position more fungible, but it will have to have additional logic to handle distribution of, or reinvestment of, collected fees. Alternatively, anyone could create a periphery contract that wraps an individual liquidity position (including collected fees) in an ERC-721 non-fungible token.
+
+因此，在 v3 中，矿池合约并未实现 ERC-20 标准。 任何人都可以在外围创建 ERC-20 代币合约，使流动性头寸更具可替代性，但它必须有额外的逻辑来处理所收取费用的分配或再投资。 或者，任何人都可以创建一个外围合约，将个人流动性头寸（包括收取的费用）包装在 ERC-721 不可替代代币中。
+
+## **4 GOVERNANCE**
+
+The factory has an owner, which is initially controlled by UNI tokenholders.2 The owner does not have the ability to halt the operation of any of the core contracts.
+
+工厂有一个所有者，最初由 UNI 代币持有者控制。2 所有者没有能力停止任何核心合约的运行。
+
+As in Uniswap v2, Uniswap v3 has a protocol fee that can be turned on by UNI governance. In Uniswap v3, UNI governance has more flexibility in choosing the fraction of swap fees that go to the protocol, and is able to choose any fraction $\frac{1}{N}$ where 4 ≤ *𝑁* ≤ 10,or 0. This parameter can be set on a per-pool basis.
+
+与 Uniswap v2 一样，Uniswap v3 也有协议费用，可以通过 UNI 治理来开启。 在 Uniswap v3 中，UNI 治理在选择进入协议的掉期费用比例方面具有更大的灵活性，并且能够选择任何比例 $\frac{1}{N}$，其中 4 ≤ *𝑁* ≤ 10，或 0 . 该参数可以针对每个池进行设置。
+
+UNI governance also has the ability to add additional fee tiers.When it adds a new fee tier, it can also define the tickSpacing (see Section 6.1) corresponding to that fee tier. Once a fee tier is added to the factory, it cannot be removed (and the tickSpacing cannot be changed). The initial fee tiers and tick spacings supported are 0*.*05% (with a tick spacing of 10, approximately 0*.*10% between initializable ticks), 0*.*30% (with a tick spacing of 60, approximately 0*.*60% between initializable ticks), and 1% (with a tick spacing of 200, approximately 2*.*02% between ticks.
+
+UNI治理还具有添加额外费用等级的能力。当它添加新的费用等级时，它还可以定义与该费用等级相对应的tickSpacing（参见第6.1节）。 一旦费用等级被添加到工厂中，就无法将其删除（并且tickSpacing也无法更改）。 支持的初始费用等级和刻度间距为 0*.*05%（刻度间距为 10，可初始化刻度之间大约为 0*.*10%）、0*.*30%（刻度间距为 60，大约为 0*.*10%）。可初始化刻度之间的 0*.*60%）和 1%（刻度间距为 200，刻度之间大约为 2*.*02%。
+
+Finally, UNI governance has the power to transfer ownership to another address.
+
+最后，UNI 治理有权将所有权转移到另一个地址。
+
+## **5 ORACLE UPGRADES**
+
+Uniswap v3 includes three significant changes to the time-weighted average price (TWAP) oracle that was introduced by Uniswap v2.
+
+Uniswap v3 对 Uniswap v2 引入的时间加权平均价格 (TWAP) 预言机进行了三项重大更改。
+
+Most significantly, Uniswap v3 removes the need for users of the oracle to track previous values of the accumulator externally.
+
+最重要的是，Uniswap v3 消除了预言机用户在外部跟踪累加器先前值的需要。
+
+Uniswap v2 requires users to checkpoint the accumulator value at both the beginning and end of the time period for which they  wanted to compute a TWAP. Uniswap v3 brings the accumulator checkpoints into core, allowing external contracts to compute on chain TWAPs over recent periods without storing checkpoints of the accumulator value.
+
+Uniswap v2 要求用户在想要计算 TWAP 的时间段的开始和结束时对累加器值进行检查点。 Uniswap v3 将累加器检查点引入核心，允许外部合约在最近一段时间内在链上 TWAP 上进行计算，而无需存储累加器值的检查点。
+
+Another change is that instead of accumulating the sum of prices,allowing users to compute the arithmetic mean TWAP, Uniswap v3 tracks the sum of *log* prices, allowing users to compute the *geometric mean* TWAP.
+
+另一个变化是，Uniswap v3 不再累加价格总和，允许用户计算算术平均 TWAP，而是跟踪 *log* 价格总和，允许用户计算 *几何平均 * TWAP。
+
+Finally, Uniswap v3 adds a liquidity accumulator that is tracked alongside the price accumulator, which accumulates $\frac{1}{L}$ for each second. This liquidity accumulator is useful for external contracts that want to implement liquidity mining on top of Uniswap v3. It can also be used by other contracts to inform a decision on which of the pools corresponding to a pair (see section 3.1) will have the most reliable TWAP.
+
+最后，Uniswap v3 添加了一个与价格累加器一起跟踪的流动性累加器，每秒累加 $\frac{1}{L}$。 该流动性累加器对于想要在 Uniswap v3 之上实施流动性挖矿的外部合约非常有用。 其他合约也可以使用它来决定对应于一对（参见第 3.1 节）的哪个池将具有最可靠的 TWAP。
+
+### **5.1 Oracle Observations**
+
+
+
+
+
+
+
+
+
+
 
 
 
