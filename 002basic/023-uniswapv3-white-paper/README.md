@@ -198,71 +198,35 @@ Finally, Uniswap v3 adds a liquidity accumulator that is tracked alongside the p
 
 As in Uniswap v2, Uniswap v3 tracks a running accumulator of the price at the beginning of each block, multiplied by the number of seconds since the last block.
 
+与 Uniswap v2 一样，Uniswap v3 跟踪每个块开始时价格的运行累加器，乘以自上一个块以来的秒数。
+
 A pool in Uniswap v2 stores only the most recent value of this price accumulator—that is, the value as of the last block in which a swap occurred. When computing average prices in Uniswap v2, it is the responsibility of the external caller to provide the previous value of the price accumulator. With many users, each will have to provide their own methodology for checkpointing previous values of the accumulator, or coordinate on a shared method to reduce costs. And there is no way to guarantee that every block in which the pool is touched will be reflected in the accumulator.
+
+Uniswap v2 中的池仅存储该价格累加器的最新值，即发生交换的最后一个块的值。 在 Uniswap v2 中计算平均价格时，外部调用者有责任提供价格累加器的先前值。 对于许多用户，每个用户都必须提供自己的方法来检查累加器的先前值，或者协调共享方法以降低成本。 并且无法保证每个触及池的块都会反映在累加器中。
 
 In Uniswap v3, the pool stores a list of previous values for the price accumulator (as well as the liquidity accumulator described in section 5.3). It does this by automatically checkpointing the accumulator value every time the pool is touched for the first time in a block, cycling through an array where the oldest checkpoint is eventually overwritten by a new one, similar to a circular buffer.
 
+在 Uniswap v3 中，池存储价格累加器（以及第 5.3 节中描述的流动性累加器）的先前值列表。 它通过每次在块中第一次接触池时自动对累加器值设置检查点来实现这一点，循环遍历一个数组，其中最旧的检查点最终被新的检查点覆盖，类似于循环缓冲区。
+
 While this array initially only has room for a single checkpoint, anyone can initialize additional storage slots to lengthen the array, extending to as many as 65,536 checkpoints.3 This imposes the one-time gas cost of initializing additional storage slots for this array on whoever wants this pair to checkpoint more slots.
+
+虽然这个阵列最初只有一个检查点的空间，但任何人都可以初始化额外的存储槽来延长阵列，最多可扩展至 65,536 个检查点。3 这会给任何人带来为此阵列初始化额外存储槽的一次性 Gas 成本。 希望这一对检查更多的位置。
 
 The pool exposes the array of past observations to users, as well as a convenience function for finding the (interpolated) accumulator value at any historical timestamp within the checkpointed period.
 
+该池向用户公开过去观察的数组，以及用于查找检查点期间内任何历史时间戳的（插值）累加器值的便利函数。
+
 ### **5.2 Geometric Mean Price Oracle**
 
-Uniswap v2 maintains two price accumulators—one for the price of
+Uniswap v2 maintains two price accumulators—one for the price of token0 in terms of token1, and one for the price of token1 in terms of token0. Users can compute the time-weighted arithmetic mean of the prices over any period, by subtracting the accumulator value at the beginning of the period from the accumulator at the end of the period, then dividing the difference by the number of seconds in the period. Note that accumulators for token0 and token1 are tracked separately, since the time-weighted arithmetic mean price  of token0 is not equivalent to the reciprocal of the time-weighted arithmetic mean price of token1.
 
-token0 in terms of token1, and one for the price of token1 in terms
+Using the time-weighted *geometric* mean price, as Uniswap v3 does, avoids the need to track separate accumulators for these ratios. The geometric mean of a set of ratios is the reciprocal of the geometric mean of their reciprocals. It is also easy to implement in Uniswap v3 because of its implementation of custom liquidity provision, as described in section 6. In addition, the accumulator can be stored in a smaller number of bits, since it trackslog *𝑃* rather than *𝑃*, and log *𝑃* can represent a wide range of prices with consistent precision.4 Finally, there is a theoretical argument that the time weighted geometric mean price should be a truer representation of the average price.5
 
-of token0. Users can compute the time-weighted arithmetic mean
-
-of the prices over any period, by subtracting the accumulator value
-
-at the beginning of the period from the accumulator at the end of
-
-the period, then dividing the difference by the number of seconds
-
-in the period. Note that accumulators for token0 and token1 are
-
-tracked separately, since the time-weighted arithmetic mean price 
-
-of token0 is not equivalent to the reciprocal of the time-weighted
-
-arithmetic mean price of token1.
-
-Using the time-weighted *geometric* mean price, as Uniswap v3
-
-does, avoids the need to track separate accumulators for these
-
-ratios. The geometric mean of a set of ratios is the reciprocal of the
-
-geometric mean of their reciprocals. It is also easy to implement
-
-in Uniswap v3 because of its implementation of custom liquidity
-
-provision, as described in section 6. In addition, the accumulator can
-
-be stored in a smaller number of bits, since it trackslog *𝑃* rather than
-
-*𝑃*, and log *𝑃* can represent a wide range of prices with consistent
-
-precision.4 Finally, there is a theoretical argument that the time
-
-weighted geometric mean price should be a truer representation of
-
-the average price.5
-
-Instead of tracking the cumulative sum of the price *𝑃*, Uniswap
-
-v3 accumulates the cumulative sum of the current tick index (*𝑙𝑜𝑔*1*.*0001*𝑃*,
-
-the logarithm of price for base 1*.*0001, which is precise up to 1 basis
-
-point). The accumulator at any given time is equal to the sum of
-
-*𝑙𝑜𝑔*1*.*0001 (*𝑃*) for every second in the history of the contract:
-$$
+Instead of tracking the cumulative sum of the price *𝑃*, Uniswap v3 accumulates the cumulative sum of the current tick index (*𝑙𝑜𝑔*1*.*0001*𝑃*, the logarithm of price for base 1*.*0001, which is precise up to 1 basis point). The accumulator at any given time is equal to the sum of *𝑙𝑜𝑔*1*.*0001 (*𝑃*) for every second in the history of the contract:
 
 $$
 
+$$
 
 
 
