@@ -216,23 +216,401 @@ The pool exposes the array of past observations to users, as well as a convenien
 
 该池向用户公开过去观察的数组，以及用于查找检查点期间内任何历史时间戳的（插值）累加器值的便利函数。
 
-### **5.2 Geometric Mean Price Oracle**
+### **5.2 Geometric Mean Price Oracle**几何平均价格预言机
 
 Uniswap v2 maintains two price accumulators—one for the price of token0 in terms of token1, and one for the price of token1 in terms of token0. Users can compute the time-weighted arithmetic mean of the prices over any period, by subtracting the accumulator value at the beginning of the period from the accumulator at the end of the period, then dividing the difference by the number of seconds in the period. Note that accumulators for token0 and token1 are tracked separately, since the time-weighted arithmetic mean price  of token0 is not equivalent to the reciprocal of the time-weighted arithmetic mean price of token1.
 
+Uniswap v2 维护两个价格累加器——一个用于以 token1 表示的 token0 的价格，另一个用于以 token0 表示的 token1 的价格。 用户可以通过从周期结束时的累加器值中减去周期开始时的累加器值，然后将差值除以该周期内的秒数来计算任何周期内价格的时间加权算术平均值。 请注意，token0 和 token1 的累加器是单独跟踪的，因为 token0 的时间加权算术平均价格不等于 token1 的时间加权算术平均价格的倒数。
+
 Using the time-weighted *geometric* mean price, as Uniswap v3 does, avoids the need to track separate accumulators for these ratios. The geometric mean of a set of ratios is the reciprocal of the geometric mean of their reciprocals. It is also easy to implement in Uniswap v3 because of its implementation of custom liquidity provision, as described in section 6. In addition, the accumulator can be stored in a smaller number of bits, since it trackslog *𝑃* rather than *𝑃*, and log *𝑃* can represent a wide range of prices with consistent precision.4 Finally, there is a theoretical argument that the time weighted geometric mean price should be a truer representation of the average price.5
+
+使用时间加权*几何*平均价格（如 Uniswap v3 所做的那样）可以避免跟踪这些比率的单独累加器的需要。 一组比率的几何平均值是它们倒数的几何平均值的倒数。 它在 Uniswap v3 中也很容易实现，因为它实现了自定义流动性提供，如第 6 节所述。此外，累加器可以存储在更少的位数中，因为它跟踪 log *𝑃* 而不是 *𝑃* ，而 log *𝑃* 可以以一致的精度表示大范围的价格。4 最后，有一个理论论证认为时间加权几何平均价格应该是平均价格的更真实的表示。5
 
 Instead of tracking the cumulative sum of the price *𝑃*, Uniswap v3 accumulates the cumulative sum of the current tick index (*𝑙𝑜𝑔*1*.*0001*𝑃*, the logarithm of price for base 1*.*0001, which is precise up to 1 basis point). The accumulator at any given time is equal to the sum of *𝑙𝑜𝑔*1*.*0001 (*𝑃*) for every second in the history of the contract:
 
+Uniswap v3 不是跟踪价格*𝑃* 的累积总和，而是累积当前报价指数的累积总和（*𝑙𝑜𝑔*1*.*0001*𝑃*，以 1*.*0001 为底的价格对数，其中 精确到 1 个基点）。 任何给定时间的累加器等于合约历史记录中每一秒的 *𝑙𝑜𝑔*1*.*0001 (*𝑃*) 之和：
+$$
+a_t=\sum_{i=1}^{t}log_{1.0001}(P_i)
+$$
+
+We want to estimate the geometric mean time-weighted average price ($P_{t1,t2}$ ) over any period *𝑡*1 to *𝑡*2.
+
+我们想要估计任何时期 *𝑡*1 到 *𝑡*2 的几何平均时间加权平均价格 ($P_{t1,t2}$ )。
+$$
+P_{t1,t2} = (\prod_{i=t1}^{t_2})^\frac{1}{t2-t1}
+$$
+
+
+To compute this, you can look at the accumulator’s value at *𝑡*1 and at *𝑡*2, subtract the first value from the second, divide by the number of seconds elapsed, and compute 1*.*0001*𝑥* to compute the time weighted geometric mean price.
+
+要计算此值，您可以查看 *𝑡*1 和 *𝑡*2 处累加器的值，用第二个值减去第一个值，除以经过的秒数，然后计算 1*.*0001*𝑥* 至 计算时间加权几何平均价格。
+
+
+$$
+log_{1.0001}(p_{t1,t2}) =\frac{\sum_{i-t_1}^{t_2}log_{1.0001}{P_i}}{t_2-t_1}
 $$
 
 $$
+log_{1.0001}(P_{t_1,t_2})=\frac{a_{t_2}-a_{t_1}}{t_2-t_1}
+$$
+
+$$
+P_{t_1,t_2} = 1.0001^{\frac{a_{t_1}-a_{t_1}}{t_2-t_1}}
+$$
+
+
+### **5.3 Liquidity Oracle** 
+
+In addition to the seconds-weighted accumulator of log1*.*0001 *𝑝𝑟𝑖𝑐𝑒*,Uniswap v3 also tracks a seconds-weighted accumulator of ($\frac{1}{L}$)(the reciprocal of the virtual liquidity currently in range) at the beginning of each block: secondsPerLiquidityCumulative ($s_{pl}$).
+
+除了 log1*.*0001 *𝑝𝑟𝑖𝑐𝑒* 的秒加权累加器外，Uniswap v3 还跟踪 ($\frac{1}{L}$) 的秒加权累加器（当前范围内虚拟流动性的倒数） ）在每个块的开头：secondsPerLiquidityCumulative ($s_{pl}$)。
+
+This can be used by external liquidity mining contracts to fairly allocate rewards. If an external contract wants to distribute rewards at an even rate of *𝑅* tokens per second to all active liquidity in the contract, and a position with *𝐿* liquidity was active from *𝑡*0 to *𝑡*1,then its rewards for that period would be $R.L.(s_{pl}(t_1)-s_{pl}(t_0))$.
+
+这可以被外部流动性挖矿合约用来公平分配奖励。 如果外部合约希望以每秒 *𝑅* 代币的均匀速率向合约中所有活跃的流动性分配奖励，并且具有 *𝐿* 流动性的头寸在 *𝑡*0 到 *𝑡*1 期间处于活跃状态，那么其 该时期的奖励将为 $R.L.(s_{pl}(t_1)-s_{pl}(t_0))$。
+
+In order to extend this so that concentrated liquidity is rewarded only when it is in range, Uniswap v3 stores a computed checkpoint based on this value every time a tick is crossed, as described in section 6.3.
+
+为了扩展这一点，以便集中的流动性仅在范围内时获得奖励，Uniswap v3 在每次价格变动时都会根据该值存储计算的检查点，如第 6.3 节所述。
+
+This accumulator can also be used by on-chain contracts to make their oracles stronger (such as by evaluating which fee-tier pool to use the oracle from).
+
+链上合约还可以使用该累加器来增强其预言机（例如通过评估使用哪个费用层池的预言机）。
+
+##  **6 IMPLEMENTING CONCENTRATED LIQUIDITY** 
+
+The rest of this paper describes how concentrated liquidity provision works, and gives a high-level description of how it is implemented in the contracts.
+
+本文的其余部分描述了集中流动性供应如何运作，并对其如何在合约中实施进行了高级描述。
+
+### **6.1 Ticks and Ranges**
+
+To implement custom liquidity provision, the space of possible prices is demarcated by discrete *ticks*. Liquidity providers can provide liquidity in a range between any two ticks (which need not be adjacent).
+
+为了实现自定义流动性供应，可能的价格空间由离散的*刻度*划分。 流动性提供者可以在任意两个报价之间（不必相邻）的范围内提供流动性。
+
+Each range can be specified as a pair of signed integer *tick indices*:a lower tick (*𝑖* *𝑙* ) and an upper tick (*𝑖**𝑢*). Ticks represent prices at which the virtual liquidity of the contract can change. We will assume that prices are always expressed as the price of one of the tokens—called token0—in terms of the other token—token1. The assignment of the two tokens to token0 and token1 is arbitrary and does not affect the logic of the contract (other than through possible rounding errors).
+
+每个范围都可以指定为一对有符号整数 *刻度索引*：下刻度 (*𝑖* *𝑙* ) 和上刻度 (*𝑖**𝑢*)。 价格变动代表合约虚拟流动性可能发生变化的价格。 我们假设价格始终表示为一种代币（称为 token0）相对于另一种代币（称为 token1）的价格。 将两个代币分配给 token0 和 token1 是任意的，不会影响合约的逻辑（除了可能的舍入错误）。
+
+Conceptually, there is a tick at every price *𝑝* that is an integer power of 1*.*0001. Identifying ticks by an integer index *𝑖*, the price at each is given by:
+
+从概念上讲，每个价格 *𝑝* 都有一个刻度，它是 1*.*0001 的整数次方。 通过整数索引 *𝑖* 识别价格变动，每个价格由以下公式给出：
+$$
+p(i)=1.0001^i
+$$
+This has the desirable property of each tick being a .01% (1 basis point) price movement away from each of its neighboring ticks.
+
+这具有每个价格变动的理想属性，即与其相邻价格变动的价格变动为 0.01%（1 个基点）。
+
+For technical reasons explained in 6.2.1, however, pools actually track ticks at every *square root price* that is an integer power of $\sqrt{1.0001}$. Consider the above equation, transformed into square root price space:
+
+然而，由于 6.2.1 中解释的技术原因，池实际上跟踪每个*平方根价格*（$\sqrt{1.0001}$ 的整数次方）的价格变动。 考虑上面的方程，转换为平方根价格空间：
+$$
+\sqrt{p}(i)=\sqrt{1.0001}^i=1.0001^\frac{i}{2}
+$$
+As an example, $\sqrt{p}(0)$—the square root price at tick 0—is 1, $\sqrt{p}(1)$ $\sqrt{1.0001}$ ≈ 1*.*00005, and $\sqrt{p}(-1)$ is $\frac{1}{\sqrt{1.0001}}$≈ 0*.*99995.
+
+When liquidity is added to a range, if one or both of the ticks is not already used as a bound in an existing position, that tick is *initialized*.
+
+当流动性添加到某个范围时，如果一个或两个价格变动尚未用作现有头寸的界限，则该价格变动将被*初始化*。
+
+Not every tick can be initialized. The pool is instantiated with a parameter, tickSpacing ($t_s$); only ticks with indexes that are divisible by tickSpacing can be initialized. For example, if tickSpacing is 2, then only even ticks (...-4, -2, 0, 2, 4...) can be initialized. Small choices for tickSpacing allow tighter and more precise ranges, but may cause swaps to be more gas-intensive (since each initialized tick that a swap crosses imposes a gas cost on the swapper).
+
+并非每个刻度都可以初始化。 该池通过参数tickSpacing($t_s$)实例化； 只能初始化索引可被tickSpacing整除的刻度。 例如，如果tickSpacing为2，则只能初始化偶数刻度(...-4, -2, 0, 2, 4...)。 对tickSpacing的小选择允许更严格和更精确的范围，但可能会导致交换更加消耗gas（因为交换交叉的每个初始化tick都会对交换器施加gas成本）。
+
+Whenever the price crosses an initialized tick, virtual liquidity is kicked in or out. The gas cost of an initialized tick crossing is constant, and is not dependent on the number of positions being kicked in or out at that tick.
+
+每当价格跨越初始化刻度时，虚拟流动性就会被启动或退出。 初始化的价格变动交叉的 Gas 成本是恒定的，并且不依赖于该价格变动时进出的仓位数量。
+
+Ensuring that the right amount of liquidity is kicked in and out of the pool when ticks are crossed, and ensuring that each position earns its proportional share of the fees that were accrued while it was within range, requires some accounting within the pool.
+
+确保在交叉报价时从池中注入和流出适量的流动性，并确保每个头寸在范围内赚取相应比例的应计费用，需要在池中进行一些会计处理。
+
+The pool contract uses storage variables to track state at a *global* (per-pool) level, at a *per-tick* level, and at a *per-position* level.
+
+矿池合约使用存储变量来跟踪*全局*（每个池）级别、*每个报价*级别和*每个位置*级别的状态。
+
+### **6.2 Global State**
+
+The global state of the contract includes seven storage variables relevant to swaps and liquidity provision. (It has other storage variables that are used for the oracle, as described in section 5.)
+
+合约的全局状态包括七个与掉期和流动性提供相关的存储变量。 （它还有其他用于预言机的存储变量，如第 5 节所述。）
+
+| Type    | Variable Name        | Notation   |
+| ------- | -------------------- | ---------- |
+| uint128 | liquidity            | $L$        |
+| uint160 | sqrtPriceX96         | $\sqrt{P}$ |
+| int24   | tick                 | $i_c$      |
+| uint256 | feeGrowthGlobal0X128 | $f_{g,0}$  |
+| uint256 | feeGrowthGlobal1X128 | $f_{g,1}$  |
+| uint128 | protocolFees.token0  | $f_{p,0}$  |
+| uint128 | protocolFees.token1  | $f_{p,1}$  |
+
+**Table 1: Global State**
+
+#### *6.2.1 Price and Liquidity.* 
+
+In Uniswap v2, each pool contract tracks the pool’s current reserves, *𝑥* and *𝑦*. In Uniswap v3, the contract could be thought of as having *virtual reserves*—values for *𝑥* and *𝑦* that allow you to describe the contract’s behavior (between two adjacent ticks) as if it followed the constant product formula.
+
+Instead of tracking those virtual reserves, however, the pool contract tracks two different values: liquidity (*𝐿*) and sqrtPrice ( √ *𝑃*). These could be computed from the virtual reserves with the following formulas:
+$$
+L=\sqrt{xy}
+$$
+
+$$
+\sqrt{P}=\sqrt{\frac{y}{x}} 
+$$
+
+Conversely, these values could be used to compute the virtual reserves:
+$$
+x = \frac{1}{\sqrt{P}}
+$$
+
+$$
+y=L.\sqrt{P}
+$$
 
 
 
+Using *𝐿* and $\sqrt{P}$ is convenient because only one of them changes at a time. Price (and thus $\sqrt{P}$) changes when swapping within a tick; liquidity changes when crossing a tick, or when minting or burning liquidity. This avoids some rounding errors that could be encountered if tracking virtual reserves.
+
+You may notice that the formula for liquidity (based on virtual reserves) is similar to the formula used to initialize the quantity of liquidity tokens (based on actual reserves) in Uniswap v2. before any fees have been earned. In some ways, liquidity can be thought of as virtual liquidity tokens.
+
+Alternatively, liquidity can be thought of as the amount that token1  reserves (either actual or virtual) changes for a given change in  $\sqrt{P}$ *?*
+$$
+L=\frac{\Delta{Y}}{\Delta{\sqrt{P}}}
+$$
+
+
+We track  $\sqrt{P}$  instead of *𝑃* to take advantage of this relationship,and to avoid having to take any square roots when computing swaps, as described in section 6.2.3.
+
+The global state also tracks the current tick index as tick ($i_c$ ), a signed integer representing the current tick (more specifically, the nearest tick below the current price). This is an optimization (and a way of avoiding precision issues with logarithms), since at any time, you should be able to compute the current tick based on the current sqrtPrice. Specifically, at any given time, the following equation should be true:
+$$
+i_c=[log_{\sqrt{1.0001}}\sqrt{P}]
+$$
+
+#### *6.2.2 Fees.* 
+
+Each pool is initialized with an immutable value, fee(*𝛾*), representing the fee paid by swappers in units of hundredths of a basis point (0*.*0001%).
+
+It also tracks the current protocol fee, *𝜙* (which is initialized to zero, but can changed by UNI governance).6 This number gives you the fraction of the fees paid by swappers that currently goes to the protocol rather than to liquidity providers. *𝜙* only has a limited set of permitted values: 0, 1/4, 1/5, 1/6, 1/7, 1/8, 1 /9, or 1/10.
+
+The global state also tracks two numbers: feeGrowthGlobal0 ($f_{g,0}$) and feeGrowthGlobal1 ($f_{g,1}$). These represent the total amount of fees that have been earned per unit of virtual liquidity (*𝐿*), over the entire history of the contract. You can think of them as the total amount of fees that would have been earned by 1 unit of unbounded liquidity that was deposited when the contract was first initialized. They are stored as fixed-point unsigned 128x128 numbers. Note that in Uniswap v3, fees are collected in the tokens themselves
+
+rather than in liquidity, for reasons explained in section 3.2.1.
+
+Finally, the global state tracks the total accumulated uncollected protocol fee in each token, protocolFees0 ($f_{p,0}$) and protocolFees1 ($f_{p,1}$). This is an unsigned uint128. The accumulated protocol fees can be collected by UNI governance, by calling the collectProtocol function.
+
+#### *6.2.3 Swapping Within a Single Tick.* 
+
+For small enough swaps, that do not move the price past a tick, the contracts act like an *𝑥* · *𝑦* = *𝑘* pool. Suppose *𝛾* is the fee, i.e., 0.003, and$y_{in}$ as the amount of token1 sent in.
+
+First, feeGrowthGlobal1 and protocolFees1 are incremented:
+$$
+\Delta{f_{g,1}} = y_{in}.\gamma.(1-\phi)
+$$
+
+$$
+\Delta{f_{p,1}}=y_{in}.\gamma.\phi
+$$
+
+Δ*𝑦* is the increase in *𝑦* (after the fee is taken out).
+
+
+$$
+\Delta{y}=y_{in}.(1-\gamma)
+$$
+If you used the computed virtual reserves (*𝑥* and*𝑦*) for the token0 and token1 balances, then this formula could be used to find the amount of token0 sent out:
+$$
+x_{end}=\frac{x.y}{y+\Delta{y}}
+$$
+
+
+But remember that in v3, the contract actually tracks liquidity (*𝐿*) and square root of price ($\sqrt{P}$) instead of *𝑥* and *𝑦*. We could compute*𝑥* and *𝑦* from those values, and then use those to calculate the execution price of the trade. But it turns out that there are simple formulas that describe the relationship between$\Delta{\sqrt{P}}$ and $\Delta{y}$, for a given *𝐿* (which can be derived from formula 6.7):
+$$
+\Delta{\sqrt{P}}=\frac{\Delta{y}}{L}
+$$
+
+$$
+\Delta{x} = \Delta{\frac{1}{\sqrt{P}}}.L
+$$
+When swapping one token for the other, the pool contract can first compute the new $\sqrt{P}$ using formula 6.13 or 6.15, and then can compute the amount of token0 or token1 to send out using formula 6.14 or 6.16.
+
+These formulas will work for any swap that does not push $\sqrt{P}$ past the price of the next initialized tick. If the computed $\Delta{\sqrt{P}}$would cause $\sqrt{P}$to move past that next initialized tick, the contract must only cross up to that tick—using up only part of the swap—and then cross the tick, as described in section 6.3.1, before continuing with the rest of the swap.
+
+#### *6.2.4 Initialized Tick Bitmap.*
+
+ If a tick is not used as the endpoint of a range with any liquidity in it—that is, if the tick is uninitialized—then that tick can be skipped during swaps.
+
+As an optimization to make finding the next initialized tick more efficient, the pool tracks a bitmap tickBitmap of initialized ticks. The position in the bitmap that corresponds to the tick index is set to 1 if the tick is initialized, and 0 if it is not initialized.
+
+When a tick is used as an endpoint for a new position, and that tick is not currently used by any other liquidity, the tick is initialized, and the corresponding bit in the bitmap is set to 1. An initialized tick can become uninitialized again if all of the liquidity for which it is an endpoint is removed, in which case that tick’s position on the bitmap is zeroed out.
+
+### **6.3 Tick-Indexed State**
+
+The contract needs to store information about each tick in order to track the amount of net liquidity that should be added or removed when the tick is crossed, as well as to track the fees earned above and below that tick.
+
+<img src="images/image-20240114191755378.png" alt="image-20240114191755378" style="zoom:50%;" />
+
+The contract stores a mapping from tick indexes (int24) to the following seven values:
 
 
 
+| Type    | Variable Name                  | Notation    |
+| ------- | ------------------------------ | ----------- |
+| int128  | liquidityNet                   | $\Delta{L}$ |
+| uint128 | liquidityGross                 | $L_g$       |
+| uint256 | feeGrowthOutside0X128          | $f_{o,0}$   |
+| uint256 | feeGrowthOutside1X128          | $f_{o,1}$   |
+| uint256 | secondsOutside                 | $s_o$       |
+| uint256 | tickCumulativeOutside          | $i_o$       |
+| uint256 | secondsPerLiquidityOutsideX128 | $s_{lo}$    |
+
+**Table 2: Tick-Indexed State**
+
+Each tick tracks Δ*𝐿*, the total amount of liquidity that should be kicked in or out when the tick is crossed. The tick only needs to track one signed integer: the amount of liquidity added (or, if negative, removed) when the tick is crossed going left to right. This value does not need to be updated when the tick is crossed (but only when a position with a bound at that tick is updated).
+
+We want to be able to uninitialize a tick when there is no longer any liquidity referencing that tick. Since Δ*𝐿* is a net value, it’s necessary to track a gross tally of liquidity referencing the tick,liquidityGross. This value ensures that even if net liquidity at a tick is 0, we can still know if a tick is referenced by at least one underlying position or not, which tells us whether to update the tick bitmap.
+
+feeGrowthOutside{0,1} are used to track how many fees were accumulated within a given range. Since the formulas are the same for the fees collected in token0 and token1, we will omit that sub script for the rest of this section.
+
+You can compute the fees earned per unit of liquidity in token 0 above ($f_a$) and below ($f_b$) a tick *𝑖* with a formula that depends on whether the price is currently within or outside that range—that is, whether the current tick index $i_c$ is greater than or equal to *𝑖*:
+
+<img src="images/image-20240114194814323.png" alt="image-20240114194814323" style="zoom:50%;" />
+
+We can use these functions to compute the total amount of cumulative fees per share $f_r$ in the range between two ticks—a lower tick $i_l$ and an upper tick $i_u$:
+$$
+f_r=f_g-f_b(i_l)-f_a(i_u)
+$$
+$f_o$needs to be updated each time the tick is crossed. Specifically,as a tick *𝑖* is crossed in either direction, its $f_o$ (for each token) should be updated as follows:
+$$
+f_o(i):=f_g-f_o(i)
+$$
+$f_o$ is only needed for ticks that are used as either the lower or upper bound for at least one position. As a result, for efficiency, $f_o$ is not initialized (and thus does not need to be updated when crossed)until a position is created that has that tick as one of its bounds. When $f_o$ is initialized for a tick *𝑖*, the value—by convention—is chosen as if all of the fees earned to date had occurred below that
+
+tick:
+
+![image-20240114195731368](images/image-20240114195731368.png)
+
+Note that since$f_o$ values for different ticks could be initialized at different times, comparisons of the $f_o$ values for different ticks are not meaningful, and there is no guarantee that values for $f_o$ will be consistent. This does not cause a problem for per-position accounting, since, as described below, all the position needs to know is the growth in *𝑔* within a given range since that position was last touched.
+
+
+
+Finally, the contract also stores secondsOutside ($s_o$ ),secondsPerLiquidityOutside, and tickCumulativeOutside for each tick. These values are not used within the contract, but are tracked for the benefit of external contracts that need more fine grained information about the pool’s behavior (for purposes like liquidity mining).
+
+All three of these indexes work similarly to the fee growth in dexes described above. But where the feeGrowthOutside{0,1} indexes track feeGrowthGlobal{0,1}, the secondsOutside index tracks seconds (that is, the current timestamp), secondsPerLiquidityOutside tracks the 1/*𝐿* accumulator (secondsPerLiquidityCumulative) described in section 5.3, and tickCumulativeOutside tracks the log1*.*0001 *𝑃* accumulator described in section 5.2.
+
+For example, the seconds spent above ($s_a$) and below ($s_b$ ) a given tick is computed differently based on whether the current price is within that range, and the seconds spent within a range ($s_r$) can be computed using the values of $s_a$ and $s_b$ :
+
+<img src="images/image-20240114200038275.png" alt="image-20240114200038275" style="zoom:50%;" />
+
+The number of seconds spent within a range between two times $t_1$ and $t_2$ can be computed by recording the value of $s_r(i_l,i_u)$ at $t_1$and at $t_2$, and subtracting the former from the latter.
+
+Like$f_o$ , $s_o$does not need to be tracked for ticks that are not on the edge of any position. Therefore, it is not initialized until a position is created that is bounded by that tick. By convention, it is initialized as if every second since the Unix timestamp 0 had been spent below that tick:
+
+<img src="images/image-20240114200209649.png" alt="image-20240114200209649" style="zoom:50%;" />
+
+As with$f_o$ values, $t_o$values are not meaningfully comparable across different ticks.  $t_o$ is only meaningful in computing the number of seconds that liquidity was within some particular range between some defined start time (which must be after  $t_o$was ini
+
+tialized for both ticks) and some end time.
+
+#### *6.3.1 Crossing a Tick.* 
+
+As described in section 6.2.3, Uniswap v3 acts like it obeys the constant product formula when swapping between initialized ticks. When a swap crosses an initialized tick,however, the contract needs to add or remove liquidity, to ensure that no liquidity provider is insolvent. This means the Δ*𝐿* is fetched from the tick, and applied to the global *𝐿*.
+
+The contract also needs to update the tick’s own state, in order to track the fees earned (and seconds spent) within ranges bounded by this tick. The feeGrowthOutside{0,1} and secondsOutside values are updated to both reflect current values, as well as the proper orientation relative to the current tick:
+$$
+f_o:=f_g-f_o
+$$
+
+$$
+t_o:=t-t_o
+$$
+
+
+
+Once a tick is crossed, the swap can continue as described in section 6.2.3 until it reaches the next initialized tick.
+
+### **6.4 Position-Indexed State**
+
+The contract has a mapping from user (an address), lower bound (a tick index, int24), and upper bound (a tick index, int24) to a specific Position struct. Each Position tracks three values:
+
+| Type    | Variable Name            | Notation     |
+| ------- | ------------------------ | ------------ |
+| uint128 | liquidity                | $l$          |
+| uint256 | feeGrowthInside0LastX128 | $f_r,0(t_0)$ |
+| uint256 | feeGrowthInside1LastX128 | $f_r,1(t_0)$ |
+
+**Table 3: Position-Indexed State**
+
+liquidity (*𝑙*) means the amount of virtual liquidity that the position represented the last time this position was touched. Specifically, liquidity could be thought of as √ *𝑥* · *𝑦*, where  *𝑥* and *𝑦*  are the respective amounts of virtual token0 and virtual  token1  that this liquidity contributes to the pool at any time that it is within range. Unlike pool shares in Uniswap v2 (where the value of each share grows over time), the units for liquidity do not change as fees are accumulated; it is always measured as √ *𝑥* · *𝑦*, where *𝑥* and *𝑦* are quantities of token0 and token1, respectively.
+
+This liquidity number does not reflect the fees that have been accumulated since the contract was last touched, which we will call *uncollected fees*. Computing these uncollected fees requires additional stored values on the position, feeGrowthInside0Last ($f_{r,1}(t_0)$) and feeGrowthInside1Last , ($f_{r,1}(t_0)$) as described be low.
+
+#### *6.4.1 setPosition.* 
+
+The setPosition function allows a liquidity provider to update their position.
+
+Two of the arguments to setPosition —lowerTick and upperTick— when combined with the msg.sender, together specify a position.
+
+The function takes one additional parameter, liquidityDelta, to specify how much virtual liquidity the user wants to add or (if negative) remove.
+
+First, the function computes the uncollected fees ($f_u$) that the position is entitled to, in each token.7 The amount collected in fees is credited to the user and netted against the amount that they would send in or out for their virtual liquidity deposit.
+
+To compute uncollected fees of a token, you need to know how much $f_r$ for the position’s range (calculated from the range’s $i_l$ and  $i_r$  as described in section 6.3) has grown since the last time fees were collected for that position. The growth in fees in a given range per unit of liquidity over between times $t_0$ and $t_1$ is simply $f_r(t_1)-f_r(t_0)$(where $f_r(t_1)$) is stored in the position as feeGrowthInside{0,1}Last, and $f_r(t_1)$ can be computed from
+
+the current state of the ticks). Multiplying this by the position’s liquidity gives us the total uncollected fees in token 0 for this position:
+$$
+f_u=l.(f_r(t_1)-f_r(t_0))
+$$
+Then, the contract updates the position’s liquidity by adding liquidityDelta. It also adds liquidityDelta to the liquidityNet value for the tick at the bottom end of the range, and subtracts it from the liquidityNet at the upper tick (to reflect that this new liquidity would be added when the price crosses the lower tick going up, and subtracted when the price crosses the upper tick going up). If the pool’s current price is within the range of this position, the contract also adds liquidityDelta to the contract’s global liquidity value.
+
+Finally, the pool transfers tokens from (or, if liquidityDelta is negative, to) the user, corresponding to the amount of liquidity burned or minted.
+
+The amount of token0 (Δ*𝑋*) or token1 (Δ*𝑌*) that needs to be deposited can be thought of as the amount that would be sold from the position if the price were to move from the current price (*𝑃*) to the upper tick or lower tick (for token0 or token1, respectively).
+
+These formulas can be derived from formulas 6.14 and 6.16, and depend on whether the current price is below, within, or above the range of the position:
+
+
+
+![image-20240114201200793](images/image-20240114201200793.png)
+
+
+
+## **REFERENCES**
+
+[1] Hayden Adams, Noah Zinsmeister, and Dan Robinson. 2020. *Uniswap v2 Core*.
+
+Retrieved Feb 24, 2021 from https://uniswap.org/whitepaper.pdf
+
+[2] Guillermo Angeris and Tarun Chitra. 2020. Improved Price Oracles: Constant
+
+Function Market Makers. In *Proceedings of the 2nd ACM Conference on Advances*
+
+*in Financial Technologies (AFT ’20)*. Association for Computing Machinery, New
+
+York, NY, United States, 80–91. https://doi.org/10.1145/3419614.3423251
+
+[3] Michael Egorov. 2019. *StableSwap - Efficient Mechanism for Stablecoin Liquidity*.
+
+Retrieved Feb 24, 2021 from https://www.curve.fi/stableswap-paper.pdf
+
+[4] Allan Niemerg, Dan Robinson, and Lev Livnev. 2020. *YieldSpace: An Automated*
+
+*Liquidity Provider for Fixed Yield Tokens*. Retrieved Feb 24, 2021 from https:
+
+//yield.is/YieldSpace.pdf
+
+[5] Abraham Othman. 2012. *Automated Market Making: Theory and Practice*. Ph.D.
+
+Dissertation. Carnegie Mellon University
+
+
+
+## **DISCLAIMER**
+
+This paper is for general information purposes only. It does not constitute investment advice or a recommendation or solicitation to buy or sell any investment and should not be used in the evaluation of the merits of making any investment decision. It should not be relied upon for accounting, legal or tax advice or investment recommendations. This paper reflects current opinions of the authors and is not made on behalf of Uniswap Labs, Paradigm, or their affiliates and does not necessarily reflect the opinions of Uniswap Labs, Paradigm, their affiliates or individuals associated with them. The opinions reflected herein are subject to change without being updated.
 
 
 

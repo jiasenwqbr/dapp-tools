@@ -327,11 +327,19 @@ func (out *TXOutput) IsLockedWithKey(pubKeyHash []byte) bool {
 
 Notice, that we’re no longer using `ScriptPubKey` and `ScriptSig` fields, because we’re not going to implement a scripting language. Instead, `ScriptSig` is split into `Signature` and `PubKey` fields, and `ScriptPubKey` is renamed to `PubKeyHash`. We’ll implement the same outputs locking/unlocking and inputs signing logics as in Bitcoin, but we’ll do this in methods instead.
 
+请注意，我们不再使用 "ScriptPubKey" and "ScriptSig" 字段，因为我们不打算实现脚本语言。而是 "ScriptSig" 拆分"Signature"为 和 "PubKey" 字段，并 "ScriptPubKey" 重命名为 "PubKeyHash".我们将实现与比特币相同的输出锁定/解锁和输入签名逻辑，但我们将在方法中执行此操作。
+
 The `UsesKey` method checks that an input uses a specific key to unlock an output. Notice that inputs store raw public keys (i.e., not hashed), but the function takes a hashed one. `IsLockedWithKey` checks if provided public key hash was used to lock the output. This is a complementary function to `UsesKey`, and they’re both used in `FindUnspentTransactions` to build connections between transactions.
+
+该 "UsesKey" 方法检查输入是否使用特定键来解锁输出。请注意，输入存储原始公钥（即未进行哈希处理），但该函数采用经过哈希处理的公钥。"IsLockedWithKey" 检查是否使用了提供的公钥哈希来锁定输出。这是 的互补函数"UsesKey"，它们都用于 "FindUnspentTransactions" 在事务之间建立连接。
 
 `Lock` simply locks an output. When we send coins to someone, we know only their address, thus the function takes an address as the only argument. The address is then decoded and the public key hash is extracted from it and saved in the `PubKeyHash` field.
 
+"Lock" 只需锁定输出即可。当我们向某人发送硬币时，我们只知道他们的地址，因此该函数将地址作为唯一参数。然后对地址进行解码，并从中提取公钥哈希值并保存在 "PubKeyHash" 字段中。
+
 Now, let’s check that everything works correctly:
+
+现在，让我们检查一下一切是否正常工作：
 
 ```shell
 $ blockchain_go createwallet
@@ -371,25 +379,49 @@ Balance of '1Lhqun1E9zZZhodiTqxfPQBcwr1CVDV2sy': 0
 
 Nice! Now let’s implement transaction signatures.
 
-## Implementing Signatures
+好！现在让我们实现交易签名。
+
+## Implementing Signatures实现签名
 
 Transactions must be signed because this is the only way in Bitcoin to guarantee that one cannot spend coins belonging to someone else. If a signature is invalid, the transaction is considered invalid too and, thus, cannot be added to the blockchain.
 
+交易必须签名，因为这是比特币中保证不能花费属于他人的硬币的唯一方法。如果签名无效，则交易也被视为无效，因此无法添加到区块链中。
+
 We have all the pieces to implement transactions signing, except one thing: data to sign. What parts of a transaction are actually signed? Or a transaction is signed as a whole? Choosing data to sign is quite important. The thing is that data to be signed must contain information that identifies the data in a unique way. For example, it makes no sense signing just output values because such signature won’t consider the sender and the recipient.
+
+我们拥有实现交易签名的所有部分，除了一件事：要签名的数据。交易的哪些部分实际上是签名的？还是交易是作为一个整体签署的？选择要签名的数据非常重要。问题是要签名的数据必须包含以唯一方式标识数据的信息。例如，仅对输出值进行签名是没有意义的，因为此类签名不会考虑发送方和接收方。
 
 Considering that transactions unlock previous outputs, redistribute their values, and lock new outputs, the following data must be signed:
 
+考虑到事务会解锁以前的输出、重新分配其值并锁定新输出，因此必须对以下数据进行签名：
+
 1. Public key hashes stored in unlocked outputs. This identifies “sender” of a transaction.
+
+   存储在未锁定输出中的公钥哈希。这标识了交易的“发送者”。
+
 2. Public key hashes stored in new, locked, outputs. This identifies “recipient” of a transaction.
+
+   存储在新的锁定输出中的公钥哈希。这标识了交易的“收件人”。
+
 3. Values of new outputs.
 
+   新的输出值
+
 > In Bitcoin, locking/unlocking logic is stored in scripts, which are stored in `ScriptSig` and `ScriptPubKey` fields of inputs and outputs, respectively. Since Bitcoins allows different types of such scripts, it signs the whole content of `ScriptPubKey`.
+>
+> *在比特币中，锁定/解锁逻辑存储在脚本中，脚本分别存储在 "ScriptSig" "ScriptPubKey" 输入和输出的字段中。由于比特币允许不同类型的此类脚本，因此它对 "ScriptPubKey".*
 
 As you can see, we don’t need to sign the public keys stored in inputs. Because of this, in Bitcoin, it’s not a transaction that’s signed, but its trimmed copy with inputs storing `ScriptPubKey` from referenced outputs.
 
+正如你所看到的，我们不需要对存储在输入中的公钥进行签名。正因为如此，在比特币中，它不是签名的交易，而是它的修剪副本，其中包含 "ScriptPubKey" 从引用输出存储的输入。
+
 > A detailed process of getting a trimmed transaction copy is described [here](https://en.bitcoin.it/wiki/File:Bitcoin_OpCheckSig_InDetail.png). It’s likely to be outdated, but I didn’t manage to find a more reliable source of information.
+>
+> *此处介绍了获取剪裁的事务副本的详细过程。它可能已经过时了，但我没有设法找到更可靠的信息来源。*
 
 Ok, it looks complicated, so let’s start coding. We’ll start with the `Sign` method:
+
+好吧，它看起来很复杂，所以让我们开始编码。我们将从 "Sign" 以下方法开始：
 
 ```go
 func (tx *Transaction) Sign(privKey ecdsa.PrivateKey, prevTXs map[string]Transaction) {
@@ -415,6 +447,8 @@ func (tx *Transaction) Sign(privKey ecdsa.PrivateKey, prevTXs map[string]Transac
 ```
 
 The method takes a private key and a map of previous transactions. As mentioned above, in order to sign a transaction, we need to access the outputs referenced in the inputs of the transaction, thus we need the transactions that store these outputs.
+
+该方法采用私钥和以前事务的映射。如上所述，为了对交易进行签名，我们需要访问交易输入中引用的输出，因此我们需要存储这些输出的事务。
 
 Let’s review this method step by step:
 
@@ -464,6 +498,8 @@ for inID, vin := range txCopy.Vin {
 
 In each input, `Signature` is set to `nil` (just a double-check) and `PubKey` is set to the `PubKeyHash` of the referenced output. At this moment, all transactions but the current one are “empty”, i.e. their `Signature` and `PubKey` fields are set to nil. Thus, **inputs are signed separately**, although this is not necessary for our application, but Bitcoin allows transactions to contain inputs referencing different addresses.
 
+在每个输入中，"Signature"设置为（只是仔细检查）并 "nil" 设置为 "PubKey" "PubKeyHash" 引用输出的。此时，除当前交易外，所有交易都是“空”的，即它们的 "Signature" 和 "PubKey" 字段设置为 nil。因此，输入是单独签名的，尽管这对我们的应用程序来说不是必需的，但比特币允许交易包含引用不同地址的输入。
+
 ```go
 	txCopy.ID = txCopy.Hash()
 	txCopy.Vin[inID].PubKey = nil
@@ -471,7 +507,11 @@ In each input, `Signature` is set to `nil` (just a double-check) and `PubKey` is
 
 The `Hash` method serializes the transaction and hashes it with the SHA-256 algorithm. The resulted hash is the data we’re going to sign. After getting the hash we should reset the `PubKey` field, so it doesn’t affect further iterations.
 
+该 "Hash" 方法序列化事务并使用 SHA-256 算法对其进行哈希处理。生成的哈希值是我们要签名的数据。获取哈希值后，我们应该重置字段 "PubKey" ，这样就不会影响进一步的迭代。
+
 Now, the central piece:
+
+现在，核心部分：
 
 ```go
 	r, s, err := ecdsa.Sign(rand.Reader, &privKey, txCopy.ID)
@@ -481,6 +521,8 @@ Now, the central piece:
 ```
 
 We sign `txCopy.ID` with `privKey`. An ECDSA signature is a pair of numbers, which we concatenate and store in the input’s `Signature` field.
+
+我们用 "txCopy.ID" "privKey".ECDSA 签名是一对数字，我们将其连接并存储在输入 "Signature" 字段中。
 
 Now, the verification function:
 
@@ -520,11 +562,15 @@ func (tx *Transaction) Verify(prevTXs map[string]Transaction) bool {
 
 The method is quite straightforward. First, we need the same transaction copy:
 
+该方法非常简单。首先，我们需要相同的交易副本：
+
 ```go
 txCopy := tx.TrimmedCopy()
 ```
 
 Next, we’ll need the same curve that is used to generate key pairs:
+
+接下来，我们需要用于生成密钥对的相同曲线：
 
 ```go
 curve := elliptic.P256()
@@ -559,6 +605,8 @@ This piece is identical to the one in the `Sign` method, because during verifica
 
 Here we unpack values stored in `TXInput.Signature` and `TXInput.PubKey`, since a signature is a pair of numbers and a public key is a pair of coordinates. We concatenated them earlier for storing, and now we need to unpack them to use in `crypto/ecdsa` functions.
 
+在这里，我们解压缩存储在 和 中的值 "TXInput.Signature" "TXInput.PubKey"，因为签名是一对数字，而公钥是一对坐标。我们之前将它们连接起来进行存储，现在我们需要解压缩它们以在函数中使用 "crypto/ecdsa" 。
+
 ```go
 	rawPubKey := ecdsa.PublicKey{curve, &x, &y}
 	if ecdsa.Verify(&rawPubKey, txCopy.ID, &r, &s) == false {
@@ -570,6 +618,8 @@ return true
 ```
 
 Here it is: we create an `ecdsa.PublicKey` using the public key extracted from the input and execute `ecdsa.Verify` passing the signature extracted from the input. If all inputs are verified, return true; if at least one input fails verification, return false.
+
+这里是：我们"ecdsa.PublicKey"使用从输入中提取的公钥创建一个，并执行 "ecdsa.Verify" 传递从输入中提取的签名。如果所有输入都已验证，则返回 true;如果至少有一个输入未通过验证，则返回 false。
 
 Now, we need a function to obtain previous transactions. Since this requires interaction with the blockchain, we’ll make it a method of `Blockchain`:
 
@@ -619,6 +669,8 @@ func (bc *Blockchain) VerifyTransaction(tx *Transaction) bool {
 
 These functions are simple: `FindTransaction` finds a transaction by ID (this requires iterating over all the blocks in the blockchain); `SignTransaction` takes a transaction, finds transactions it references, and signs it; `VerifyTransaction` does the same, but verifies the transaction instead.
 
+这些功能很简单： "FindTransaction" 按 ID 查找交易（这需要遍历区块链中的所有区块）; "SignTransaction" 接受一个交易，找到它引用的交易，并签署它; "VerifyTransaction" 执行相同的操作，但会验证事务。
+
 Now, we need to actually sign and verify transactions. Signing happens in the `NewUTXOTransaction`:
 
 ```go
@@ -635,6 +687,8 @@ func NewUTXOTransaction(from, to string, amount int, bc *Blockchain) *Transactio
 
 Verification happens before a transaction is put into a block:
 
+验证发生在交易被放入区块之前：
+
 ```go
 func (bc *Blockchain) MineBlock(transactions []*Transaction) {
 	var lastHash []byte
@@ -649,6 +703,8 @@ func (bc *Blockchain) MineBlock(transactions []*Transaction) {
 ```
 
 And that’s it! Let’s check everything one more time:
+
+就是这样！让我们再检查一次：
 
 ```shell
 $ blockchain_go createwallet
@@ -695,6 +751,8 @@ $ blockchain_go send -from 1AmVdDvvQ977oVCpUqz7zAPUEiXKrX5avR -to 1NE86r4Esjf53E
 ## Conclusion
 
 It’s really awesome that we’ve got so far and implemented so many key features of Bitcoin! We’ve implemented almost everything outside networking, and in the next part, we’ll finish transactions.
+
+到目前为止，我们已经取得了如此多的比特币关键功能，这真是太棒了！我们已经实现了几乎所有网络之外的所有内容，在下一部分中，我们将完成交易。
 
 Links:
 
