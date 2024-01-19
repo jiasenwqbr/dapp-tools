@@ -5,6 +5,7 @@
 ## White paper 白皮书
 
 - Ethereum Whitepaper <https://ethereum.org/en/whitepaper/>
+- Ethereum Whitepaper English-Chinese 中英对照
 
 ## Yellow paper 黄皮书
 
