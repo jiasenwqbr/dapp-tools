@@ -5,7 +5,7 @@
 ## White paper 白皮书
 
 - Ethereum Whitepaper <https://ethereum.org/en/whitepaper/>
-- Ethereum Whitepaper English-Chinese 中英对照
+- [Ethereum Whitepaper English-Chinese 中英对照](https://github.com/jiasenwqbr/dapp-tools/blob/main/001blockchain/008Go-Ethereum-Code-Analysis/whitepaper_en_cn.md)
 
 ## Yellow paper 黄皮书
 
