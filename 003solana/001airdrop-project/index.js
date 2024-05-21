@@ -32,7 +32,7 @@ const airDropSol = async () => {
       1 * LAMPORTS_PER_SOL
     );
 
-    // await connection.confirmTransaction(fromAirDropSignature);
+    //await connection.confirmTransaction(fromAirDropSignature);
 
     const latestBlockHash = await connection.getLatestBlockhash();
     console.log(`the latestBlockHash ${latestBlockHash}`);
