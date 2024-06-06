@@ -1,0 +1,24 @@
+{
+  "name": "close-account",
+  "version": "1.0.0",
+  "description": "close-account",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@solana/web3.js": "^1.91.8"
+  },
+  "devDependencies": {
+    "@types/bn.js": "^5.1.5",
+    "@types/chai": "^4.3.16",
+    "@types/mocha": "^10.0.6",
+    "chai": "^5.1.1",
+    "mocha": "^10.4.0",
+    "solana-bankrun": "^0.3.0",
+    "ts-mocha": "^10.0.0",
+    "typescript": "^5.4.5"
+  }
+}
