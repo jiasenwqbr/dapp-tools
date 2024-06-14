@@ -121,7 +121,35 @@ Step2：Bob选择自己的财富对等的箱子，抹去序号，和Alice一起�
 
 <img src="images/image-20240612103838871.png" alt="image-20240612103838871" style="zoom:50%;" />
 
+## 安全计算的分类
+
+### 敌手行为
+
+- 半诚实模型（按照协议描述执行，但试图从协议记录中获取信息）
+- 恶意敌手（可以执行任何攻击，发送任何的消息）
+
+<img src="images/image-20240614093417232.png" alt="image-20240614093417232" style="zoom:50%;" />
+
+
+
+
+
 ## 3.混淆电路（Oblivious Tranfer）
+
+混淆电路（GC） = 不经意传输（OT） + 逻辑电路
+
+总共有四个步骤：
+
+- Step1：Alice生成混淆电路
+- Step2：双方通信
+- Step3：Bob计算混淆电路
+- Step4：Alice和Bob共享计算结果
+
+<img src="images/image-20240613112436621.png" alt="image-20240613112436621" style="zoom:50%;" />
+
+![image-20240613113146913](images/image-20240613113146913.png)
+
+
 
 
 
