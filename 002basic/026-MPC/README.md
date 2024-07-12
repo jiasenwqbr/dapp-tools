@@ -60,7 +60,7 @@ Fairness:输出的交付应该是公平的
 
 Ideal World:
 
-存在一个理想、不可被破坏的Trusted party,接收各方输入，城市的计算某个functionality
+存在一个理想、不可被破坏的Trusted party,接收各方输入，诚实的计算某个functionality
 
 Real World：
 
@@ -80,7 +80,7 @@ Party的view：自己的输入，随机数，收到的消息
 
 敌手可能在获得输出后，使诚实方无法获得输出
 
-定义functionality：在计算法完成后，现将输出发送给敌手，根据敌手的指令选择是否发送给城市方
+定义functionality：在计算法完成后，现将输出发送给敌手，根据敌手的指令选择是否发送给诚实方
 
 构造的simulator需要首先【提取】出现实世界中的敌手输入，以模拟现实世界输入的影响
 
