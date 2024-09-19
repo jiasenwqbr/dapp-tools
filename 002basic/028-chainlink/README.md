@@ -141,6 +141,87 @@ Cryptographic Keys
 
 ## 03 预言机，ERC-20 Token和Chainlink喂价
 
+### 智能合约的限制 Limitations of Smart Contracts
+
+![image-20240914143121857](images/image-20240914143121857.png)
+
+![image-20240914143337837](images/image-20240914143337837.png)
+
+![image-20240914143647616](images/image-20240914143647616.png)
+
+区块链预言机：Blockchain Oracle:
+
+与链下世界发生交互获得计算或者数据的基础设施成为预言机。The infrastructure that interacts with the off-chain world to obtain computation or data is called an oracle.
+
+![image-20240914145336214](images/image-20240914145336214.png)
+
+![image-20240914145457377](images/image-20240914145457377.png)
+
+![image-20240914150018461](images/image-20240914150018461.png)
+
+Chainlink是区块链不可知论者
+
+![image-20240914150644131](images/image-20240914150644131.png)
+
+### 区块链预言机 Blockchain Oracle
+
+区块链预言机的标准 Standard for blockchain oracles
+
+Chainlink扩展了智能合约的能力。给链下数据和计算提供了安全的链上入口。Chainlink expands the capabilities of smart contracts. It provides a secure on-chain entry for off-chain data and computation.
+
+![image-20240918123029151](images/image-20240918123029151.png)
+
+
+
+### Chinklink预言机的Web3服务 Chinklink Oracle Web3 Services
+
+![image-20240918124431844](images/image-20240918124431844.png)
+
+### 如何发布一个通证 How to issue a token
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+contract MyToken is ERC20 {
+    uint256 minimum_value = 10 * 10 ** 18;
+    constructor() ERC20("MyToken", "MTK") {}
+    
+    function mint() public {
+        _mint(msg.sender,minimum_value);
+    }
+}
+```
+
+
+
+### 什么是ERC20标准 What is the ERC20 standard?
+
+
+
+### 通过继承ERC-20标准来发布通证 Issue tokens by inheriting the ERC-20 standard
+
+
+
+### Chainlink Data Feed
+
+![image-20240919105329323](images/image-20240919105329323.png)
+
+- 给你的智能合约提供价格数据 Provide price data to your smart contract
+- 从外部数据源获取 Obtain from external data sources
+- 外部数据源覆盖FEX和CEX市场 External data sources cover FEX and CEX markets
+- 固定而且优质的数据提供商  Fixed and high-quality data providers
+- 和交易量相关的计算方法  Calculation methods related to transaction volume
+- 在多个区块联网络中都可以使用  Can be used in multiple blockchain networks
+
+![image-20240919110152232](images/image-20240919110152232.png)
+
+
+
+### 通过Data Feed来设置mint门槛 Setting mint thresholds via Data Feed
+
 
 
 
