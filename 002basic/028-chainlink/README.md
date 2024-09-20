@@ -218,6 +218,31 @@ contract MyToken is ERC20 {
 
 ![image-20240919110152232](images/image-20240919110152232.png)
 
+Chainlink Data Feeds are the quickest way to connect your smart contracts to the real-world data such as asset prices, reserve balances, and L2 sequencer health.
+
+Chainlink Data Feeds 是将您的智能合约连接到现实世界数据（例如资产价格、储备余额和 L2 序列器健康状况）的最快方法。
+
+#### data feeds类型 Types of data feeds
+
+Data feeds provide many different types of data for your applications.
+
+- Price Feeds 价格Feeds
+- Proof of Reserve Feeds 
+- Rate and Volatility Feeds 利率和波动率Feeds
+- L2 sequencer uptime feeds  L2排序器uptime feeds
+
+##### Price Feeds
+
+Smart contracts often act in real-time on data such as prices of assets. This is especially true in DeFi. 智能合约经常对资产价格等数据进行实时操作。在[DeFi](https://chain.link/use-cases/defi)中尤其如此。
+
+For example, Synthetix uses Data Feeds to determine prices on their derivatives platform. Lending and borrowing platforms like AAVE use Data Feeds to ensure the total value of the collateral.例如， [Synthetix](https://www.synthetix.io/)使用Data Feeds 确定其衍生品平台上的价格。使用[AAVE](https://aave.com/)等借贷平台Data Feeds 以确保抵押品的总价值。
+
+Data Feeds aggregate many data sources and publish them onchain using a combination of the Decentralized Data Model and Offchain Reporting.Data Feeds 结合[去中心化的数据模型](https://docs.chain.link/architecture-overview/architecture-decentralized-model?parent=dataFeeds)和[链下报告](https://docs.chain.link/architecture-overview/off-chain-reporting?parent=dataFeeds)，聚合众多数据源并将其发布到链上。
+
+
+
+
+
 
 
 ### 通过Data Feed来设置mint门槛 Setting mint thresholds via Data Feed
@@ -227,6 +252,57 @@ contract MyToken is ERC20 {
 
 
 ## 04 Chainlink随机数游戏应用
+
+Chainlink VRF可验证的随机函数
+
+为什么在智能合约中难以生成随机数？
+
+- 区块链是一个确定行的系统，所有结果都可以预测，没有随机性
+- 对于任何一笔交易，每个节点都需要达成同样的结果（共识算法要求）
+
+![image-20240919132238072](images/image-20240919132238072.png)
+
+VRF的定义：
+
+在密码学中，可验证随机函数（VRF）是为随机函数，该函数可以生成随机数和证明，其中证明可以保证随机数是合法的。
+
+1.可验证 Verifiability
+
+2.独特性 Uniqueness
+
+3.伪随机 Pseudo-random
+
+VRF中的3个函数：
+
+1.密钥生成函数
+
+​	G(r) => (PK,SK)
+
+​	PK:公钥
+
+​	SK:私钥
+
+2.随机数生成函数
+
+​	E(SK,seed) => (Randomness,Proof)
+
+​	Seed：生成随机数的种子
+
+​	Randomness：VRF返回的随机数
+
+​	Proof：证明随机的合法性
+
+3.验证函数
+
+​	V(PK,seed,Randomness,Proof) => (true or false)
+
+![image-20240919143227991](images/image-20240919143227991.png)
+
+![image-20240919150010953](images/image-20240919150010953.png)
+
+![image-20240919150144838](images/image-20240919150144838.png)
+
+
 
 
 
