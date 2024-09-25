@@ -331,6 +331,60 @@ VRF中的3个函数：
 
 ## 08 CCIP跨链Token转移 -USDC
 
+互操作性（Interoperablidity）
+
+区块链 = 独立网络
+
+- 每一个区块链网络都是一个独立网络，独立运行
+- 区块链网络之间无法直接通信
+
+为什么需要跨链-流动性的碎片化
+
+![image-20240925100317874](images/image-20240925100317874.png)
+
+![image-20240925100709892](images/image-20240925100709892.png)
+
+
+
+![image-20240925102234991](images/image-20240925102234991.png)
+
+### CCIP的核心功能
+
+Token跨链：将token从一条链转移给另一条链的智能合约地址或者EOA。
+
+任意新跨链：将任意一条信息（字节）从一条链转移给另一条链用于接受的智能合约。
+
+可编程的Token跨链：将token以及相关的指令（要如何操作这个token）从一条链转移给另一条链的用于接受的智能合约。
+
+### CCIP主要部件
+
+3各领域
+
+- 源链（Source chain）
+- 目的链（Destination chain）
+- 链下部分（Offchain）
+
+Sender和receiver由用户自己开发
+
+- Sender：EOA或者智能合约
+- Receiver：EOA或者智能合约，合约需要实现ccipRecive功能
+
+其他的组件有Chainlink开发并且部署
+
+跨链消息
+
+- 转移token
+- 发送任意消息
+- 转移token并且发送数据
+
+![image-20240925111006809](images/image-20240925111006809.png)
+
+![image-20240925112016288](images/image-20240925112016288.png)
+
+![image-20240925112824938](images/image-20240925112824938.png)
+
+
+
 
 
 ## 09 CCIP跨链NFT
