@@ -22,6 +22,7 @@
 # uniswap 运行逻辑
 
 1. uniswap核心合约分为3个合约,工厂合约,配对合约,ERC20合约
+   Uniswap core contracts are divided into 3 contracts, factory contracts, pairing contracts, and ERC20 contracts.
 2. 核心合约布署时只需要布署工厂合约
 3. 工厂合约布署时构造函数只需要设定一个手续费管理员
 4. 在工厂合约布署之后,就可以进行创建配对的操作
@@ -29,7 +30,7 @@
 6. 添加配对时需要提供两个token的地址,随后工厂合约会为这个交易对布署一个新的配对合约
 7. 配对合约的布署是通过create2的方法
 8. 两个token地址按2进制大小排序后一起进行hash,以这个hash值作为create2的salt进行布署
-9. 所以配对合约的地址是可以通过两个token地址进行create2计算的
+9.  所以配对合约的地址是可以通过两个token地址进行create2计算的
 10. 用户可以将两个token存入到配对合约中,然后在配对合约中为用户生成一种兼容ERC20的token
 11. 配对合约中生成的erc20Token可以成为流动性
 12. 流动性的token可以进行erc20的操作,可以将流动性token传送给其他用户
