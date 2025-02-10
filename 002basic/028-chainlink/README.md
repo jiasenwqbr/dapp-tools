@@ -383,6 +383,27 @@ Sender和receiver由用户自己开发
 
 ![image-20240925112824938](images/image-20240925112824938.png)
 
+CCIP工作流
+
+![image-20240925113316262](images/image-20240925113316262.png)
+
+### 如何进行token跨链
+
+CCIP架构：Token处理机制
+
+CCIP token桥可以在源链和目标链支持多种token机制。Token处理机制是了解token如何通过CCIP转移的关键。不同的机制对于发行者，持有者和DeFi都有不同的优缺点。
+![image-20240925120334990](images/image-20240925120334990.png)
+
+![image-20240925120617052](images/image-20240925120617052.png)
+
+![image-20240925151108830](images/image-20240925151108830.png)
+
+![image-20240925151239214](images/image-20240925151239214.png)
+
+![image-20240925151343099](images/image-20240925151343099.png)
+
+![image-20240925151603944](images/image-20240925151603944.png)
+
 
 
 
