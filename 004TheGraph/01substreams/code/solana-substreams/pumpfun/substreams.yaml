@@ -1,0 +1,28 @@
+specVersion: v0.1.0
+package:
+  name: 'pumpfun_events'
+  version: v0.1.5
+
+imports:
+  sol: https://spkg.io/streamingfast/solana-common-v0.3.0.spkg
+
+protobuf:
+  files:
+    - pumpfun.proto
+  importPaths:
+    - ./proto
+
+binaries:
+  default:
+    type: wasm/rust-v1
+    file: target/wasm32-unknown-unknown/release/pumpfun_substream.wasm
+
+modules:
+  - name: pumpfun_events
+    kind: map
+    inputs:
+      - map: sol:blocks_without_votes
+    output:
+      type: proto:pumpfun.PumpfunBlockEvents
+
+network: solana

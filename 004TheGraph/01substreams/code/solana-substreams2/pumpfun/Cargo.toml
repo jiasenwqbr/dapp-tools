@@ -1,0 +1,20 @@
+[package]
+name = "pumpfun-substream"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+name = "pumpfun_substream"
+crate-type = ["lib", "cdylib"]
+
+[dependencies]
+substreams = { workspace = true }
+substreams-solana = { workspace = true }
+substreams-solana-utils = { workspace = true }
+prost = { workspace = true }
+bs58 = { workspace = true }
+borsh = { workspace = true }
+lazy_static = { workspace = true }
+anyhow = { workspace = true }
+spl-token-substream = { path = "../spl_token"}
+system-program-substream = { path = "../system_program" }

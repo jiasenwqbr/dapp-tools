@@ -1,0 +1,31 @@
+specVersion: v0.1.0
+package:
+  name: 'system_program_events'
+  version: v0.1.7
+  description: System Program events substream
+  url: https://github.com/0xpapercut/solana-substreams
+  image: ./sol.png
+
+imports:
+  sol: https://spkg.io/streamingfast/solana-common-v0.3.0.spkg
+
+protobuf:
+  files:
+    - system_program.proto
+  importPaths:
+    - ./proto
+
+binaries:
+  default:
+    type: wasm/rust-v1
+    file: target/wasm32-unknown-unknown/release/system_program_substream.wasm
+
+modules:
+  - name: system_program_events
+    kind: map
+    inputs:
+      - map: sol:blocks_without_votes
+    output:
+      type: proto:system_program.SystemProgramBlockEvents
+
+network: solana

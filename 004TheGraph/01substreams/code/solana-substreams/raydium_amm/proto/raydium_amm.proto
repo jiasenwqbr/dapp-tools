@@ -1,0 +1,94 @@
+syntax = "proto3";
+
+package raydium_amm;
+
+message RaydiumAmmBlockEvents {
+    repeated RaydiumAmmTransactionEvents transactions = 2;
+}
+
+message RaydiumAmmTransactionEvents {
+    string signature = 1;
+    repeated RaydiumAmmEvent events = 2;
+}
+
+message RaydiumAmmEvent {
+    oneof event {
+        InitializeEvent initialize = 1;
+        DepositEvent deposit = 2;
+        WithdrawEvent withdraw = 3;
+        WithdrawPnlEvent withdraw_pnl = 4;
+        SwapEvent swap = 5;
+    }
+}
+
+message InitializeEvent {
+    string amm = 1;
+    string user = 2;
+    uint64 pcInitAmount = 3;
+    uint64 coinInitAmount = 4;
+    uint64 lpInitAmount = 5;
+    string pcMint = 6;
+    string coinMint = 7;
+    string lpMint = 8;
+    uint32 nonce = 9;
+    optional string market = 10;
+    optional uint64 userPcPreBalance = 11;
+    optional uint64 userCoinPreBalance = 12;
+}
+
+message DepositEvent {
+    string amm = 1;
+    string user = 2;
+    uint64 pcAmount = 3;
+    uint64 coinAmount = 4;
+    uint64 lpAmount = 5;
+    string pcMint = 6;
+    string coinMint = 7;
+    string lpMint = 8;
+    optional uint64 poolPcAmount = 9;
+    optional uint64 poolCoinAmount = 10;
+    optional uint64 poolLpAmount = 11;
+    optional uint64 userPcPreBalance = 12;
+    optional uint64 userCoinPreBalance = 13;
+}
+
+message WithdrawEvent {
+    string amm = 1;
+    string user = 2;
+    uint64 pcAmount = 3;
+    uint64 coinAmount = 4;
+    uint64 lpAmount = 5;
+    string pcMint = 6;
+    string coinMint = 7;
+    string lpMint = 8;
+    optional uint64 poolPcAmount = 9;
+    optional uint64 poolCoinAmount = 10;
+    optional uint64 poolLpAmount = 11;
+    optional uint64 userPcPreBalance = 12;
+    optional uint64 userCoinPreBalance = 13;
+}
+
+message WithdrawPnlEvent {
+    string amm = 1;
+    string user = 2;
+    optional uint64 pcAmount = 3;
+    optional uint64 coinAmount = 4;
+    optional string pcMint = 6;
+    optional string coinMint = 7;
+}
+
+message SwapEvent {
+    string amm = 1;
+    string user = 2;
+    string mintIn = 3;
+    string mintOut = 4;
+    uint64 amountIn = 5;
+    uint64 amountOut = 6;
+    string direction = 7;
+    optional uint64 poolPcAmount = 8;
+    optional uint64 poolCoinAmount = 9;
+    string pcMint = 10;
+    string coinMint = 11;
+    optional uint64 userPreBalanceIn = 12;
+    optional uint64 userPreBalanceOut = 13;
+}

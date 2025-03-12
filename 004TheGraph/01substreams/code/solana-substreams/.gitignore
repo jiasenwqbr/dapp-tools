@@ -1,0 +1,5 @@
+.envrc
+target
+.idea
+*.spkg
+*.log

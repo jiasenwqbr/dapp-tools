@@ -1,0 +1,31 @@
+specVersion: v0.1.0
+package:
+  name: 'solana_dex_with_sol_events'
+  version: v0.2.3
+  description: Solana DEX(support raydium、pumpfun now) AMM events and System Program Transfer events
+  url: https://github.com/0xRad7/solana-substreams
+  image: ./raydium.png
+
+imports:
+  sol: https://spkg.io/streamingfast/solana-common-v0.3.0.spkg
+
+protobuf:
+  files:
+    - raydium_amm.proto
+  importPaths:
+    - ./proto
+
+binaries:
+  default:
+    type: wasm/rust-v1
+    file: ./../target/wasm32-unknown-unknown/release/raydium_amm_substream.wasm
+
+modules:
+  - name: raydium_amm_events
+    kind: map
+    inputs:
+      - map: sol:blocks_without_votes
+    output:
+      type: proto:raydium_amm.RaydiumAmmBlockEvents
+
+network: solana

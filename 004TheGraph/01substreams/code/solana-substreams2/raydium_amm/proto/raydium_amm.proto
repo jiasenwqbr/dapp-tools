@@ -1,0 +1,154 @@
+syntax = "proto3";
+
+package raydium_amm;
+
+message RaydiumAmmBlockEvents {
+    repeated RaydiumAmmTransactionEvents transactions = 2;
+}
+
+message RaydiumAmmTransactionEvents {
+    string signature = 1;
+    repeated RaydiumAmmEvent events = 2;
+    string block_time = 3;
+    string transaction_index = 4;
+}
+
+message RaydiumAmmEvent {
+    oneof event {
+        InitializeEvent initialize = 1;
+        DepositEvent deposit = 2;
+        WithdrawEvent withdraw = 3;
+        WithdrawPnlEvent withdraw_pnl = 4;
+        SwapEvent swap = 5;
+        TransferEvent transfer = 6;
+        TransferWithSeedEvent transfer_with_seed = 7;
+        PumpfunSwapEvent pumpfun_swap = 8;
+        PumpfunWithdrawEvent pumpfun_withdraw = 9;
+        PumpfunCreateEvent pumpfun_create = 10;
+    }
+}
+
+message InitializeEvent {
+    string amm = 1;
+    string user = 2;
+    uint64 pcInitAmount = 3;
+    uint64 coinInitAmount = 4;
+    uint64 lpInitAmount = 5;
+    string pcMint = 6;
+    string coinMint = 7;
+    string lpMint = 8;
+    uint32 nonce = 9;
+    optional string market = 10;
+    optional uint64 userPcPreBalance = 11;
+    optional uint64 userCoinPreBalance = 12;
+}
+
+message DepositEvent {
+    string amm = 1;
+    string user = 2;
+    uint64 pcAmount = 3;
+    uint64 coinAmount = 4;
+    uint64 lpAmount = 5;
+    string pcMint = 6;
+    string coinMint = 7;
+    string lpMint = 8;
+    optional uint64 poolPcAmount = 9;
+    optional uint64 poolCoinAmount = 10;
+    optional uint64 poolLpAmount = 11;
+    optional uint64 userPcPreBalance = 12;
+    optional uint64 userCoinPreBalance = 13;
+}
+
+message WithdrawEvent {
+    string amm = 1;
+    string user = 2;
+    uint64 pcAmount = 3;
+    uint64 coinAmount = 4;
+    uint64 lpAmount = 5;
+    string pcMint = 6;
+    string coinMint = 7;
+    string lpMint = 8;
+    optional uint64 poolPcAmount = 9;
+    optional uint64 poolCoinAmount = 10;
+    optional uint64 poolLpAmount = 11;
+    optional uint64 userPcPreBalance = 12;
+    optional uint64 userCoinPreBalance = 13;
+}
+
+message WithdrawPnlEvent {
+    string amm = 1;
+    string user = 2;
+    optional uint64 pcAmount = 3;
+    optional uint64 coinAmount = 4;
+    optional string pcMint = 6;
+    optional string coinMint = 7;
+}
+
+message SwapEvent {
+    string amm = 1;
+    string user = 2;
+    string mintIn = 3;
+    string mintOut = 4;
+    uint64 amountIn = 5;
+    uint64 amountOut = 6;
+    string direction = 7;
+    optional uint64 poolPcAmount = 8;
+    optional uint64 poolCoinAmount = 9;
+    string pcMint = 10;
+    string coinMint = 11;
+    optional uint64 userPreBalanceIn = 12;
+    optional uint64 userPreBalanceOut = 13;
+}
+
+message TransferEvent {
+    string funding_account = 1;
+    string recipient_account = 2;
+    uint64 lamports = 3;
+    AccountBalance funding_account_balance = 4;
+    AccountBalance recipient_account_balance = 5;
+}
+
+message TransferWithSeedEvent {
+    string funding_account = 1;
+    string base_account = 2;
+    string recipient_account = 3;
+    uint64 lamports = 4;
+    string from_seed = 5;
+    string from_owner = 6;
+    AccountBalance funding_account_balance = 7;
+    AccountBalance recipient_account_balance = 8;
+}
+
+message AccountBalance {
+    uint64 pre_balance = 1;
+    uint64 post_balance = 2;
+}
+
+message PumpfunCreateEvent {
+    string user = 1;
+    string name = 2;
+    string symbol = 3;
+    string uri = 4;
+    string mint = 5;
+    string bonding_curve = 6;
+    string associated_bonding_curve = 7;
+    string metadata = 8;
+}
+
+message PumpfunSwapEvent {
+    string user = 1;
+    string mint = 2;
+    string bonding_curve = 3;
+    optional uint64 sol_amount = 4;
+    uint64 token_amount = 5;
+    string direction = 6;
+    optional uint64 virtual_sol_reserves = 7;
+    optional uint64 virtual_token_reserves = 8;
+    optional uint64 real_sol_reserves = 9;
+    optional uint64 real_token_reserves = 10;
+    optional uint64 user_token_pre_balance = 11;
+}
+
+message PumpfunWithdrawEvent {
+    string mint = 1;
+}

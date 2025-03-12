@@ -1,0 +1,25 @@
+[package]
+name = "raydium-amm-substream"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+name = "raydium_amm_substream"
+crate-type = ["lib", "cdylib"]
+
+[dependencies]
+substreams = { workspace = true }
+substreams-solana = { workspace = true }
+substreams-solana-utils = { workspace = true }
+prost = { workspace = true }
+bs58 = { workspace = true }
+bincode = { workspace = true }
+base64 = { workspace = true }
+serde = { workspace = true }
+arrayref = { workspace = true }
+safe-transmute = { workspace = true }
+bytemuck = { workspace = true }
+lazy_static = { workspace = true }
+regex = { workspace = true }
+anyhow = { workspace = true }
+spl-token-substream = { path = "../spl_token"}

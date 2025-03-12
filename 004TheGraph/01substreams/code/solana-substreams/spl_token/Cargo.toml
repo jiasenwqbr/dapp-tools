@@ -1,0 +1,17 @@
+[package]
+name = "spl-token-substream"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+name = "spl_token_substream"
+crate-type = ["lib", "cdylib"]
+
+[dependencies]
+substreams = { workspace = true }
+substreams-solana = { workspace = true }
+substreams-solana-utils = { workspace = true }
+prost = { workspace = true }
+bs58 = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
