@@ -1,0 +1,43 @@
+specVersion: v0.1.0
+package:
+  name: "raydium-amm"
+  version: v0.0.2
+
+imports:
+  sql: https://github.com/streamingfast/substreams-sink-sql/releases/download/protodefs-v1.0.7/substreams-sink-sql-protodefs-v1.0.7.spkg
+  database_change: https://github.com/streamingfast/substreams-sink-database-changes/releases/download/v1.2.1/substreams-database-change-v1.2.1.spkg
+  sol: https://spkg.io/streamingfast/solana-common-v0.3.0.spkg
+  # main: ./substreams.dev.yaml
+
+# protobuf:
+#   excludePaths:
+#     - sf/substreams/sink
+#     - sf/substreams/v1
+#     - sf/substreams/index
+#     - sf/substreams/intern
+#     - google
+
+network: solana-mainnet-beta
+
+binaries:
+  default:
+    type: wasm/rust-v1
+    file: ../target/wasm32-unknown-unknown/release/raydium_amm_substream.wasm
+
+modules:
+  - name: db_out
+    kind: map
+    initialBlock: 326389001
+    inputs:
+      - map: sol:blocks_without_votes
+    output:
+      type: proto:sf.substreams.sink.database.v1.DatabaseChanges
+
+sink:
+  module: db_out
+  type: sf.substreams.sink.sql.v1.Service
+  config:
+    schema: "../schema.sql"
+    engine: postgres
+    postgraphile_frontend:
+      enabled: true

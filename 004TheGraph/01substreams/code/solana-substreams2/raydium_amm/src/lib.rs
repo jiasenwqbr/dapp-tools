@@ -1,4 +1,8 @@
+use std::collections::HashMap;
+
+use ::log::info;
 use anyhow::{anyhow, Context, Error};
+use raydium_amm::log;
 use regex;
 
 use substreams_solana::pb::sf::solana::r#type::v1::Block;
@@ -36,23 +40,181 @@ use system_program_substream;
 pub mod pb;
 use pb::raydium_amm::raydium_amm_event::Event;
 use pb::raydium_amm::*;
+use substreams_database_change::pb::database::{table_change::Operation, DatabaseChanges};
+// fn raydium_amm_events(block: Block) -> Result<RaydiumAmmBlockEvents, Error> {
+//     let transactions: Vec<RaydiumAmmTransactionEvents> = parse_block(&block);
+//     for (i, transaction) in transactions.iter().enumerate() {
+//         let block_time = transaction.block_time.clone();
+//         let signature = transaction.signature.clone();
+//         let transaction_index = transaction.transaction_index.clone();
+//         let events: Vec<RaydiumAmmEvent> = transaction.events.clone();
+//         for (j, event) in events.iter().enumerate() {
+//             // add code here
+//             if let Some(inner_event) = &event.event {
+//                 match inner_event {
+//                     raydium_amm_event::Event::Initialize(event_data) => {
+//                         println!(
+//                         "[Tx {} Event {}] Initialize: AMM = {}, User = {}, PC Init = {}, Coin Init = {}, LP Init = {}",
+//                         i, j, event_data.amm, event_data.user, event_data.pc_init_amount, event_data.coin_init_amount, event_data.lp_init_amount
+//                     );
+//                     }
 
-#[substreams::handlers::map]
-fn raydium_amm_events(block: Block) -> Result<RaydiumAmmBlockEvents, Error> {
-    let transactions: Vec<RaydiumAmmTransactionEvents> = parse_block(&block);
-    Ok(RaydiumAmmBlockEvents { transactions })
-}
-
-// pub fn sendToMQ() {
-//     // 发送到 RabbitMQ
-//     let rt = Runtime::new().unwrap();
-//     let conn = Connection::connect(
-//         "amqp://guest:guest@localhost:5672/%2f",
-//         ConnectionProperties::default(),
-//     )
-//     .expect("Failed to connect to RabbitMQ");
+//                     raydium_amm_event::Event::Swap(event_data) => {}
+//                     raydium_amm_event::Event::Transfer(event_data) => {}
+//                     _ => {}
+//                 }
+//             }
+//         }
+//     }
+//     Ok(RaydiumAmmBlockEvents { transactions })
 // }
+#[substreams::handlers::map]
+fn db_out(block: Block) -> Result<DatabaseChanges, substreams::errors::Error> {
+    let transactions: Vec<RaydiumAmmTransactionEvents> = parse_block(&block);
+    info!("Processing transactions at block: {:?}", transactions);
+    let mut database_changes: DatabaseChanges = Default::default();
+    transform_block_meta_to_database_changes(&mut database_changes, transactions);
+    Ok(database_changes)
+}
+fn transform_block_meta_to_database_changes(
+    changes: &mut DatabaseChanges,
+    transactions: Vec<RaydiumAmmTransactionEvents>,
+) {
+    for (i, transaction) in transactions.iter().enumerate() {
+        let events: Vec<RaydiumAmmEvent> = transaction.events.clone();
+        for (j, event) in events.iter().enumerate() {
+            // add code here
+            if let Some(inner_event) = &event.event {
+                match inner_event {
+                    raydium_amm_event::Event::Initialize(event_data) => {
+                        println!(
+                        "[Tx {} Event {}] Initialize: AMM = {}, User = {}, PC Init = {}, Coin Init = {}, LP Init = {}",
+                        i, j, event_data.amm, event_data.user, event_data.pc_init_amount, event_data.coin_init_amount, event_data.lp_init_amount
+                    );
+                    }
 
+                    raydium_amm_event::Event::Swap(event_data) => {
+                        let block_time = transaction.block_time.clone();
+                        let signature = transaction.signature.clone();
+                        let transaction_index = transaction.transaction_index.clone();
+                        push_swap(
+                            changes,
+                            block_time,
+                            signature,
+                            transaction_index,
+                            event_data.clone(),
+                            i * j + j,
+                        );
+                    }
+                    raydium_amm_event::Event::Transfer(event_data) => {
+                        let block_time = transaction.block_time.clone();
+                        let signature = transaction.signature.clone();
+                        let transaction_index = transaction.transaction_index.clone();
+                        push_transfer(
+                            changes,
+                            block_time,
+                            signature,
+                            transaction_index,
+                            event_data.clone(),
+                            i * j + j,
+                        );
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+}
+fn push_transfer(
+    changes: &mut DatabaseChanges,
+    block_time: String,
+    signature: String,
+    transaction_index: String,
+    event_data: TransferEvent,
+
+    counter: usize,
+) {
+    let pre_balance = match &event_data.funding_account_balance {
+        Some(account_balance) => account_balance.pre_balance, // ✅ 直接使用引用
+        None => AccountBalance::default().pre_balance,
+    };
+    let post_balance = match &event_data.funding_account_balance {
+        Some(account_balance) => account_balance.post_balance,
+        None => AccountBalance::default().post_balance,
+    };
+    let recipient_account_balance_pre_balance = match &event_data.recipient_account_balance {
+        Some(pre_balance) => pre_balance.pre_balance,
+        None => AccountBalance::default().pre_balance,
+    };
+    let recipient_account_balance_post_balance = match &event_data.recipient_account_balance {
+        Some(balance) => balance.post_balance,
+        None => AccountBalance::default().post_balance,
+    };
+
+    // changes
+    //     .push_change("solana_raydium_transfer", "id", 1, Operation::Create)
+
+    let mut composite_key = HashMap::new();
+    composite_key.insert("id".to_string(), format!("{}{}", signature, counter));
+
+    changes
+        .push_change_composite(
+            "solana_raydium_transfer",
+            composite_key,
+            1,
+            Operation::Create,
+        )
+        .change("signature", (None, signature))
+        .change("transaction_index", (None, transaction_index))
+        .change("block_time", (None, block_time))
+        .change("funding_account", (None, event_data.funding_account))
+        .change("recipient_account", (None, event_data.recipient_account))
+        .change("lamports", (None, event_data.lamports))
+        .change("funding_account_balance_pre_balance", (None, pre_balance))
+        .change("funding_account_balance_post_balance", (None, post_balance))
+        .change(
+            "recipient_account_balance_pre_balance",
+            (None, recipient_account_balance_pre_balance),
+        )
+        .change(
+            "recipient_account_balance_post_balance",
+            (None, recipient_account_balance_post_balance),
+        );
+}
+fn push_swap(
+    changes: &mut DatabaseChanges,
+    block_time: String,
+    signature: String,
+    transaction_index: String,
+    event_data: SwapEvent,
+    counter: usize,
+) {
+    // changes
+    //     .push_change("solana_raydium_swap", "id", 1, Operation::Create)
+    //     .change("id", (None, format!("{}{}", signature, counter)))
+
+    let mut composite_key: HashMap<String, String> = HashMap::new();
+    composite_key.insert("id".to_string(), format!("{}{}", signature, counter));
+
+    changes
+        .push_change_composite("solana_raydium_swap", composite_key, 1, Operation::Create)
+        .change("signature", (None, signature))
+        .change("transaction_index", (None, transaction_index))
+        .change("block_time", (None, block_time))
+        .change("amm", (None, event_data.amm))
+        .change("user_swap", (None, event_data.user))
+        .change("mint_in", (None, event_data.mint_in))
+        .change("mint_out", (None, event_data.mint_out))
+        .change("amount_in", (None, event_data.amount_in))
+        .change("amount_out", (None, event_data.amount_out))
+        .change("direction", (None, event_data.direction))
+        .change("pool_pc_amount", (0, event_data.pool_coin_amount))
+        .change("pool_coin_amount", (0, event_data.pool_coin_amount))
+        .change("pc_mint", (None, event_data.pc_mint))
+        .change("coin_mint", (None, event_data.coin_mint))
+        .change("user_pre_balance_out", (0, event_data.user_pre_balance_out))
+        .change("user_pre_balance_in", (0, event_data.user_pre_balance_in));
+}
 pub fn parse_block(block: &Block) -> Vec<RaydiumAmmTransactionEvents> {
     let mut block_events: Vec<RaydiumAmmTransactionEvents> = Vec::new();
     let timestamp = block.block_time.as_ref().unwrap().timestamp;
@@ -69,6 +231,29 @@ pub fn parse_block(block: &Block) -> Vec<RaydiumAmmTransactionEvents> {
         }
     }
     block_events
+}
+
+fn generate_uuid(block_time: &str, counter: usize) -> String {
+    use std::hash::{DefaultHasher, Hasher};
+    // 1. 组合时间戳 + 计数器，形成唯一输入
+    let input = format!("{}-{}", block_time, counter);
+
+    // 2. 计算哈希值
+    let mut hasher = DefaultHasher::new();
+    hasher.write(input.as_bytes());
+    let hash = hasher.finish(); // 64-bit 哈希值
+
+    // 3. 转换为 UUID 格式 (8-4-4-4-12)
+    let uuid = format!(
+        "{:08x}-{:04x}-{:04x}-{:04x}-{:012x}",
+        (hash >> 32) as u32,    // 前 8 位
+        (hash >> 16) as u16,    // 4 位
+        (hash & 0xFFFF) as u16, // 4 位
+        (hash & 0xFFFF) as u16, // 4 位
+        counter                 // 12 位 (用计数器保证唯一性)
+    );
+
+    uuid
 }
 
 pub fn parse_transaction(
