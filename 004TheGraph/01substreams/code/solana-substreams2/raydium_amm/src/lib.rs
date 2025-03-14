@@ -51,7 +51,6 @@ fn db_out(block: Block) -> Result<DatabaseChanges, substreams::errors::Error> {
     info!("Processing transactions at block: {:?}", transactions);
     let mut database_changes: DatabaseChanges = Default::default();
     let block_number = block.block_height.unwrap_or_default().block_height;
-
     transform_block_meta_to_database_changes(&mut database_changes, transactions, block_number);
     Ok(database_changes)
 }

@@ -153,6 +153,7 @@ create table IF NOT EXISTS solana_raydium_transfer_with_seed (
     recipient_account text,
     lamports bigint,
     from_owner text,
+    from_seed text,
     funding_account_pre_balance bigint,
     funding_account_post_balance bigint,
     recipient_account_pre_balance bigint,
