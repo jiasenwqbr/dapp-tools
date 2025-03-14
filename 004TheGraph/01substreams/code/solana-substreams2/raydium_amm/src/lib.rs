@@ -43,29 +43,6 @@ use pb::raydium_amm::*;
 use substreams_database_change::pb::database::{table_change::Operation, DatabaseChanges};
 // fn raydium_amm_events(block: Block) -> Result<RaydiumAmmBlockEvents, Error> {
 //     let transactions: Vec<RaydiumAmmTransactionEvents> = parse_block(&block);
-//     for (i, transaction) in transactions.iter().enumerate() {
-//         let block_time = transaction.block_time.clone();
-//         let signature = transaction.signature.clone();
-//         let transaction_index = transaction.transaction_index.clone();
-//         let events: Vec<RaydiumAmmEvent> = transaction.events.clone();
-//         for (j, event) in events.iter().enumerate() {
-//             // add code here
-//             if let Some(inner_event) = &event.event {
-//                 match inner_event {
-//                     raydium_amm_event::Event::Initialize(event_data) => {
-//                         println!(
-//                         "[Tx {} Event {}] Initialize: AMM = {}, User = {}, PC Init = {}, Coin Init = {}, LP Init = {}",
-//                         i, j, event_data.amm, event_data.user, event_data.pc_init_amount, event_data.coin_init_amount, event_data.lp_init_amount
-//                     );
-//                     }
-
-//                     raydium_amm_event::Event::Swap(event_data) => {}
-//                     raydium_amm_event::Event::Transfer(event_data) => {}
-//                     _ => {}
-//                 }
-//             }
-//         }
-//     }
 //     Ok(RaydiumAmmBlockEvents { transactions })
 // }
 #[substreams::handlers::map]
@@ -73,30 +50,38 @@ fn db_out(block: Block) -> Result<DatabaseChanges, substreams::errors::Error> {
     let transactions: Vec<RaydiumAmmTransactionEvents> = parse_block(&block);
     info!("Processing transactions at block: {:?}", transactions);
     let mut database_changes: DatabaseChanges = Default::default();
-    transform_block_meta_to_database_changes(&mut database_changes, transactions);
+    let block_number = block.block_height.unwrap_or_default().block_height;
+
+    transform_block_meta_to_database_changes(&mut database_changes, transactions, block_number);
     Ok(database_changes)
 }
 fn transform_block_meta_to_database_changes(
     changes: &mut DatabaseChanges,
     transactions: Vec<RaydiumAmmTransactionEvents>,
+    block_number: u64,
 ) {
     for (i, transaction) in transactions.iter().enumerate() {
         let events: Vec<RaydiumAmmEvent> = transaction.events.clone();
         for (j, event) in events.iter().enumerate() {
             // add code here
             if let Some(inner_event) = &event.event {
+                let block_time = transaction.block_time.clone();
+                let signature = transaction.signature.clone();
+                let transaction_index = transaction.transaction_index.clone();
                 match inner_event {
                     raydium_amm_event::Event::Initialize(event_data) => {
-                        println!(
-                        "[Tx {} Event {}] Initialize: AMM = {}, User = {}, PC Init = {}, Coin Init = {}, LP Init = {}",
-                        i, j, event_data.amm, event_data.user, event_data.pc_init_amount, event_data.coin_init_amount, event_data.lp_init_amount
-                    );
+                        push_initalize(
+                            changes,
+                            block_time,
+                            signature,
+                            transaction_index,
+                            event_data.clone(),
+                            i * j + j,
+                            block_number,
+                        );
                     }
 
                     raydium_amm_event::Event::Swap(event_data) => {
-                        let block_time = transaction.block_time.clone();
-                        let signature = transaction.signature.clone();
-                        let transaction_index = transaction.transaction_index.clone();
                         push_swap(
                             changes,
                             block_time,
@@ -107,9 +92,6 @@ fn transform_block_meta_to_database_changes(
                         );
                     }
                     raydium_amm_event::Event::Transfer(event_data) => {
-                        let block_time = transaction.block_time.clone();
-                        let signature = transaction.signature.clone();
-                        let transaction_index = transaction.transaction_index.clone();
                         push_transfer(
                             changes,
                             block_time,
@@ -119,7 +101,84 @@ fn transform_block_meta_to_database_changes(
                             i * j + j,
                         );
                     }
-                    _ => {}
+
+                    raydium_amm_event::Event::Deposit(event_data) => {
+                        push_deposit(
+                            changes,
+                            block_time,
+                            signature,
+                            transaction_index,
+                            event_data.clone(),
+                            i * j + j,
+                            block_number,
+                        );
+                    }
+                    raydium_amm_event::Event::Withdraw(event_data) => {
+                        push_withdraw(
+                            changes,
+                            block_time,
+                            signature,
+                            transaction_index,
+                            event_data.clone(),
+                            i * j + j,
+                            block_number,
+                        );
+                    }
+                    raydium_amm_event::Event::WithdrawPnl(event_data) => {
+                        push_withdraw_pnl(
+                            changes,
+                            block_time,
+                            signature,
+                            transaction_index,
+                            event_data.clone(),
+                            i * j + j,
+                            block_number,
+                        );
+                    }
+                    raydium_amm_event::Event::TransferWithSeed(event_data) => {
+                        push_transfer_with_seed(
+                            changes,
+                            block_time,
+                            signature,
+                            transaction_index,
+                            event_data.clone(),
+                            i * j + j,
+                            block_number,
+                        );
+                    }
+                    raydium_amm_event::Event::PumpfunSwap(event_data) => {
+                        push_transfer_pump_fun_swap(
+                            changes,
+                            block_time,
+                            signature,
+                            transaction_index,
+                            event_data.clone(),
+                            i * j + j,
+                            block_number,
+                        );
+                    }
+                    raydium_amm_event::Event::PumpfunWithdraw(event_data) => {
+                        push_transfer_pump_fun_withdraw(
+                            changes,
+                            block_time,
+                            signature,
+                            transaction_index,
+                            event_data.clone(),
+                            i * j + j,
+                            block_number,
+                        );
+                    }
+                    raydium_amm_event::Event::PumpfunCreate(event_data) => {
+                        push_transfer_pump_fun_create(
+                            changes,
+                            block_time,
+                            signature,
+                            transaction_index,
+                            event_data.clone(),
+                            i * j + j,
+                            block_number,
+                        );
+                    }
                 }
             }
         }
@@ -150,12 +209,8 @@ fn push_transfer(
         Some(balance) => balance.post_balance,
         None => AccountBalance::default().post_balance,
     };
-
-    // changes
-    //     .push_change("solana_raydium_transfer", "id", 1, Operation::Create)
-
     let mut composite_key = HashMap::new();
-    composite_key.insert("id".to_string(), format!("{}{}", signature, counter));
+    composite_key.insert("id".to_string(), format!("{}_{}", signature, counter));
 
     changes
         .push_change_composite(
@@ -189,12 +244,8 @@ fn push_swap(
     event_data: SwapEvent,
     counter: usize,
 ) {
-    // changes
-    //     .push_change("solana_raydium_swap", "id", 1, Operation::Create)
-    //     .change("id", (None, format!("{}{}", signature, counter)))
-
     let mut composite_key: HashMap<String, String> = HashMap::new();
-    composite_key.insert("id".to_string(), format!("{}{}", signature, counter));
+    composite_key.insert("id".to_string(), format!("{}_{}", signature, counter));
 
     changes
         .push_change_composite("solana_raydium_swap", composite_key, 1, Operation::Create)
@@ -215,6 +266,367 @@ fn push_swap(
         .change("user_pre_balance_out", (0, event_data.user_pre_balance_out))
         .change("user_pre_balance_in", (0, event_data.user_pre_balance_in));
 }
+
+fn push_initalize(
+    changes: &mut DatabaseChanges,
+    block_time: String,
+    signature: String,
+    transaction_index: String,
+    event_data: InitializeEvent,
+    counter: usize,
+    block_number: u64,
+) {
+    let mut composite_key: HashMap<String, String> = HashMap::new();
+    composite_key.insert("id".to_string(), format!("{}_{}", signature, counter));
+    changes
+        .push_change_composite(
+            "solana_raydium_initalize",
+            composite_key,
+            1,
+            Operation::Create,
+        )
+        .change("signature", (None, signature))
+        .change("transaction_index", (None, transaction_index))
+        .change("block_time", (None, block_time))
+        .change("block_number", (None, block_number))
+        .change("amm", (None, event_data.amm))
+        .change("initialize_user", (None, event_data.user))
+        .change("pc_init_amount", (None, event_data.pc_init_amount))
+        .change("coin_init_amount", (None, event_data.coin_init_amount))
+        .change("lp_init_amount", (None, event_data.lp_init_amount))
+        .change("pc_mint", (None, event_data.pc_mint))
+        .change("coin_mint", (None, event_data.coin_mint))
+        .change("lp_mint", (None, event_data.lp_mint))
+        .change("nonce", (None, event_data.nonce))
+        .change("market", (None, event_data.market.unwrap_or_default()))
+        .change(
+            "user_pc_pre_balance",
+            (None, event_data.user_pc_pre_balance.unwrap_or_default()),
+        )
+        .change(
+            "user_coin_pre_balance",
+            (None, event_data.user_coin_pre_balance.unwrap_or_default()),
+        );
+}
+
+fn push_deposit(
+    changes: &mut DatabaseChanges,
+    block_time: String,
+    signature: String,
+    transaction_index: String,
+    event_data: DepositEvent,
+    counter: usize,
+    block_number: u64,
+) {
+    let mut composite_key: HashMap<String, String> = HashMap::new();
+    composite_key.insert("id".to_string(), format!("{}_{}", signature, counter));
+    changes
+        .push_change_composite(
+            "solana_raydium_deposit",
+            composite_key,
+            1,
+            Operation::Create,
+        )
+        .change("signature", (None, signature))
+        .change("transaction_index", (None, transaction_index))
+        .change("block_time", (None, block_time))
+        .change("block_number", (None, block_number))
+        .change("amm", (None, event_data.amm))
+        .change("deposite_user", (None, event_data.user))
+        .change("pc_amount", (None, event_data.pc_amount))
+        .change("coin_amount", (None, event_data.coin_amount))
+        .change("lp_amount", (None, event_data.lp_amount))
+        .change("pc_mint", (None, event_data.pc_mint))
+        .change("coin_mint", (None, event_data.coin_mint))
+        .change("lp_mint", (None, event_data.lp_mint))
+        .change(
+            "pool_pc_amount",
+            (None, event_data.pool_pc_amount.unwrap_or_default()),
+        )
+        .change(
+            "pool_coin_amount",
+            (None, event_data.pool_coin_amount.unwrap_or_default()),
+        )
+        .change(
+            "pool_lp_amount",
+            (None, event_data.pool_lp_amount.unwrap_or_default()),
+        )
+        .change(
+            "user_pc_pre_balance",
+            (None, event_data.user_pc_pre_balance.unwrap_or_default()),
+        )
+        .change(
+            "user_coin_pre_balance",
+            (None, event_data.user_coin_pre_balance.unwrap_or_default()),
+        );
+}
+
+fn push_withdraw(
+    changes: &mut DatabaseChanges,
+    block_time: String,
+    signature: String,
+    transaction_index: String,
+    event_data: WithdrawEvent,
+    counter: usize,
+    block_number: u64,
+) {
+    let mut composite_key: HashMap<String, String> = HashMap::new();
+    composite_key.insert("id".to_string(), format!("{}_{}", signature, counter));
+    changes
+        .push_change_composite(
+            "solana_raydium_withdraw",
+            composite_key,
+            1,
+            Operation::Create,
+        )
+        .change("signature", (None, signature))
+        .change("transaction_index", (None, transaction_index))
+        .change("block_time", (None, block_time))
+        .change("block_number", (None, block_number))
+        .change("amm", (None, event_data.amm))
+        .change("deposite_user", (None, event_data.user))
+        .change("pc_amount", (None, event_data.pc_amount))
+        .change("coin_amount", (None, event_data.coin_amount))
+        .change("lp_amount", (None, event_data.lp_amount))
+        .change("pc_mint", (None, event_data.pc_mint))
+        .change("coin_mint", (None, event_data.coin_mint))
+        .change("lp_mint", (None, event_data.lp_mint))
+        .change(
+            "pool_pc_amount",
+            (None, event_data.pool_pc_amount.unwrap_or_default()),
+        )
+        .change(
+            "pool_coin_amount",
+            (None, event_data.pool_coin_amount.unwrap_or_default()),
+        )
+        .change(
+            "pool_lp_amount",
+            (None, event_data.pool_lp_amount.unwrap_or_default()),
+        )
+        .change(
+            "user_pc_pre_balance",
+            (None, event_data.user_pc_pre_balance.unwrap_or_default()),
+        )
+        .change(
+            "user_coin_pre_balance",
+            (None, event_data.user_coin_pre_balance.unwrap_or_default()),
+        );
+}
+
+fn push_withdraw_pnl(
+    changes: &mut DatabaseChanges,
+    block_time: String,
+    signature: String,
+    transaction_index: String,
+    event_data: WithdrawPnlEvent,
+    counter: usize,
+    block_number: u64,
+) {
+    let mut composite_key: HashMap<String, String> = HashMap::new();
+    composite_key.insert("id".to_string(), format!("{}_{}", signature, counter));
+    changes
+        .push_change_composite(
+            "solana_raydium_withdraw_pnl",
+            composite_key,
+            1,
+            Operation::Create,
+        )
+        .change("signature", (None, signature))
+        .change("transaction_index", (None, transaction_index))
+        .change("block_time", (None, block_time))
+        .change("block_number", (None, block_number))
+        .change("amm", (None, event_data.amm))
+        .change("withdraw_pnl_user", (None, event_data.user))
+        .change(
+            "pc_amount",
+            (None, event_data.pc_amount.unwrap_or_default()),
+        )
+        .change(
+            "coin_amount",
+            (None, event_data.coin_amount.unwrap_or_default()),
+        )
+        .change("pc_mint", (None, event_data.pc_mint.unwrap_or_default()))
+        .change(
+            "coin_mint",
+            (None, event_data.coin_mint.unwrap_or_default()),
+        );
+}
+
+fn push_transfer_with_seed(
+    changes: &mut DatabaseChanges,
+    block_time: String,
+    signature: String,
+    transaction_index: String,
+    event_data: TransferWithSeedEvent,
+    counter: usize,
+    block_number: u64,
+) {
+    let mut composite_key: HashMap<String, String> = HashMap::new();
+    let funding_account_pre_balance = match &event_data.funding_account_balance {
+        Some(account_balance) => account_balance.pre_balance, // ✅ 直接使用引用
+        None => AccountBalance::default().pre_balance,
+    };
+    let funding_account_post_balance = match &event_data.funding_account_balance {
+        Some(account_balance) => account_balance.post_balance,
+        None => AccountBalance::default().post_balance,
+    };
+    let recipient_account_pre_balance = match &event_data.recipient_account_balance {
+        Some(pre_balance) => pre_balance.pre_balance,
+        None => AccountBalance::default().pre_balance,
+    };
+    let recipient_account_post_balance = match &event_data.recipient_account_balance {
+        Some(balance) => balance.post_balance,
+        None => AccountBalance::default().post_balance,
+    };
+
+    composite_key.insert("id".to_string(), format!("{}_{}", signature, counter));
+    changes
+        .push_change_composite(
+            "solana_raydium_withdraw_pnl",
+            composite_key,
+            1,
+            Operation::Create,
+        )
+        .change("signature", (None, signature))
+        .change("transaction_index", (None, transaction_index))
+        .change("block_time", (None, block_time))
+        .change("block_number", (None, block_number))
+        .change("funding_account", (None, event_data.funding_account))
+        .change("base_account", (None, event_data.base_account))
+        .change("recipient_account", (None, event_data.recipient_account))
+        .change("lamports", (None, event_data.lamports))
+        .change("from_seed", (None, event_data.from_seed))
+        .change("from_owner", (None, event_data.from_owner))
+        .change(
+            "funding_account_pre_balance",
+            (None, funding_account_pre_balance),
+        )
+        .change(
+            "funding_account_post_balance",
+            (None, funding_account_post_balance),
+        )
+        .change(
+            "recipient_account_pre_balance",
+            (None, recipient_account_pre_balance),
+        )
+        .change(
+            "recipient_account_post_balance",
+            (None, recipient_account_post_balance),
+        );
+}
+
+fn push_transfer_pump_fun_swap(
+    changes: &mut DatabaseChanges,
+    block_time: String,
+    signature: String,
+    transaction_index: String,
+    event_data: PumpfunSwapEvent,
+    counter: usize,
+    block_number: u64,
+) {
+    let mut composite_key: HashMap<String, String> = HashMap::new();
+    composite_key.insert("id".to_string(), format!("{}_{}", signature, counter));
+    changes
+        .push_change_composite(
+            "solana_raydium_pump_fun_swap",
+            composite_key,
+            1,
+            Operation::Create,
+        )
+        .change("signature", (None, signature))
+        .change("transaction_index", (None, transaction_index))
+        .change("block_time", (None, block_time))
+        .change("block_number", (None, block_number))
+        .change("pump_fun_swap_user", (None, event_data.user))
+        .change("mint", (None, event_data.mint))
+        .change("bonding_curve", (None, event_data.bonding_curve))
+        .change(
+            "sol_amount",
+            (None, event_data.sol_amount.unwrap_or_default()),
+        )
+        .change("token_amount", (None, event_data.token_amount))
+        .change("direction", (None, event_data.direction))
+        .change(
+            "virtual_sol_reserves",
+            (None, event_data.virtual_sol_reserves.unwrap_or_default()),
+        )
+        .change(
+            "virtual_token_reserves",
+            (None, event_data.virtual_token_reserves.unwrap_or_default()),
+        )
+        .change(
+            "real_sol_reserves",
+            (None, event_data.real_sol_reserves.unwrap_or_default()),
+        )
+        .change(
+            "real_token_reserves",
+            (None, event_data.real_token_reserves.unwrap_or_default()),
+        )
+        .change(
+            "user_token_pre_balance",
+            (None, event_data.user_token_pre_balance.unwrap_or_default()),
+        );
+}
+
+fn push_transfer_pump_fun_withdraw(
+    changes: &mut DatabaseChanges,
+    block_time: String,
+    signature: String,
+    transaction_index: String,
+    event_data: PumpfunWithdrawEvent,
+    counter: usize,
+    block_number: u64,
+) {
+    let mut composite_key: HashMap<String, String> = HashMap::new();
+    composite_key.insert("id".to_string(), format!("{}_{}", signature, counter));
+    changes
+        .push_change_composite(
+            "solana_raydium_pump_fun_withdraw",
+            composite_key,
+            1,
+            Operation::Create,
+        )
+        .change("signature", (None, signature))
+        .change("transaction_index", (None, transaction_index))
+        .change("block_time", (None, block_time))
+        .change("block_number", (None, block_number))
+        .change("mint", (None, event_data.mint));
+}
+
+fn push_transfer_pump_fun_create(
+    changes: &mut DatabaseChanges,
+    block_time: String,
+    signature: String,
+    transaction_index: String,
+    event_data: PumpfunCreateEvent,
+    counter: usize,
+    block_number: u64,
+) {
+    let mut composite_key: HashMap<String, String> = HashMap::new();
+    composite_key.insert("id".to_string(), format!("{}_{}", signature, counter));
+    changes
+        .push_change_composite(
+            "solana_raydium_pump_fun_withdraw",
+            composite_key,
+            1,
+            Operation::Create,
+        )
+        .change("signature", (None, signature))
+        .change("transaction_index", (None, transaction_index))
+        .change("block_time", (None, block_time))
+        .change("block_number", (None, block_number))
+        .change("fun_name", (None, event_data.name))
+        .change("symbol", (None, event_data.symbol))
+        .change("uri", (None, event_data.uri))
+        .change("mint", (None, event_data.mint))
+        .change("bonding_curve", (None, event_data.bonding_curve))
+        .change(
+            "associated_bonding_curve",
+            (None, event_data.associated_bonding_curve),
+        )
+        .change("metadata", (None, event_data.metadata));
+}
+
 pub fn parse_block(block: &Block) -> Vec<RaydiumAmmTransactionEvents> {
     let mut block_events: Vec<RaydiumAmmTransactionEvents> = Vec::new();
     let timestamp = block.block_time.as_ref().unwrap().timestamp;
@@ -231,29 +643,6 @@ pub fn parse_block(block: &Block) -> Vec<RaydiumAmmTransactionEvents> {
         }
     }
     block_events
-}
-
-fn generate_uuid(block_time: &str, counter: usize) -> String {
-    use std::hash::{DefaultHasher, Hasher};
-    // 1. 组合时间戳 + 计数器，形成唯一输入
-    let input = format!("{}-{}", block_time, counter);
-
-    // 2. 计算哈希值
-    let mut hasher = DefaultHasher::new();
-    hasher.write(input.as_bytes());
-    let hash = hasher.finish(); // 64-bit 哈希值
-
-    // 3. 转换为 UUID 格式 (8-4-4-4-12)
-    let uuid = format!(
-        "{:08x}-{:04x}-{:04x}-{:04x}-{:012x}",
-        (hash >> 32) as u32,    // 前 8 位
-        (hash >> 16) as u16,    // 4 位
-        (hash & 0xFFFF) as u16, // 4 位
-        (hash & 0xFFFF) as u16, // 4 位
-        counter                 // 12 位 (用计数器保证唯一性)
-    );
-
-    uuid
 }
 
 pub fn parse_transaction(

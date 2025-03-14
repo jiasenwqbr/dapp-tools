@@ -9,13 +9,6 @@ imports:
   sol: https://spkg.io/streamingfast/solana-common-v0.3.0.spkg
   # main: ./substreams.dev.yaml
 
-# protobuf:
-#   excludePaths:
-#     - sf/substreams/sink
-#     - sf/substreams/v1
-#     - sf/substreams/index
-#     - sf/substreams/intern
-#     - google
 
 network: solana-mainnet-beta
 
@@ -27,7 +20,7 @@ binaries:
 modules:
   - name: db_out
     kind: map
-    initialBlock: 326389001
+    initialBlock: 326474998
     inputs:
       - map: sol:blocks_without_votes
     output:
