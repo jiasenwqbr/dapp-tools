@@ -20,7 +20,7 @@ binaries:
 modules:
   - name: db_out
     kind: map
-    initialBlock: 326474998
+    initialBlock: 326675859
     inputs:
       - map: sol:blocks_without_votes
     output:

@@ -142,3 +142,19 @@ create table IF NOT EXISTS solana_raydium_pump_fun_create (
     associated_bonding_curve text,
     metadata text
 );
+create table IF NOT EXISTS solana_raydium_transfer_with_seed (
+    id text primary key,
+    signature text,
+    block_time bigint,
+    block_number BIGINT,
+    transaction_index text,
+    funding_account text,
+    base_account text,
+    recipient_account text,
+    lamports bigint,
+    from_owner text,
+    funding_account_pre_balance bigint,
+    funding_account_post_balance bigint,
+    recipient_account_pre_balance bigint,
+    recipient_account_post_balance bigint
+);

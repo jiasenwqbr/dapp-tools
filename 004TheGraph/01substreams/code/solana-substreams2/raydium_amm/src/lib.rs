@@ -89,6 +89,7 @@ fn transform_block_meta_to_database_changes(
                             transaction_index,
                             event_data.clone(),
                             i * j + j,
+                            block_number,
                         );
                     }
                     raydium_amm_event::Event::Transfer(event_data) => {
@@ -99,6 +100,7 @@ fn transform_block_meta_to_database_changes(
                             transaction_index,
                             event_data.clone(),
                             i * j + j,
+                            block_number,
                         );
                     }
 
@@ -192,6 +194,7 @@ fn push_transfer(
     event_data: TransferEvent,
 
     counter: usize,
+    block_number: u64,
 ) {
     let pre_balance = match &event_data.funding_account_balance {
         Some(account_balance) => account_balance.pre_balance, // ✅ 直接使用引用
@@ -210,7 +213,18 @@ fn push_transfer(
         None => AccountBalance::default().post_balance,
     };
     let mut composite_key = HashMap::new();
-    composite_key.insert("id".to_string(), format!("{}_{}", signature, counter));
+    composite_key.insert(
+        "id".to_string(),
+        format!(
+            "{}_{}_{}_{}_{}_{}",
+            signature,
+            counter,
+            transaction_index,
+            block_number,
+            event_data.funding_account,
+            event_data.recipient_account
+        ),
+    );
 
     changes
         .push_change_composite(
@@ -222,6 +236,7 @@ fn push_transfer(
         .change("signature", (None, signature))
         .change("transaction_index", (None, transaction_index))
         .change("block_time", (None, block_time))
+        .change("block_number", (None, block_number))
         .change("funding_account", (None, event_data.funding_account))
         .change("recipient_account", (None, event_data.recipient_account))
         .change("lamports", (None, event_data.lamports))
@@ -243,15 +258,23 @@ fn push_swap(
     transaction_index: String,
     event_data: SwapEvent,
     counter: usize,
+    block_number: u64,
 ) {
     let mut composite_key: HashMap<String, String> = HashMap::new();
-    composite_key.insert("id".to_string(), format!("{}_{}", signature, counter));
+    composite_key.insert(
+        "id".to_string(),
+        format!(
+            "{}_{}_{}_{}_{}",
+            signature, counter, transaction_index, block_number, event_data.user
+        ),
+    );
 
     changes
         .push_change_composite("solana_raydium_swap", composite_key, 1, Operation::Create)
         .change("signature", (None, signature))
         .change("transaction_index", (None, transaction_index))
         .change("block_time", (None, block_time))
+        .change("block_number", (None, block_number))
         .change("amm", (None, event_data.amm))
         .change("user_swap", (None, event_data.user))
         .change("mint_in", (None, event_data.mint_in))
@@ -259,7 +282,7 @@ fn push_swap(
         .change("amount_in", (None, event_data.amount_in))
         .change("amount_out", (None, event_data.amount_out))
         .change("direction", (None, event_data.direction))
-        .change("pool_pc_amount", (0, event_data.pool_coin_amount))
+        .change("pool_pc_amount", (0, event_data.pool_pc_amount))
         .change("pool_coin_amount", (0, event_data.pool_coin_amount))
         .change("pc_mint", (None, event_data.pc_mint))
         .change("coin_mint", (None, event_data.coin_mint))
@@ -277,10 +300,16 @@ fn push_initalize(
     block_number: u64,
 ) {
     let mut composite_key: HashMap<String, String> = HashMap::new();
-    composite_key.insert("id".to_string(), format!("{}_{}", signature, counter));
+    composite_key.insert(
+        "id".to_string(),
+        format!(
+            "{}_{}_{}_{}_{}",
+            signature, counter, transaction_index, block_number, event_data.user
+        ),
+    );
     changes
         .push_change_composite(
-            "solana_raydium_initalize",
+            "solana_raydium_initialize",
             composite_key,
             1,
             Operation::Create,
@@ -319,10 +348,16 @@ fn push_deposit(
     block_number: u64,
 ) {
     let mut composite_key: HashMap<String, String> = HashMap::new();
-    composite_key.insert("id".to_string(), format!("{}_{}", signature, counter));
+    composite_key.insert(
+        "id".to_string(),
+        format!(
+            "{}_{}_{}_{}_{}",
+            signature, counter, transaction_index, block_number, event_data.user
+        ),
+    );
     changes
         .push_change_composite(
-            "solana_raydium_deposit",
+            "solana_raydium_deposite",
             composite_key,
             1,
             Operation::Create,
@@ -371,7 +406,13 @@ fn push_withdraw(
     block_number: u64,
 ) {
     let mut composite_key: HashMap<String, String> = HashMap::new();
-    composite_key.insert("id".to_string(), format!("{}_{}", signature, counter));
+    composite_key.insert(
+        "id".to_string(),
+        format!(
+            "{}_{}_{}_{}_{}",
+            signature, counter, transaction_index, block_number, event_data.user
+        ),
+    );
     changes
         .push_change_composite(
             "solana_raydium_withdraw",
@@ -384,7 +425,7 @@ fn push_withdraw(
         .change("block_time", (None, block_time))
         .change("block_number", (None, block_number))
         .change("amm", (None, event_data.amm))
-        .change("deposite_user", (None, event_data.user))
+        .change("withdraw_user", (None, event_data.user))
         .change("pc_amount", (None, event_data.pc_amount))
         .change("coin_amount", (None, event_data.coin_amount))
         .change("lp_amount", (None, event_data.lp_amount))
@@ -423,7 +464,13 @@ fn push_withdraw_pnl(
     block_number: u64,
 ) {
     let mut composite_key: HashMap<String, String> = HashMap::new();
-    composite_key.insert("id".to_string(), format!("{}_{}", signature, counter));
+    composite_key.insert(
+        "id".to_string(),
+        format!(
+            "{}_{}_{}_{}_{}",
+            signature, counter, transaction_index, block_number, event_data.user
+        ),
+    );
     changes
         .push_change_composite(
             "solana_raydium_withdraw_pnl",
@@ -479,10 +526,16 @@ fn push_transfer_with_seed(
         None => AccountBalance::default().post_balance,
     };
 
-    composite_key.insert("id".to_string(), format!("{}_{}", signature, counter));
+    composite_key.insert(
+        "id".to_string(),
+        format!(
+            "{}_{}_{}_{}_{}",
+            signature, counter, transaction_index, block_number, event_data.funding_account
+        ),
+    );
     changes
         .push_change_composite(
-            "solana_raydium_withdraw_pnl",
+            "solana_raydium_transfer_with_seed",
             composite_key,
             1,
             Operation::Create,
@@ -525,7 +578,13 @@ fn push_transfer_pump_fun_swap(
     block_number: u64,
 ) {
     let mut composite_key: HashMap<String, String> = HashMap::new();
-    composite_key.insert("id".to_string(), format!("{}_{}", signature, counter));
+    composite_key.insert(
+        "id".to_string(),
+        format!(
+            "{}_{}_{}_{}_{}",
+            signature, counter, transaction_index, block_number, event_data.user
+        ),
+    );
     changes
         .push_change_composite(
             "solana_raydium_pump_fun_swap",
@@ -578,7 +637,13 @@ fn push_transfer_pump_fun_withdraw(
     block_number: u64,
 ) {
     let mut composite_key: HashMap<String, String> = HashMap::new();
-    composite_key.insert("id".to_string(), format!("{}_{}", signature, counter));
+    composite_key.insert(
+        "id".to_string(),
+        format!(
+            "{}_{}_{}_{}",
+            signature, counter, transaction_index, block_number
+        ),
+    );
     changes
         .push_change_composite(
             "solana_raydium_pump_fun_withdraw",
@@ -603,10 +668,16 @@ fn push_transfer_pump_fun_create(
     block_number: u64,
 ) {
     let mut composite_key: HashMap<String, String> = HashMap::new();
-    composite_key.insert("id".to_string(), format!("{}_{}", signature, counter));
+    composite_key.insert(
+        "id".to_string(),
+        format!(
+            "{}_{}_{}_{}_{}",
+            signature, counter, transaction_index, block_number, event_data.user
+        ),
+    );
     changes
         .push_change_composite(
-            "solana_raydium_pump_fun_withdraw",
+            "solana_raydium_pump_fun_create",
             composite_key,
             1,
             Operation::Create,
