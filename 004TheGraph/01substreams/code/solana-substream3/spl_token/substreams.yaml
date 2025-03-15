@@ -1,0 +1,31 @@
+specVersion: v0.1.0
+package:
+  name: 'spl_token_events'
+  version: v0.1.7
+  description: SPL Token Program events substream
+  url: https://github.com/0xpapercut/solana-substreams
+  image: ./sol.png
+
+imports:
+  sol: https://spkg.io/streamingfast/solana-common-v0.3.0.spkg
+
+protobuf:
+  files:
+    - spl_token.proto
+  importPaths:
+    - ./proto
+
+binaries:
+  default:
+    type: wasm/rust-v1
+    file: target/wasm32-unknown-unknown/release/spl_token_substream.wasm
+
+modules:
+  - name: spl_token_events
+    kind: map
+    inputs:
+      - map: sol:blocks_without_votes
+    output:
+      type: proto:spl_token.SplTokenBlockEvents
+
+network: solana
