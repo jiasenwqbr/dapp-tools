@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use ::log::info;
 use anyhow::{anyhow, Context, Error};
-use raydium_amm::log;
 use regex;
 
 use substreams_solana::pb::sf::solana::r#type::v1::Block;
@@ -50,7 +49,7 @@ fn db_out(block: Block) -> Result<DatabaseChanges, substreams::errors::Error> {
     let transactions: Vec<RaydiumAmmTransactionEvents> = parse_block(&block);
     info!("Processing transactions at block: {:?}", transactions);
     let mut database_changes: DatabaseChanges = Default::default();
-    let block_number = block.block_height.unwrap_or_default().block_height;
+    let block_number = block.slot;
     transform_block_meta_to_database_changes(&mut database_changes, transactions, block_number);
     Ok(database_changes)
 }
@@ -65,6 +64,7 @@ fn transform_block_meta_to_database_changes(
             // add code here
             if let Some(inner_event) = &event.event {
                 let block_time = transaction.block_time.clone();
+
                 let signature = transaction.signature.clone();
                 let transaction_index = transaction.transaction_index.clone();
                 match inner_event {
