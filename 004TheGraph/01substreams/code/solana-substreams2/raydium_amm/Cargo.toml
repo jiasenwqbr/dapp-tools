@@ -25,5 +25,5 @@ regex = { workspace = true }
 anyhow = { workspace = true }
 spl-token-substream = { path = "../spl_token" }
 system-program-substream = { path = "../system_program" }
-log = { workspace = true }
+# log = { workspace = true }
 substreams-database-change = { workspace = true }

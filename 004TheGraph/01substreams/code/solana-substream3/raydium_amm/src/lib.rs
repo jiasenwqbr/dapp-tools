@@ -1,43 +1,695 @@
+use std::collections::HashMap;
+
+use anyhow::{anyhow, Context, Error};
 use regex;
-use anyhow::{anyhow, Error, Context};
 
-use substreams_solana::pb::sf::solana::r#type::v1::ConfirmedTransaction;
+use substreams_database_change::pb::database::table_change::Operation;
+use substreams_database_change::pb::database::DatabaseChanges;
 use substreams_solana::pb::sf::solana::r#type::v1::Block;
-
+use substreams_solana::pb::sf::solana::r#type::v1::ConfirmedTransaction;
 pub mod raydium_amm;
-use raydium_amm::instruction::AmmInstruction;
-use raydium_amm::constants::RAYDIUM_AMM_PROGRAM_ID;
 use raydium_amm::constants::JUPITER_AGG_PROGRAM_ID;
+use raydium_amm::constants::RAYDIUM_AMM_PROGRAM_ID;
 use raydium_amm::constants::SOL_MINIMUM_LAMPORTS;
+use raydium_amm::instruction::AmmInstruction;
 use raydium_amm::log::{decode_ray_log, RayLog};
 
-use substreams_solana_utils::system_program;
 use substreams_solana_utils as utils;
 use substreams_solana_utils::pubkey::PubkeyRef;
-use utils::instruction::{get_structured_instructions, StructuredInstruction, StructuredInstructions};
-use utils::transaction::{get_context, TransactionContext};
-use utils::pubkey::Pubkey;
-use utils::log::Log;
-use utils::system_program::{SystemInstruction, SYSTEM_PROGRAM_ID};
 use substreams_solana_utils::spl_token::TOKEN_PROGRAM_ID;
+use substreams_solana_utils::system_program;
+use utils::instruction::{
+    get_structured_instructions, StructuredInstruction, StructuredInstructions,
+};
+use utils::log::Log;
+use utils::pubkey::Pubkey;
+use utils::system_program::{SystemInstruction, SYSTEM_PROGRAM_ID};
+use utils::transaction::{get_context, TransactionContext};
 
 use spl_token_substream;
 
 pub mod pumpfun;
-use pumpfun::instruction::PumpfunInstruction;
 use pumpfun::constants::PUMPFUN_PROGRAM_ID;
+use pumpfun::instruction::PumpfunInstruction;
 use pumpfun::log::PumpfunLog;
 
 use system_program_substream;
 
 pub mod pb;
-use pb::raydium_amm::*;
 use pb::raydium_amm::raydium_amm_event::Event;
+use pb::raydium_amm::*;
 
 #[substreams::handlers::map]
-fn raydium_amm_events(block: Block) -> Result<RaydiumAmmBlockEvents, Error> {
-    let transactions = parse_block(&block);
-    Ok(RaydiumAmmBlockEvents { transactions })
+fn db_out(block: Block) -> Result<DatabaseChanges, substreams::errors::Error> {
+    let transactions: Vec<RaydiumAmmTransactionEvents> = parse_block(&block);
+    let mut database_changes: DatabaseChanges = Default::default();
+    let block_number = block.slot;
+    transform_block_meta_to_database_changes(&mut database_changes, transactions, block_number);
+    Ok(database_changes)
+}
+
+fn transform_block_meta_to_database_changes(
+    changes: &mut DatabaseChanges,
+    transactions: Vec<RaydiumAmmTransactionEvents>,
+    block_number: u64,
+) {
+    for (i, transaction) in transactions.iter().enumerate() {
+        let events: Vec<RaydiumAmmEvent> = transaction.events.clone();
+        for (j, event) in events.iter().enumerate() {
+            // add code here
+            if let Some(inner_event) = &event.event {
+                let block_time = transaction.block_time.clone();
+
+                let signature = transaction.signature.clone();
+                let transaction_index = transaction.transaction_index.clone();
+                match inner_event {
+                    raydium_amm_event::Event::Initialize(event_data) => {
+                        push_initalize(
+                            changes,
+                            block_time,
+                            signature,
+                            transaction_index,
+                            event_data.clone(),
+                            i * j + j,
+                            block_number,
+                        );
+                    }
+
+                    raydium_amm_event::Event::Swap(event_data) => {
+                        push_swap(
+                            changes,
+                            block_time,
+                            signature,
+                            transaction_index,
+                            event_data.clone(),
+                            i * j + j,
+                            block_number,
+                        );
+                    }
+                    raydium_amm_event::Event::Transfer(event_data) => {
+                        push_transfer(
+                            changes,
+                            block_time,
+                            signature,
+                            transaction_index,
+                            event_data.clone(),
+                            i * j + j,
+                            block_number,
+                        );
+                    }
+
+                    raydium_amm_event::Event::Deposit(event_data) => {
+                        push_deposit(
+                            changes,
+                            block_time,
+                            signature,
+                            transaction_index,
+                            event_data.clone(),
+                            i * j + j,
+                            block_number,
+                        );
+                    }
+                    raydium_amm_event::Event::Withdraw(event_data) => {
+                        push_withdraw(
+                            changes,
+                            block_time,
+                            signature,
+                            transaction_index,
+                            event_data.clone(),
+                            i * j + j,
+                            block_number,
+                        );
+                    }
+                    raydium_amm_event::Event::WithdrawPnl(event_data) => {
+                        push_withdraw_pnl(
+                            changes,
+                            block_time,
+                            signature,
+                            transaction_index,
+                            event_data.clone(),
+                            i * j + j,
+                            block_number,
+                        );
+                    }
+                    raydium_amm_event::Event::TransferWithSeed(event_data) => {
+                        push_transfer_with_seed(
+                            changes,
+                            block_time,
+                            signature,
+                            transaction_index,
+                            event_data.clone(),
+                            i * j + j,
+                            block_number,
+                        );
+                    }
+                    raydium_amm_event::Event::PumpfunSwap(event_data) => {
+                        push_transfer_pump_fun_swap(
+                            changes,
+                            block_time,
+                            signature,
+                            transaction_index,
+                            event_data.clone(),
+                            i * j + j,
+                            block_number,
+                        );
+                    }
+                    raydium_amm_event::Event::PumpfunWithdraw(event_data) => {
+                        push_transfer_pump_fun_withdraw(
+                            changes,
+                            block_time,
+                            signature,
+                            transaction_index,
+                            event_data.clone(),
+                            i * j + j,
+                            block_number,
+                        );
+                    }
+                    raydium_amm_event::Event::PumpfunCreate(event_data) => {
+                        push_transfer_pump_fun_create(
+                            changes,
+                            block_time,
+                            signature,
+                            transaction_index,
+                            event_data.clone(),
+                            i * j + j,
+                            block_number,
+                        );
+                    }
+                }
+            }
+        }
+    }
+}
+fn push_transfer(
+    changes: &mut DatabaseChanges,
+    block_time: String,
+    signature: String,
+    transaction_index: String,
+    event_data: TransferEvent,
+
+    counter: usize,
+    block_number: u64,
+) {
+    let pre_balance = match &event_data.funding_account_balance {
+        Some(account_balance) => account_balance.pre_balance, // ✅ 直接使用引用
+        None => AccountBalance::default().pre_balance,
+    };
+    let post_balance = match &event_data.funding_account_balance {
+        Some(account_balance) => account_balance.post_balance,
+        None => AccountBalance::default().post_balance,
+    };
+    let recipient_account_balance_pre_balance = match &event_data.recipient_account_balance {
+        Some(pre_balance) => pre_balance.pre_balance,
+        None => AccountBalance::default().pre_balance,
+    };
+    let recipient_account_balance_post_balance = match &event_data.recipient_account_balance {
+        Some(balance) => balance.post_balance,
+        None => AccountBalance::default().post_balance,
+    };
+    let mut composite_key = HashMap::new();
+    composite_key.insert(
+        "id".to_string(),
+        format!(
+            "{}_{}_{}_{}_{}_{}",
+            signature,
+            counter,
+            transaction_index,
+            block_number,
+            event_data.funding_account,
+            event_data.recipient_account
+        ),
+    );
+
+    changes
+        .push_change_composite(
+            "solana_raydium_transfer",
+            composite_key,
+            1,
+            Operation::Create,
+        )
+        .change("signature", (None, signature))
+        .change("transaction_index", (None, transaction_index))
+        .change("block_time", (None, block_time))
+        .change("block_number", (None, block_number))
+        .change("funding_account", (None, event_data.funding_account))
+        .change("recipient_account", (None, event_data.recipient_account))
+        .change("lamports", (None, event_data.lamports))
+        .change("funding_account_balance_pre_balance", (None, pre_balance))
+        .change("funding_account_balance_post_balance", (None, post_balance))
+        .change(
+            "recipient_account_balance_pre_balance",
+            (None, recipient_account_balance_pre_balance),
+        )
+        .change(
+            "recipient_account_balance_post_balance",
+            (None, recipient_account_balance_post_balance),
+        );
+}
+fn push_swap(
+    changes: &mut DatabaseChanges,
+    block_time: String,
+    signature: String,
+    transaction_index: String,
+    event_data: SwapEvent,
+    counter: usize,
+    block_number: u64,
+) {
+    let mut composite_key: HashMap<String, String> = HashMap::new();
+    composite_key.insert(
+        "id".to_string(),
+        format!(
+            "{}_{}_{}_{}_{}",
+            signature, counter, transaction_index, block_number, event_data.user
+        ),
+    );
+
+    changes
+        .push_change_composite("solana_raydium_swap", composite_key, 1, Operation::Create)
+        .change("signature", (None, signature))
+        .change("transaction_index", (None, transaction_index))
+        .change("block_time", (None, block_time))
+        .change("block_number", (None, block_number))
+        .change("amm", (None, event_data.amm))
+        .change("user_swap", (None, event_data.user))
+        .change("mint_in", (None, event_data.mint_in))
+        .change("mint_out", (None, event_data.mint_out))
+        .change("amount_in", (None, event_data.amount_in))
+        .change("amount_out", (None, event_data.amount_out))
+        .change("direction", (None, event_data.direction))
+        .change("pool_pc_amount", (0, event_data.pool_pc_amount))
+        .change("pool_coin_amount", (0, event_data.pool_coin_amount))
+        .change("pc_mint", (None, event_data.pc_mint))
+        .change("coin_mint", (None, event_data.coin_mint))
+        .change("user_pre_balance_out", (0, event_data.user_pre_balance_out))
+        .change("user_pre_balance_in", (0, event_data.user_pre_balance_in));
+}
+
+fn push_initalize(
+    changes: &mut DatabaseChanges,
+    block_time: String,
+    signature: String,
+    transaction_index: String,
+    event_data: InitializeEvent,
+    counter: usize,
+    block_number: u64,
+) {
+    let mut composite_key: HashMap<String, String> = HashMap::new();
+    composite_key.insert(
+        "id".to_string(),
+        format!(
+            "{}_{}_{}_{}_{}",
+            signature, counter, transaction_index, block_number, event_data.user
+        ),
+    );
+    changes
+        .push_change_composite(
+            "solana_raydium_initialize",
+            composite_key,
+            1,
+            Operation::Create,
+        )
+        .change("signature", (None, signature))
+        .change("transaction_index", (None, transaction_index))
+        .change("block_time", (None, block_time))
+        .change("block_number", (None, block_number))
+        .change("amm", (None, event_data.amm))
+        .change("initialize_user", (None, event_data.user))
+        .change("pc_init_amount", (None, event_data.pc_init_amount))
+        .change("coin_init_amount", (None, event_data.coin_init_amount))
+        .change("lp_init_amount", (None, event_data.lp_init_amount))
+        .change("pc_mint", (None, event_data.pc_mint))
+        .change("coin_mint", (None, event_data.coin_mint))
+        .change("lp_mint", (None, event_data.lp_mint))
+        .change("nonce", (None, event_data.nonce))
+        .change("market", (None, event_data.market.unwrap_or_default()))
+        .change(
+            "user_pc_pre_balance",
+            (None, event_data.user_pc_pre_balance.unwrap_or_default()),
+        )
+        .change(
+            "user_coin_pre_balance",
+            (None, event_data.user_coin_pre_balance.unwrap_or_default()),
+        );
+}
+
+fn push_deposit(
+    changes: &mut DatabaseChanges,
+    block_time: String,
+    signature: String,
+    transaction_index: String,
+    event_data: DepositEvent,
+    counter: usize,
+    block_number: u64,
+) {
+    let mut composite_key: HashMap<String, String> = HashMap::new();
+    composite_key.insert(
+        "id".to_string(),
+        format!(
+            "{}_{}_{}_{}_{}",
+            signature, counter, transaction_index, block_number, event_data.user
+        ),
+    );
+    changes
+        .push_change_composite(
+            "solana_raydium_deposite",
+            composite_key,
+            1,
+            Operation::Create,
+        )
+        .change("signature", (None, signature))
+        .change("transaction_index", (None, transaction_index))
+        .change("block_time", (None, block_time))
+        .change("block_number", (None, block_number))
+        .change("amm", (None, event_data.amm))
+        .change("deposite_user", (None, event_data.user))
+        .change("pc_amount", (None, event_data.pc_amount))
+        .change("coin_amount", (None, event_data.coin_amount))
+        .change("lp_amount", (None, event_data.lp_amount))
+        .change("pc_mint", (None, event_data.pc_mint))
+        .change("coin_mint", (None, event_data.coin_mint))
+        .change("lp_mint", (None, event_data.lp_mint))
+        .change(
+            "pool_pc_amount",
+            (None, event_data.pool_pc_amount.unwrap_or_default()),
+        )
+        .change(
+            "pool_coin_amount",
+            (None, event_data.pool_coin_amount.unwrap_or_default()),
+        )
+        .change(
+            "pool_lp_amount",
+            (None, event_data.pool_lp_amount.unwrap_or_default()),
+        )
+        .change(
+            "user_pc_pre_balance",
+            (None, event_data.user_pc_pre_balance.unwrap_or_default()),
+        )
+        .change(
+            "user_coin_pre_balance",
+            (None, event_data.user_coin_pre_balance.unwrap_or_default()),
+        );
+}
+
+fn push_withdraw(
+    changes: &mut DatabaseChanges,
+    block_time: String,
+    signature: String,
+    transaction_index: String,
+    event_data: WithdrawEvent,
+    counter: usize,
+    block_number: u64,
+) {
+    let mut composite_key: HashMap<String, String> = HashMap::new();
+    composite_key.insert(
+        "id".to_string(),
+        format!(
+            "{}_{}_{}_{}_{}",
+            signature, counter, transaction_index, block_number, event_data.user
+        ),
+    );
+    changes
+        .push_change_composite(
+            "solana_raydium_withdraw",
+            composite_key,
+            1,
+            Operation::Create,
+        )
+        .change("signature", (None, signature))
+        .change("transaction_index", (None, transaction_index))
+        .change("block_time", (None, block_time))
+        .change("block_number", (None, block_number))
+        .change("amm", (None, event_data.amm))
+        .change("withdraw_user", (None, event_data.user))
+        .change("pc_amount", (None, event_data.pc_amount))
+        .change("coin_amount", (None, event_data.coin_amount))
+        .change("lp_amount", (None, event_data.lp_amount))
+        .change("pc_mint", (None, event_data.pc_mint))
+        .change("coin_mint", (None, event_data.coin_mint))
+        .change("lp_mint", (None, event_data.lp_mint))
+        .change(
+            "pool_pc_amount",
+            (None, event_data.pool_pc_amount.unwrap_or_default()),
+        )
+        .change(
+            "pool_coin_amount",
+            (None, event_data.pool_coin_amount.unwrap_or_default()),
+        )
+        .change(
+            "pool_lp_amount",
+            (None, event_data.pool_lp_amount.unwrap_or_default()),
+        )
+        .change(
+            "user_pc_pre_balance",
+            (None, event_data.user_pc_pre_balance.unwrap_or_default()),
+        )
+        .change(
+            "user_coin_pre_balance",
+            (None, event_data.user_coin_pre_balance.unwrap_or_default()),
+        );
+}
+
+fn push_withdraw_pnl(
+    changes: &mut DatabaseChanges,
+    block_time: String,
+    signature: String,
+    transaction_index: String,
+    event_data: WithdrawPnlEvent,
+    counter: usize,
+    block_number: u64,
+) {
+    let mut composite_key: HashMap<String, String> = HashMap::new();
+    composite_key.insert(
+        "id".to_string(),
+        format!(
+            "{}_{}_{}_{}_{}",
+            signature, counter, transaction_index, block_number, event_data.user
+        ),
+    );
+    changes
+        .push_change_composite(
+            "solana_raydium_withdraw_pnl",
+            composite_key,
+            1,
+            Operation::Create,
+        )
+        .change("signature", (None, signature))
+        .change("transaction_index", (None, transaction_index))
+        .change("block_time", (None, block_time))
+        .change("block_number", (None, block_number))
+        .change("amm", (None, event_data.amm))
+        .change("withdraw_pnl_user", (None, event_data.user))
+        .change(
+            "pc_amount",
+            (None, event_data.pc_amount.unwrap_or_default()),
+        )
+        .change(
+            "coin_amount",
+            (None, event_data.coin_amount.unwrap_or_default()),
+        )
+        .change("pc_mint", (None, event_data.pc_mint.unwrap_or_default()))
+        .change(
+            "coin_mint",
+            (None, event_data.coin_mint.unwrap_or_default()),
+        );
+}
+
+fn push_transfer_with_seed(
+    changes: &mut DatabaseChanges,
+    block_time: String,
+    signature: String,
+    transaction_index: String,
+    event_data: TransferWithSeedEvent,
+    counter: usize,
+    block_number: u64,
+) {
+    let mut composite_key: HashMap<String, String> = HashMap::new();
+    let funding_account_pre_balance = match &event_data.funding_account_balance {
+        Some(account_balance) => account_balance.pre_balance, // ✅ 直接使用引用
+        None => AccountBalance::default().pre_balance,
+    };
+    let funding_account_post_balance = match &event_data.funding_account_balance {
+        Some(account_balance) => account_balance.post_balance,
+        None => AccountBalance::default().post_balance,
+    };
+    let recipient_account_pre_balance = match &event_data.recipient_account_balance {
+        Some(pre_balance) => pre_balance.pre_balance,
+        None => AccountBalance::default().pre_balance,
+    };
+    let recipient_account_post_balance = match &event_data.recipient_account_balance {
+        Some(balance) => balance.post_balance,
+        None => AccountBalance::default().post_balance,
+    };
+
+    composite_key.insert(
+        "id".to_string(),
+        format!(
+            "{}_{}_{}_{}_{}",
+            signature, counter, transaction_index, block_number, event_data.funding_account
+        ),
+    );
+    changes
+        .push_change_composite(
+            "solana_raydium_transfer_with_seed",
+            composite_key,
+            1,
+            Operation::Create,
+        )
+        .change("signature", (None, signature))
+        .change("transaction_index", (None, transaction_index))
+        .change("block_time", (None, block_time))
+        .change("block_number", (None, block_number))
+        .change("funding_account", (None, event_data.funding_account))
+        .change("base_account", (None, event_data.base_account))
+        .change("recipient_account", (None, event_data.recipient_account))
+        .change("lamports", (None, event_data.lamports))
+        .change("from_seed", (None, event_data.from_seed))
+        .change("from_owner", (None, event_data.from_owner))
+        .change(
+            "funding_account_pre_balance",
+            (None, funding_account_pre_balance),
+        )
+        .change(
+            "funding_account_post_balance",
+            (None, funding_account_post_balance),
+        )
+        .change(
+            "recipient_account_pre_balance",
+            (None, recipient_account_pre_balance),
+        )
+        .change(
+            "recipient_account_post_balance",
+            (None, recipient_account_post_balance),
+        );
+}
+
+fn push_transfer_pump_fun_swap(
+    changes: &mut DatabaseChanges,
+    block_time: String,
+    signature: String,
+    transaction_index: String,
+    event_data: PumpfunSwapEvent,
+    counter: usize,
+    block_number: u64,
+) {
+    let mut composite_key: HashMap<String, String> = HashMap::new();
+    composite_key.insert(
+        "id".to_string(),
+        format!(
+            "{}_{}_{}_{}_{}",
+            signature, counter, transaction_index, block_number, event_data.user
+        ),
+    );
+    changes
+        .push_change_composite(
+            "solana_raydium_pump_fun_swap",
+            composite_key,
+            1,
+            Operation::Create,
+        )
+        .change("signature", (None, signature))
+        .change("transaction_index", (None, transaction_index))
+        .change("block_time", (None, block_time))
+        .change("block_number", (None, block_number))
+        .change("pump_fun_swap_user", (None, event_data.user))
+        .change("mint", (None, event_data.mint))
+        .change("bonding_curve", (None, event_data.bonding_curve))
+        .change(
+            "sol_amount",
+            (None, event_data.sol_amount.unwrap_or_default()),
+        )
+        .change("token_amount", (None, event_data.token_amount))
+        .change("direction", (None, event_data.direction))
+        .change(
+            "virtual_sol_reserves",
+            (None, event_data.virtual_sol_reserves.unwrap_or_default()),
+        )
+        .change(
+            "virtual_token_reserves",
+            (None, event_data.virtual_token_reserves.unwrap_or_default()),
+        )
+        .change(
+            "real_sol_reserves",
+            (None, event_data.real_sol_reserves.unwrap_or_default()),
+        )
+        .change(
+            "real_token_reserves",
+            (None, event_data.real_token_reserves.unwrap_or_default()),
+        )
+        .change(
+            "user_token_pre_balance",
+            (None, event_data.user_token_pre_balance.unwrap_or_default()),
+        );
+}
+
+fn push_transfer_pump_fun_withdraw(
+    changes: &mut DatabaseChanges,
+    block_time: String,
+    signature: String,
+    transaction_index: String,
+    event_data: PumpfunWithdrawEvent,
+    counter: usize,
+    block_number: u64,
+) {
+    let mut composite_key: HashMap<String, String> = HashMap::new();
+    composite_key.insert(
+        "id".to_string(),
+        format!(
+            "{}_{}_{}_{}",
+            signature, counter, transaction_index, block_number
+        ),
+    );
+    changes
+        .push_change_composite(
+            "solana_raydium_pump_fun_withdraw",
+            composite_key,
+            1,
+            Operation::Create,
+        )
+        .change("signature", (None, signature))
+        .change("transaction_index", (None, transaction_index))
+        .change("block_time", (None, block_time))
+        .change("block_number", (None, block_number))
+        .change("mint", (None, event_data.mint));
+}
+
+fn push_transfer_pump_fun_create(
+    changes: &mut DatabaseChanges,
+    block_time: String,
+    signature: String,
+    transaction_index: String,
+    event_data: PumpfunCreateEvent,
+    counter: usize,
+    block_number: u64,
+) {
+    let mut composite_key: HashMap<String, String> = HashMap::new();
+    composite_key.insert(
+        "id".to_string(),
+        format!(
+            "{}_{}_{}_{}_{}",
+            signature, counter, transaction_index, block_number, event_data.user
+        ),
+    );
+    changes
+        .push_change_composite(
+            "solana_raydium_pump_fun_create",
+            composite_key,
+            1,
+            Operation::Create,
+        )
+        .change("signature", (None, signature))
+        .change("transaction_index", (None, transaction_index))
+        .change("block_time", (None, block_time))
+        .change("block_number", (None, block_number))
+        .change("fun_name", (None, event_data.name))
+        .change("symbol", (None, event_data.symbol))
+        .change("uri", (None, event_data.uri))
+        .change("mint", (None, event_data.mint))
+        .change("bonding_curve", (None, event_data.bonding_curve))
+        .change(
+            "associated_bonding_curve",
+            (None, event_data.associated_bonding_curve),
+        )
+        .change("metadata", (None, event_data.metadata));
 }
 
 pub fn parse_block(block: &Block) -> Vec<RaydiumAmmTransactionEvents> {
@@ -58,7 +710,9 @@ pub fn parse_block(block: &Block) -> Vec<RaydiumAmmTransactionEvents> {
     block_events
 }
 
-pub fn parse_transaction(transaction: &ConfirmedTransaction) -> Result<Vec<RaydiumAmmEvent>, Error> {
+pub fn parse_transaction(
+    transaction: &ConfirmedTransaction,
+) -> Result<Vec<RaydiumAmmEvent>, Error> {
     if let Some(_) = transaction.meta.as_ref().unwrap().err {
         return Ok(Vec::new());
     }
@@ -69,11 +723,12 @@ pub fn parse_transaction(transaction: &ConfirmedTransaction) -> Result<Vec<Raydi
     let instructions = get_structured_instructions(transaction)?;
 
     // 检查是否存在 DEX PROGRAM
-    let contains_dex_program = instructions.flattened().iter().any(|instruction| 
-        instruction.program_id() == RAYDIUM_AMM_PROGRAM_ID 
-        || instruction.program_id() == JUPITER_AGG_PROGRAM_ID 
-        || instruction.program_id() == PUMPFUN_PROGRAM_ID);
-    
+    let contains_dex_program = instructions.flattened().iter().any(|instruction| {
+        instruction.program_id() == RAYDIUM_AMM_PROGRAM_ID
+            || instruction.program_id() == JUPITER_AGG_PROGRAM_ID
+            || instruction.program_id() == PUMPFUN_PROGRAM_ID
+    });
+
     for instruction in instructions.flattened().iter() {
         context.update_balance(&instruction.instruction);
 
@@ -83,44 +738,50 @@ pub fn parse_transaction(transaction: &ConfirmedTransaction) -> Result<Vec<Raydi
                 Ok(Some(event)) => {
                     // 仅在返回有效事件时添加到结果中
                     events.push(RaydiumAmmEvent { event: Some(event) });
-                },
-                Ok(None) => {},
-                Err(e) => return Err(anyhow!("Failed to parse SOL transfer {} with error: {}", context.signature, e))
+                }
+                Ok(None) => {}
+                Err(e) => {
+                    return Err(anyhow!(
+                        "Failed to parse SOL transfer {} with error: {}",
+                        context.signature,
+                        e
+                    ))
+                }
             }
         }
 
-        // PUMPFUN 
+        // PUMPFUN
         if instruction.program_id() == PUMPFUN_PROGRAM_ID {
             match parse_pumpfun_instruction(&instruction, &context) {
-                Ok(Some(event)) => {
-                    events.push(RaydiumAmmEvent {
-                        event: Some(event),
-                    })
-                }
+                Ok(Some(event)) => events.push(RaydiumAmmEvent { event: Some(event) }),
                 Ok(None) => (),
-                Err(e) => return Err(anyhow!("Failed to parse Pumpfun transaction {} with error: {}", context.signature, e))
-            }
-        }
-        
-        if instruction.program_id() == RAYDIUM_AMM_PROGRAM_ID {
-            match parse_instruction(&instruction, &context) {
-                Ok(Some(event)) => {
-                    events.push(RaydiumAmmEvent {
-                        event: Some(event),
-                    })
+                Err(e) => {
+                    return Err(anyhow!(
+                        "Failed to parse Pumpfun transaction {} with error: {}",
+                        context.signature,
+                        e
+                    ))
                 }
-                Ok(None) => (),
-                Err(error) => substreams::log::println(format!("Failed to process instruction of transaction {}: {}", &context.signature, error))
             }
         }
 
+        if instruction.program_id() == RAYDIUM_AMM_PROGRAM_ID {
+            match parse_instruction(&instruction, &context) {
+                Ok(Some(event)) => events.push(RaydiumAmmEvent { event: Some(event) }),
+                Ok(None) => (),
+                Err(error) => substreams::log::println(format!(
+                    "Failed to process instruction of transaction {}: {}",
+                    &context.signature, error
+                )),
+            }
+        }
     }
     Ok(events)
 }
 
 pub fn parse_system_program_instruction<'a>(
     instruction: &StructuredInstruction<'a>,
-    context: &TransactionContext
+    context: &TransactionContext,
 ) -> Result<Option<Event>, Error> {
     if instruction.program_id() != SYSTEM_PROGRAM_ID {
         return Err(anyhow!("Not a System Program instruction."));
@@ -133,8 +794,9 @@ pub fn parse_system_program_instruction<'a>(
             if transfer.lamports < SOL_MINIMUM_LAMPORTS {
                 return Ok(None);
             }
-            _parse_transfer_instruction(instruction, context, &transfer).map(|x| Some(Event::Transfer(x)))
-        },
+            _parse_transfer_instruction(instruction, context, &transfer)
+                .map(|x| Some(Event::Transfer(x)))
+        }
         SystemInstruction::CreateAccountWithSeed(_create_account_with_seed) => Ok(None),
         SystemInstruction::AdvanceNonceAccount => Ok(None),
         SystemInstruction::WithdrawNonceAccount(_lamports) => Ok(None),
@@ -144,36 +806,38 @@ pub fn parse_system_program_instruction<'a>(
         SystemInstruction::AllocateWithSeed(_allocate_with_seed) => Ok(None),
         SystemInstruction::AssignWithSeed(_assign_with_seed) => Ok(None),
         SystemInstruction::TransferWithSeed(transfer_with_seed) => {
-            _parse_transfer_with_seed_instruction(instruction, context, transfer_with_seed).map(|x| Some(Event::TransferWithSeed(x)))
-        },
-        SystemInstruction::UpgradeNonceAccount => Ok(None)
-    }.context("Failed to parse System instruction")
+            _parse_transfer_with_seed_instruction(instruction, context, transfer_with_seed)
+                .map(|x| Some(Event::TransferWithSeed(x)))
+        }
+        SystemInstruction::UpgradeNonceAccount => Ok(None),
+    }
+    .context("Failed to parse System instruction")
 }
 
 pub fn parse_pumpfun_instruction(
     instruction: &StructuredInstruction,
-    context: &TransactionContext
+    context: &TransactionContext,
 ) -> Result<Option<Event>, Error> {
     if instruction.program_id() != PUMPFUN_PROGRAM_ID {
         return Err(anyhow!("Not a Pumpfun instruction."));
     }
-    
+
     let unpacked = PumpfunInstruction::unpack(instruction.data()).map_err(|x| anyhow!(x))?;
     match unpacked {
         PumpfunInstruction::Initialize => Ok(None),
         PumpfunInstruction::SetParams(_) => Ok(None),
-        PumpfunInstruction::Create(create) => {
-            Ok(Some(Event::PumpfunCreate(_parse_pumpfun_create_instruction(instruction, context, create)?)))
-        },
-        PumpfunInstruction::Buy(buy) => {
-            Ok(Some(Event::PumpfunSwap(_parse_pumpfun_buy_instruction(instruction, context, buy)?)))
-        }
-        PumpfunInstruction::Sell(sell) => {
-            Ok(Some(Event::PumpfunSwap(_parse_pumpfun_sell_instruction(instruction, context, sell)?)))
-        }
-        PumpfunInstruction::Withdraw => {
-            Ok(Some(Event::PumpfunWithdraw(_parse_pumpfun_withdraw_instruction(instruction, context)?)))
-        }
+        PumpfunInstruction::Create(create) => Ok(Some(Event::PumpfunCreate(
+            _parse_pumpfun_create_instruction(instruction, context, create)?,
+        ))),
+        PumpfunInstruction::Buy(buy) => Ok(Some(Event::PumpfunSwap(
+            _parse_pumpfun_buy_instruction(instruction, context, buy)?,
+        ))),
+        PumpfunInstruction::Sell(sell) => Ok(Some(Event::PumpfunSwap(
+            _parse_pumpfun_sell_instruction(instruction, context, sell)?,
+        ))),
+        PumpfunInstruction::Withdraw => Ok(Some(Event::PumpfunWithdraw(
+            _parse_pumpfun_withdraw_instruction(instruction, context)?,
+        ))),
         _ => Ok(None),
     }
 }
@@ -182,42 +846,43 @@ pub fn is_spl_token_address(context: &TransactionContext, address: &str) -> bool
     let program_id_str = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 
     let account_pk = Pubkey::from_string(&address);
-    let account_ref = PubkeyRef { 0: &account_pk.0.to_vec() };
+    let account_ref = PubkeyRef {
+        0: &account_pk.0.to_vec(),
+    };
     if let Some(token_account) = context.get_token_account(&account_ref) {
         let owner = token_account.owner.to_string();
         // 使用 owner 进行处理
         return owner == program_id_str;
-    } 
-    
+    }
+
     return false;
 }
 
 pub fn parse_instruction<'a>(
     instruction: &StructuredInstruction<'a>,
-    context: &TransactionContext
+    context: &TransactionContext,
 ) -> Result<Option<Event>, String> {
     if instruction.program_id() != RAYDIUM_AMM_PROGRAM_ID {
         return Err("Instruction does not originate from Raydium AMM Program.".into());
     }
     let unpacked = AmmInstruction::unpack(&instruction.data())?;
     match unpacked {
-        AmmInstruction::SwapBaseIn(_) |
-        AmmInstruction::SwapBaseOut(_) => {
+        AmmInstruction::SwapBaseIn(_) | AmmInstruction::SwapBaseOut(_) => {
             let event = _parse_swap_instruction(instruction, context)?;
             Ok(Some(Event::Swap(event)))
-        },
+        }
         AmmInstruction::Initialize2(initialize) => {
             let event = _parse_initialize_instruction(instruction, context, initialize.nonce)?;
             Ok(Some(Event::Initialize(event)))
-        },
+        }
         AmmInstruction::Deposit(_deposit) => {
             let event = _parse_deposit_instruction(instruction, context)?;
             Ok(Some(Event::Deposit(event)))
-        },
+        }
         AmmInstruction::Withdraw(_withdraw) => {
             let event = _parse_withdraw_instruction(instruction, context)?;
             Ok(Some(Event::Withdraw(event)))
-        },
+        }
         AmmInstruction::WithdrawPnl => {
             let event = _parse_withdraw_pnl_instruction(instruction, context)?;
             Ok(Some(Event::WithdrawPnl(event)))
@@ -234,8 +899,14 @@ fn _parse_swap_instruction<'a>(
     let user = instruction.accounts().last().unwrap().to_string();
 
     let instructions_len = instruction.inner_instructions().len();
-    let transfer_in = spl_token_substream::parse_transfer_instruction(&instruction.inner_instructions()[instructions_len - 2], context)?;
-    let transfer_out = spl_token_substream::parse_transfer_instruction(&instruction.inner_instructions()[instructions_len - 1], context)?;
+    let transfer_in = spl_token_substream::parse_transfer_instruction(
+        &instruction.inner_instructions()[instructions_len - 2],
+        context,
+    )?;
+    let transfer_out = spl_token_substream::parse_transfer_instruction(
+        &instruction.inner_instructions()[instructions_len - 1],
+        context,
+    )?;
 
     let amount_in = transfer_in.amount;
     let amount_out = transfer_out.amount;
@@ -245,19 +916,31 @@ fn _parse_swap_instruction<'a>(
     let user_pre_balance_in = transfer_in.source.unwrap().pre_balance;
     let user_pre_balance_out = transfer_out.destination.unwrap().pre_balance;
 
-    let delta = if instruction.accounts().len() == 17 { 0 } else { 1 };
-    let coin_mint = context.get_token_account(&instruction.accounts()[4 + delta]).unwrap().mint.to_string();
-    let pc_mint = context.get_token_account(&instruction.accounts()[5 + delta]).unwrap().mint.to_string();
+    let delta = if instruction.accounts().len() == 17 {
+        0
+    } else {
+        1
+    };
+    let coin_mint = context
+        .get_token_account(&instruction.accounts()[4 + delta])
+        .unwrap()
+        .mint
+        .to_string();
+    let pc_mint = context
+        .get_token_account(&instruction.accounts()[5 + delta])
+        .unwrap()
+        .mint
+        .to_string();
 
     let direction = (if mint_out == coin_mint { "coin" } else { "pc" }).to_string();
 
     let (pool_coin_amount, pool_pc_amount) = match parse_raydium_log(instruction) {
         Ok(RayLog::SwapBaseIn(swap_base_in)) => {
             (Some(swap_base_in.pool_coin), Some(swap_base_in.pool_pc))
-        },
+        }
         Ok(RayLog::SwapBaseOut(swap_base_out)) => {
             (Some(swap_base_out.pool_coin), Some(swap_base_out.pool_pc))
-        },
+        }
         _ => (None, None),
     };
 
@@ -287,9 +970,18 @@ fn _parse_initialize_instruction<'a>(
     let user = instruction.accounts()[17].to_string();
 
     let instructions_len = instruction.inner_instructions().len();
-    let coin_transfer = spl_token_substream::parse_transfer_instruction(&instruction.inner_instructions()[instructions_len - 3], context)?;
-    let pc_transfer = spl_token_substream::parse_transfer_instruction(&instruction.inner_instructions()[instructions_len - 2], context)?;
-    let lp_mint_to = spl_token_substream::parse_mint_to_instruction(&instruction.inner_instructions()[instructions_len - 1], context)?;
+    let coin_transfer = spl_token_substream::parse_transfer_instruction(
+        &instruction.inner_instructions()[instructions_len - 3],
+        context,
+    )?;
+    let pc_transfer = spl_token_substream::parse_transfer_instruction(
+        &instruction.inner_instructions()[instructions_len - 2],
+        context,
+    )?;
+    let lp_mint_to = spl_token_substream::parse_mint_to_instruction(
+        &instruction.inner_instructions()[instructions_len - 1],
+        context,
+    )?;
 
     let pc_init_amount = pc_transfer.amount;
     let coin_init_amount = coin_transfer.amount;
@@ -324,15 +1016,24 @@ fn _parse_initialize_instruction<'a>(
 
 fn _parse_deposit_instruction<'a>(
     instruction: &StructuredInstruction<'a>,
-    context: &TransactionContext
+    context: &TransactionContext,
 ) -> Result<DepositEvent, String> {
     let amm = instruction.accounts()[1].to_string();
     let user = instruction.accounts()[12].to_string();
 
     let instructions_len = instruction.inner_instructions().len();
-    let pc_transfer = spl_token_substream::parse_transfer_instruction(&instruction.inner_instructions()[instructions_len - 2], context)?;
-    let coin_transfer = spl_token_substream::parse_transfer_instruction(&instruction.inner_instructions()[instructions_len - 3], context)?;
-    let lp_mint_to = spl_token_substream::parse_mint_to_instruction(&instruction.inner_instructions()[instructions_len - 1], context)?;
+    let pc_transfer = spl_token_substream::parse_transfer_instruction(
+        &instruction.inner_instructions()[instructions_len - 2],
+        context,
+    )?;
+    let coin_transfer = spl_token_substream::parse_transfer_instruction(
+        &instruction.inner_instructions()[instructions_len - 3],
+        context,
+    )?;
+    let lp_mint_to = spl_token_substream::parse_mint_to_instruction(
+        &instruction.inner_instructions()[instructions_len - 1],
+        context,
+    )?;
 
     let pc_amount = pc_transfer.amount;
     let coin_amount = coin_transfer.amount;
@@ -345,10 +1046,12 @@ fn _parse_deposit_instruction<'a>(
     let user_coin_pre_balance = coin_transfer.source.unwrap().pre_balance;
 
     let (pool_pc_amount, pool_coin_amount, pool_lp_amount) = match parse_raydium_log(instruction) {
-        Ok(RayLog::Deposit(deposit)) => {
-            (Some(deposit.pool_pc), Some(deposit.pool_coin), Some(deposit.pool_lp))
-        },
-        _ => (None, None, None)
+        Ok(RayLog::Deposit(deposit)) => (
+            Some(deposit.pool_pc),
+            Some(deposit.pool_coin),
+            Some(deposit.pool_lp),
+        ),
+        _ => (None, None, None),
     };
 
     Ok(DepositEvent {
@@ -376,9 +1079,18 @@ fn _parse_withdraw_instruction<'a>(
     let user = instruction.accounts()[16].to_string();
 
     let instructions_len = instruction.inner_instructions().len();
-    let pc_transfer = spl_token_substream::parse_transfer_instruction(&instruction.inner_instructions()[instructions_len - 2], context)?;
-    let coin_transfer = spl_token_substream::parse_transfer_instruction(&instruction.inner_instructions()[instructions_len - 3], context)?;
-    let lp_burn = spl_token_substream::parse_burn_instruction(&instruction.inner_instructions()[instructions_len - 1], context)?;
+    let pc_transfer = spl_token_substream::parse_transfer_instruction(
+        &instruction.inner_instructions()[instructions_len - 2],
+        context,
+    )?;
+    let coin_transfer = spl_token_substream::parse_transfer_instruction(
+        &instruction.inner_instructions()[instructions_len - 3],
+        context,
+    )?;
+    let lp_burn = spl_token_substream::parse_burn_instruction(
+        &instruction.inner_instructions()[instructions_len - 1],
+        context,
+    )?;
 
     let pc_amount = pc_transfer.amount;
     let coin_amount = coin_transfer.amount;
@@ -391,10 +1103,12 @@ fn _parse_withdraw_instruction<'a>(
     let user_coin_pre_balance = coin_transfer.destination.unwrap().pre_balance;
 
     let (pool_pc_amount, pool_coin_amount, pool_lp_amount) = match parse_raydium_log(instruction) {
-        Ok(RayLog::Withdraw(withdraw)) => {
-            (Some(withdraw.pool_pc), Some(withdraw.pool_coin), Some(withdraw.pool_lp))
-        },
-        _ => (None, None, None)
+        Ok(RayLog::Withdraw(withdraw)) => (
+            Some(withdraw.pool_pc),
+            Some(withdraw.pool_coin),
+            Some(withdraw.pool_lp),
+        ),
+        _ => (None, None, None),
     };
 
     Ok(WithdrawEvent {
@@ -423,8 +1137,14 @@ fn _parse_withdraw_pnl_instruction(
 
     let instructions_len = instruction.inner_instructions().len();
     if instructions_len == 2 || instructions_len == 3 {
-        let pc_transfer = spl_token_substream::parse_transfer_instruction(&instruction.inner_instructions()[instructions_len - 1], context)?;
-        let coin_transfer = spl_token_substream::parse_transfer_instruction(&instruction.inner_instructions()[instructions_len - 2], context)?;
+        let pc_transfer = spl_token_substream::parse_transfer_instruction(
+            &instruction.inner_instructions()[instructions_len - 1],
+            context,
+        )?;
+        let coin_transfer = spl_token_substream::parse_transfer_instruction(
+            &instruction.inner_instructions()[instructions_len - 2],
+            context,
+        )?;
 
         let pc_amount = Some(pc_transfer.amount);
         let coin_amount = Some(coin_transfer.amount);
@@ -437,7 +1157,7 @@ fn _parse_withdraw_pnl_instruction(
             pc_amount,
             coin_amount,
             pc_mint,
-            coin_mint
+            coin_mint,
         });
     } else {
         return Ok(WithdrawPnlEvent {
@@ -447,21 +1167,27 @@ fn _parse_withdraw_pnl_instruction(
             coin_amount: None,
             pc_mint: None,
             coin_mint: None,
-        })
+        });
     }
 }
 
 fn _parse_transfer_instruction(
     instruction: &StructuredInstruction,
     context: &TransactionContext,
-    transfer: &system_program::Transfer
+    transfer: &system_program::Transfer,
 ) -> Result<TransferEvent, Error> {
     let funding_account = instruction.accounts()[0].to_string();
     let recipient_account = instruction.accounts()[1].to_string();
     let lamports = transfer.lamports;
-    let funding_account_balance = context.account_balances.get(instruction.instruction.accounts()[0] as usize).map(|x| x.clone().into());
-    let recipient_account_balance = context.account_balances.get(instruction.instruction.accounts()[1] as usize).map(|x| x.clone().into());
-    
+    let funding_account_balance = context
+        .account_balances
+        .get(instruction.instruction.accounts()[0] as usize)
+        .map(|x| x.clone().into());
+    let recipient_account_balance = context
+        .account_balances
+        .get(instruction.instruction.accounts()[1] as usize)
+        .map(|x| x.clone().into());
+
     Ok(TransferEvent {
         funding_account,
         recipient_account,
@@ -474,7 +1200,7 @@ fn _parse_transfer_instruction(
 fn _parse_transfer_with_seed_instruction(
     instruction: &StructuredInstruction,
     context: &TransactionContext,
-    transfer_with_seed: system_program::TransferWithSeed
+    transfer_with_seed: system_program::TransferWithSeed,
 ) -> Result<TransferWithSeedEvent, Error> {
     let funding_account = instruction.accounts()[0].to_string();
     let base_account = instruction.accounts()[1].to_string();
@@ -482,8 +1208,14 @@ fn _parse_transfer_with_seed_instruction(
     let from_owner = transfer_with_seed.from_owner.to_string();
     let from_seed = transfer_with_seed.from_seed.0.clone();
     let lamports = transfer_with_seed.lamports;
-    let funding_account_balance = context.account_balances.get(instruction.instruction.accounts()[0] as usize).map(|x| x.clone().into());
-    let recipient_account_balance = context.account_balances.get(instruction.instruction.accounts()[1] as usize).map(|x| x.clone().into());
+    let funding_account_balance = context
+        .account_balances
+        .get(instruction.instruction.accounts()[0] as usize)
+        .map(|x| x.clone().into());
+    let recipient_account_balance = context
+        .account_balances
+        .get(instruction.instruction.accounts()[1] as usize)
+        .map(|x| x.clone().into());
 
     Ok(TransferWithSeedEvent {
         funding_account,
@@ -533,12 +1265,29 @@ pub fn _parse_pumpfun_buy_instruction<'a>(
     let user = instruction.accounts()[6].to_string();
     let token_amount = buy.amount;
 
-    let system_transfer_instruction = instruction.inner_instructions().iter().find(|x| x.program_id() == SYSTEM_PROGRAM_ID).unwrap().clone();
-    let system_transfer = system_program_substream::parse_transfer_instruction(system_transfer_instruction.as_ref(), context)?;
+    let system_transfer_instruction = instruction
+        .inner_instructions()
+        .iter()
+        .find(|x| x.program_id() == SYSTEM_PROGRAM_ID)
+        .unwrap()
+        .clone();
+    let system_transfer = system_program_substream::parse_transfer_instruction(
+        system_transfer_instruction.as_ref(),
+        context,
+    )?;
     let sol_amount = Some(system_transfer.lamports);
 
-    let token_transfer_instruction = instruction.inner_instructions().iter().find(|x| x.program_id() == TOKEN_PROGRAM_ID).unwrap().clone();
-    let token_transfer = spl_token_substream::parse_transfer_instruction(token_transfer_instruction.as_ref(), context).map_err(|e| anyhow!(e))?;
+    let token_transfer_instruction = instruction
+        .inner_instructions()
+        .iter()
+        .find(|x| x.program_id() == TOKEN_PROGRAM_ID)
+        .unwrap()
+        .clone();
+    let token_transfer = spl_token_substream::parse_transfer_instruction(
+        token_transfer_instruction.as_ref(),
+        context,
+    )
+    .map_err(|e| anyhow!(e))?;
     let user_token_pre_balance = token_transfer.destination.unwrap().pre_balance;
 
     let trade = match parse_pumpfun_log(instruction) {
@@ -579,7 +1328,7 @@ pub fn _parse_pumpfun_sell_instruction(
 
     let trade = match parse_pumpfun_log(instruction) {
         Ok(PumpfunLog::Trade(trade)) => Some(trade),
-        _ => None
+        _ => None,
     };
     let sol_amount = trade.as_ref().map(|x| x.sol_amount);
     let virtual_sol_reserves = trade.as_ref().map(|x| x.virtual_sol_reserves);
@@ -589,8 +1338,17 @@ pub fn _parse_pumpfun_sell_instruction(
 
     let direction = "sol".to_string();
 
-    let token_transfer_instruction = instruction.inner_instructions().iter().find(|x| x.program_id() == TOKEN_PROGRAM_ID).unwrap().clone();
-    let token_transfer = spl_token_substream::parse_transfer_instruction(token_transfer_instruction.as_ref(), context).map_err(|e| anyhow!(e))?;
+    let token_transfer_instruction = instruction
+        .inner_instructions()
+        .iter()
+        .find(|x| x.program_id() == TOKEN_PROGRAM_ID)
+        .unwrap()
+        .clone();
+    let token_transfer = spl_token_substream::parse_transfer_instruction(
+        token_transfer_instruction.as_ref(),
+        context,
+    )
+    .map_err(|e| anyhow!(e))?;
     let user_token_pre_balance = token_transfer.source.unwrap().pre_balance;
 
     Ok(PumpfunSwapEvent {
@@ -614,20 +1372,24 @@ pub fn _parse_pumpfun_withdraw_instruction(
 ) -> Result<PumpfunWithdrawEvent, Error> {
     let mint = instruction.accounts()[2].to_string();
 
-    Ok(PumpfunWithdrawEvent {
-        mint,
-    })
+    Ok(PumpfunWithdrawEvent { mint })
 }
 
 fn parse_raydium_log(instruction: &StructuredInstruction) -> Result<RayLog, Error> {
     let re = regex::Regex::new(r"ray_log: (.+)").unwrap();
-    let log_message = instruction.logs().as_ref().context("Failed to parse logs due to truncation")?.iter().rev().find_map(|log| {
-        if let Log::Program(program_log) = log {
-            Some(program_log.message().unwrap())
-        } else {
-            None
-        }
-    });
+    let log_message = instruction
+        .logs()
+        .as_ref()
+        .context("Failed to parse logs due to truncation")?
+        .iter()
+        .rev()
+        .find_map(|log| {
+            if let Log::Program(program_log) = log {
+                Some(program_log.message().unwrap())
+            } else {
+                None
+            }
+        });
     match log_message {
         Some(message) => match re.captures(message.as_str()) {
             Some(captures) => Ok(decode_ray_log(&captures[1])),
@@ -638,10 +1400,16 @@ fn parse_raydium_log(instruction: &StructuredInstruction) -> Result<RayLog, Erro
 }
 
 fn parse_pumpfun_log(instruction: &StructuredInstruction) -> Result<PumpfunLog, Error> {
-    let data = instruction.logs().as_ref().context("Failed to parse logs due to truncation")?.iter().find_map(|log| match log {
-        Log::Data(data_log) => data_log.data().ok(),
-        _ => None,
-    }).ok_or(anyhow!("Couldn't find data log."))?;
+    let data = instruction
+        .logs()
+        .as_ref()
+        .context("Failed to parse logs due to truncation")?
+        .iter()
+        .find_map(|log| match log {
+            Log::Data(data_log) => data_log.data().ok(),
+            _ => None,
+        })
+        .ok_or(anyhow!("Couldn't find data log."))?;
     PumpfunLog::unpack(data.as_slice()).map_err(|x| anyhow!(x))
 }
 

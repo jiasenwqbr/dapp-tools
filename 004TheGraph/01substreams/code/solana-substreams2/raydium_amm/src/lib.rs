@@ -40,10 +40,7 @@ pub mod pb;
 use pb::raydium_amm::raydium_amm_event::Event;
 use pb::raydium_amm::*;
 use substreams_database_change::pb::database::{table_change::Operation, DatabaseChanges};
-// fn raydium_amm_events(block: Block) -> Result<RaydiumAmmBlockEvents, Error> {
-//     let transactions: Vec<RaydiumAmmTransactionEvents> = parse_block(&block);
-//     Ok(RaydiumAmmBlockEvents { transactions })
-// }
+
 #[substreams::handlers::map]
 fn db_out(block: Block) -> Result<DatabaseChanges, substreams::errors::Error> {
     let transactions: Vec<RaydiumAmmTransactionEvents> = parse_block(&block);

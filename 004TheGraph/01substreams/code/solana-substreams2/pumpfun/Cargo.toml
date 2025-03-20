@@ -16,5 +16,5 @@ bs58 = { workspace = true }
 borsh = { workspace = true }
 lazy_static = { workspace = true }
 anyhow = { workspace = true }
-spl-token-substream = { path = "../spl_token"}
+spl-token-substream = { path = "../spl_token" }
 system-program-substream = { path = "../system_program" }

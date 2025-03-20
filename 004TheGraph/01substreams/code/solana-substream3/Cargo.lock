@@ -588,6 +588,7 @@ dependencies = [
  "serde",
  "spl-token-substream",
  "substreams",
+ "substreams-database-change",
  "substreams-solana",
  "substreams-solana-utils",
  "system-program-substream",
@@ -706,6 +707,17 @@ dependencies = [
  "prost-types",
  "substreams-macro",
  "thiserror",
+]
+
+[[package]]
+name = "substreams-database-change"
+version = "1.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ed32ca6fc7fa4b7a684d3abd5bb0545aadd2df82402e7336443cdbb6f8b350c3"
+dependencies = [
+ "prost",
+ "prost-types",
+ "substreams",
 ]
 
 [[package]]
