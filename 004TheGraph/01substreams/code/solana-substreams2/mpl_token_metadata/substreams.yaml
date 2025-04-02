@@ -3,7 +3,7 @@ package:
   name: 'mpl_token_metadata_events'
   version: v0.1.7
   description: MPL Token Metadata events substream
-  url: https://github.com/0xpapercut/solana-substreams
+  url: https://github.com/0xpapercut/solana-substreams?branch=0.13.0
   image: ./sol.png
 
 imports:

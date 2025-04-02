@@ -3,7 +3,7 @@ package:
   name: 'pumpfun_events'
   version: v0.1.7
   description: Pumpfun events substream
-  url: https://github.com/0xpapercut/solana-substreams
+  url: https://github.com/0xpapercut/solana-substreams?branch=0.13.0
   image: ./pumpfun.png
 
 imports:

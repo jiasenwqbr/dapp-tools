@@ -9,7 +9,8 @@ crate-type = ["lib", "cdylib"]
 
 [dependencies]
 substreams = { workspace = true }
-substreams-solana = { workspace = true }
+# substreams-solana = { workspace = true }
+substreams-solana =  { version="0.13.0"}
 substreams-solana-utils = { workspace = true }
 prost = { workspace = true }
 bs58 = { workspace = true }

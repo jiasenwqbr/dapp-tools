@@ -1,4 +1,4 @@
-create table IF NOT EXISTS solana_raydium_transfer (
+create table IF NOT EXISTS solana_raydium.solana_raydium_transfer (
     id text primary key,
     signature text,
     block_time text,
@@ -11,7 +11,7 @@ create table IF NOT EXISTS solana_raydium_transfer (
     recipient_account_balance_pre_balance text,
     recipient_account_balance_post_balance text
 );
-create table IF NOT EXISTS solana_raydium_swap (
+create table IF NOT EXISTS solana_raydium.solana_raydium_swap (
     id text primary key,
     signature text,
     block_time text,
@@ -30,7 +30,7 @@ create table IF NOT EXISTS solana_raydium_swap (
     user_pre_balance_in text,
     user_pre_balance_out text
 );
-create table IF NOT EXISTS solana_raydium_initialize (
+create table IF NOT EXISTS solana_raydium.solana_raydium_initialize (
     id text primary key,
     signature text,
     block_time bigint,
@@ -49,7 +49,7 @@ create table IF NOT EXISTS solana_raydium_initialize (
     user_pc_pre_balance bigint,
     user_coin_pre_balance bigint
 );
-create table IF NOT EXISTS solana_raydium_deposite (
+create table IF NOT EXISTS solana_raydium.solana_raydium_deposite (
     id text primary key,
     signature text,
     block_time bigint,
@@ -69,7 +69,7 @@ create table IF NOT EXISTS solana_raydium_deposite (
     user_pc_pre_balance bigint,
     user_coin_pre_balance bigint
 );
-create table IF NOT EXISTS solana_raydium_withdraw (
+create table IF NOT EXISTS solana_raydium.solana_raydium_withdraw (
     id text primary key,
     signature text,
     block_time bigint,
@@ -89,7 +89,7 @@ create table IF NOT EXISTS solana_raydium_withdraw (
     user_pc_pre_balance bigint,
     user_coin_pre_balance bigint
 );
-create table IF NOT EXISTS solana_raydium_withdraw_pnl (
+create table IF NOT EXISTS solana_raydium.solana_raydium_withdraw_pnl (
     id text primary key,
     signature text,
     block_time bigint,
@@ -102,7 +102,7 @@ create table IF NOT EXISTS solana_raydium_withdraw_pnl (
     pc_mint text,
     coin_mint text
 );
-create table IF NOT EXISTS solana_raydium_pump_fun_swap (
+create table IF NOT EXISTS solana_raydium.solana_raydium_pump_fun_swap (
     id text primary key,
     signature text,
     block_time bigint,
@@ -142,7 +142,7 @@ create table IF NOT EXISTS solana_raydium_pump_fun_create (
     associated_bonding_curve text,
     metadata text
 );
-create table IF NOT EXISTS solana_raydium_transfer_with_seed (
+create table IF NOT EXISTS solana_raydium.solana_raydium_transfer_with_seed (
     id text primary key,
     signature text,
     block_time bigint,

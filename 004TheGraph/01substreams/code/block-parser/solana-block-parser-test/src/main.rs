@@ -2,12 +2,25 @@ fn main() {
     signature_parser();
     account_keys_parser();
     instruction_parser();
-    let vec_arr = vec![
-        14
+    // let vec_arr: [u8; 20] = [
+    //     0, 0, 0, 212, 11, 89, 91, 148, 145, 138, 40, 178, 125, 30, 44, 102, 244, 58, 81, 211
+    // ];
+    // //let ss = parse_vec_to_string(vec_arr);
+    // let ss = bytes_to_eth(&vec_arr);
+    // println!("parse_vec_to_string is : {:?}",ss);
+
+    let hash_bytes: Vec<u8> = vec![
+        19, 70, 67, 239
     ];
-    let ss = parse_vec_to_string(vec_arr);
-    println!("parse_vec_to_string is : {:?}",ss);
+
+    // 使用 hex crate 将字节数组转换为十六进制字符串
+    let hash_hex = hex::encode(hash_bytes);
+    
+
+    // 输出结果
+    println!("Hash (Hex): {}", hash_hex);
 }
+
 
 struct Instruction {
     program_id_index: u8,
@@ -41,7 +54,7 @@ fn parse_vec_to_string(vec_arr:Vec<u8>) -> String {
     signature_base58
 }
 fn account_keys_parser() {
-    let account_keys = vec![
+    let account_keys: Vec<Vec<u8>> = vec![
         vec![
             215, 42, 237, 101, 45, 211, 64, 47, 86, 99, 47, 47, 49, 64, 227, 159, 136, 14, 55, 97,
             131, 224, 122, 93, 151, 176, 150, 177, 89, 132, 118, 97,
@@ -170,3 +183,9 @@ fn instruction_parser() {
     
 }
 
+fn bytes_to_eth(bytes: &[u8; 20]) -> String {
+    // 转换为十六进制字符串
+    let hex_str = hex::encode(bytes);
+    // 添加 0x 前缀
+    format!("{}", hex_str)
+}

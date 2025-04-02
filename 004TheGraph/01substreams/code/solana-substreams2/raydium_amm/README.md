@@ -27,3 +27,15 @@ If you see no output, please check that you have set a starting block, e.g. `sub
 - PumpfunCreateEvent: Pumpfun create event
     
 For more information, refer to the [protobuf specification](proto/raydium_amm.proto).
+
+```shell
+cargo clean
+
+cargo build --target wasm32-unknown-unknown --release
+
+
+RUST_LOG=debug substreams-sink-sql setup "psql://postgres:root@172.20.31.66:5432/solana?sslmode=disable" ./sink/substreams.dev.yaml 
+
+RUST_LOG=debug  substreams-sink-sql run "psql://postgres:root@172.20.31.66:5432/solana?sslmode=disable" ./sink/substreams.dev.yaml   --header "x-api-key:" 
+
+```

@@ -5,3 +5,4 @@ edition = "2024"
 
 [dependencies]
 bs58 = "0.4"
+hex = "0.4"

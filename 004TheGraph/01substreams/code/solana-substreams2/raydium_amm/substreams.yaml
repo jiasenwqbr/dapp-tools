@@ -3,7 +3,7 @@ package:
   name: 'solana_dex_with_sol_events'
   version: v0.2.3
   description: Solana DEX(support raydium、pumpfun now) AMM events and System Program Transfer events
-  url: https://github.com/0xRad7/solana-substreams
+  url: https://github.com/0xRad7/solana-substreams?branch=0.13.0
   image: ./raydium.png
 
 imports:

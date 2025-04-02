@@ -24,7 +24,7 @@ pub fn parse_block(block: &Block) -> Result<Vec<SplTokenTransactionEvents>, Erro
         let events = parse_transaction(transaction)?;
         if !events.is_empty() {
             transactions_events.push(SplTokenTransactionEvents {
-                signature: utils::transaction::get_signature(&transaction),
+                signature: utils::transaction::get_signature(transaction),
                 events
             })
         }

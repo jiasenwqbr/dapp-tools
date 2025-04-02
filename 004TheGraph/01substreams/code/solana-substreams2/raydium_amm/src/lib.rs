@@ -1,6 +1,4 @@
 use std::collections::HashMap;
-
-use ::log::info;
 use anyhow::{anyhow, Context, Error};
 use regex;
 
@@ -44,7 +42,6 @@ use substreams_database_change::pb::database::{table_change::Operation, Database
 #[substreams::handlers::map]
 fn db_out(block: Block) -> Result<DatabaseChanges, substreams::errors::Error> {
     let transactions: Vec<RaydiumAmmTransactionEvents> = parse_block(&block);
-    info!("Processing transactions at block: {:?}", transactions);
     let mut database_changes: DatabaseChanges = Default::default();
     let block_number = block.slot;
     transform_block_meta_to_database_changes(&mut database_changes, transactions, block_number);
@@ -87,6 +84,8 @@ fn transform_block_meta_to_database_changes(
                             i * j + j,
                             block_number,
                         );
+
+
                     }
                     raydium_amm_event::Event::Transfer(event_data) => {
                         push_transfer(
