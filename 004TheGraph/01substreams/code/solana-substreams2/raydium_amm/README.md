@@ -34,8 +34,8 @@ cargo clean
 cargo build --target wasm32-unknown-unknown --release
 
 
-RUST_LOG=debug substreams-sink-sql setup "psql://postgres:root@172.20.31.66:5432/solana?sslmode=disable" ./sink/substreams.dev.yaml 
+RUST_LOG=debug substreams-sink-sql setup "psql://postgres:root@172.20.31.66:5432/blockchain_data?search_path=solana_raydium&schema=solana_raydium&sslmode=disable" ./sink/substreams.dev.yaml 
 
-RUST_LOG=debug  substreams-sink-sql run "psql://postgres:root@172.20.31.66:5432/solana?sslmode=disable" ./sink/substreams.dev.yaml   --header "x-api-key:" 
+RUST_LOG=debug  substreams-sink-sql run "psql://postgres:root@172.20.31.66:5432/blockchain_data?search_path=solana_raydium&schema=solana_raydium&sslmode=disable" ./sink/substreams.dev.yaml   --header "x-api-key:"  --on-module-hash-mistmatch=ignore 
 
 ```

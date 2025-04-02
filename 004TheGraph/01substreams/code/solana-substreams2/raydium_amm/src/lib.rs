@@ -52,6 +52,8 @@ fn transform_block_meta_to_database_changes(
     transactions: Vec<RaydiumAmmTransactionEvents>,
     block_number: u64,
 ) {
+    
+    let mut usd_swaps:Vec<SwapEvent> = vec![];
     for (i, transaction) in transactions.iter().enumerate() {
         let events: Vec<RaydiumAmmEvent> = transaction.events.clone();
         for (j, event) in events.iter().enumerate() {
@@ -84,8 +86,24 @@ fn transform_block_meta_to_database_changes(
                             i * j + j,
                             block_number,
                         );
-
-
+                        let mint_in = event_data.mint_in.clone();
+                        let mint_out = event_data.mint_out.clone();
+                        if (
+                            (
+                            mint_in == String::from("Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB") 
+                            || mint_out == String::from("Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB")
+                            )
+                            || (
+                                mint_in == String::from("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v") 
+                                || mint_out == String::from("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v")
+                            )
+                        ) && (
+                            mint_in == String::from("So11111111111111111111111111111111111111112") 
+                            || mint_out == String::from("So11111111111111111111111111111111111111112")
+                        )
+                         {
+                            usd_swaps.push(event_data.clone());
+                        }
                     }
                     raydium_amm_event::Event::Transfer(event_data) => {
                         push_transfer(
@@ -180,7 +198,68 @@ fn transform_block_meta_to_database_changes(
             }
         }
     }
+
+    let mut usd_sol_vec : Vec<SwapUsdSol> = vec![];
+    for (_i,swap) in usd_swaps.iter().enumerate(){
+        let mut usd_sol : SwapUsdSol = SwapUsdSol{
+           usd:0,
+           sol:0,
+           price:0.0
+        };
+        let direction = swap.direction.clone();
+        if direction == String::from("coin"){
+            usd_sol.usd = swap.amount_in*1000;
+            usd_sol.sol = swap.amount_out;
+            usd_sol.price =  (swap.amount_in * 1000) as f64/(swap.amount_out as f64)
+        } else {
+            usd_sol.usd = swap.amount_out*1000;
+            usd_sol.sol = swap.amount_in;
+            usd_sol.price =  (swap.amount_out * 1000) as f64/(swap.amount_in as f64);
+        }
+        usd_sol_vec.push(usd_sol);
+    }
+    let sol_price = calculate_sol_price(usd_sol_vec);
+    if sol_price!=0.0{
+        save_solana_block_sol_usd(block_number,sol_price,changes);
+    }
+    
+
+
+
 }
+
+fn calculate_sol_price(usd_sol_vec:Vec<SwapUsdSol>) -> f64 {
+    let mut price: f64 = 0.0;
+    let mut sum_usd = 0;
+    let mut sum_sol = 0;
+    for (_i_,swap_usd_sol) in usd_sol_vec.iter().enumerate(){
+        sum_usd += swap_usd_sol.usd;
+        sum_sol += swap_usd_sol.sol;
+    }
+    if sum_sol!=0 {
+        price = (sum_usd as f64)/(sum_sol as f64);
+    }
+    price
+}
+
+fn save_solana_block_sol_usd(
+    block_number : u64,
+    sol_price : f64,
+    changes: &mut DatabaseChanges
+){
+    let mut composite_key: HashMap<String, String> = HashMap::new();
+    composite_key.insert(
+        "id".to_string(),
+        format!(
+            "{}",block_number),
+    );
+    changes
+        .push_change_composite("solana_block_sol_usd", composite_key, 1, Operation::Create)
+        .change("block_number", (None, block_number))
+        .change("price", (None,(sol_price * 1000000.0 )as u64))
+        .change("price_text", (None,sol_price.to_string()));
+}
+
 fn push_transfer(
     changes: &mut DatabaseChanges,
     block_time: String,

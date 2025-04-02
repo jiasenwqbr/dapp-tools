@@ -1,7 +1,7 @@
 fn main() {
-    signature_parser();
-    account_keys_parser();
-    instruction_parser();
+    // signature_parser();
+    // account_keys_parser();
+    // instruction_parser();
     // let vec_arr: [u8; 20] = [
     //     0, 0, 0, 212, 11, 89, 91, 148, 145, 138, 40, 178, 125, 30, 44, 102, 244, 58, 81, 211
     // ];
@@ -9,16 +9,21 @@ fn main() {
     // let ss = bytes_to_eth(&vec_arr);
     // println!("parse_vec_to_string is : {:?}",ss);
 
-    let hash_bytes: Vec<u8> = vec![
-        19, 70, 67, 239
-    ];
+    // let hash_bytes: Vec<u8> = vec![
+    //     19, 70, 67, 239
+    // ];
 
     // 使用 hex crate 将字节数组转换为十六进制字符串
-    let hash_hex = hex::encode(hash_bytes);
+    // let hash_hex = hex::encode(hash_bytes);
     
 
     // 输出结果
-    println!("Hash (Hex): {}", hash_hex);
+    // println!("Hash (Hex): {}", hash_hex);
+    let a: u64 = 95562053000;
+    let b: u64 = 717951949;
+    let c = (a as f64)/(b as f64);
+    println!("{}",c);
+
 }
 
 

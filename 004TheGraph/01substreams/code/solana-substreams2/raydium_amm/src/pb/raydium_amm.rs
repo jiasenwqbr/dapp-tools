@@ -279,3 +279,9 @@ pub struct PumpfunWithdrawEvent {
     pub mint: ::prost::alloc::string::String,
 }
 // @@protoc_insertion_point(module)
+
+pub struct SwapUsdSol {
+    pub usd :u64,
+    pub sol :u64,
+    pub price:f64
+}

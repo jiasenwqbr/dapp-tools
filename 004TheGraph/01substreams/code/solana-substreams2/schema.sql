@@ -5,16 +5,19 @@ create table IF NOT EXISTS solana_raydium.solana_raydium_transfer (
     transaction_index text,
     funding_account text,
     recipient_account text,
+    block_number bigint,
     lamports text,
     funding_account_balance_pre_balance text,
     funding_account_balance_post_balance text,
     recipient_account_balance_pre_balance text,
-    recipient_account_balance_post_balance text
+    recipient_account_balance_post_balance text,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 create table IF NOT EXISTS solana_raydium.solana_raydium_swap (
     id text primary key,
     signature text,
     block_time text,
+    block_number bigint,
     transaction_index text,
     amm text,
     user_swap text,
@@ -28,7 +31,8 @@ create table IF NOT EXISTS solana_raydium.solana_raydium_swap (
     pc_mint text,
     coin_mint text,
     user_pre_balance_in text,
-    user_pre_balance_out text
+    user_pre_balance_out text,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 create table IF NOT EXISTS solana_raydium.solana_raydium_initialize (
     id text primary key,
@@ -47,7 +51,8 @@ create table IF NOT EXISTS solana_raydium.solana_raydium_initialize (
     nonce bigint,
     market text,
     user_pc_pre_balance bigint,
-    user_coin_pre_balance bigint
+    user_coin_pre_balance bigint,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 create table IF NOT EXISTS solana_raydium.solana_raydium_deposite (
     id text primary key,
@@ -67,7 +72,8 @@ create table IF NOT EXISTS solana_raydium.solana_raydium_deposite (
     pool_coin_amount bigint,
     pool_lp_amount bigint,
     user_pc_pre_balance bigint,
-    user_coin_pre_balance bigint
+    user_coin_pre_balance bigint,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 create table IF NOT EXISTS solana_raydium.solana_raydium_withdraw (
     id text primary key,
@@ -87,7 +93,8 @@ create table IF NOT EXISTS solana_raydium.solana_raydium_withdraw (
     pool_coin_amount bigint,
     pool_lp_amount bigint,
     user_pc_pre_balance bigint,
-    user_coin_pre_balance bigint
+    user_coin_pre_balance bigint,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 create table IF NOT EXISTS solana_raydium.solana_raydium_withdraw_pnl (
     id text primary key,
@@ -100,7 +107,8 @@ create table IF NOT EXISTS solana_raydium.solana_raydium_withdraw_pnl (
     pc_amount bigint,
     coin_amount bigint,
     pc_mint text,
-    coin_mint text
+    coin_mint text,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 create table IF NOT EXISTS solana_raydium.solana_raydium_pump_fun_swap (
     id text primary key,
@@ -118,7 +126,8 @@ create table IF NOT EXISTS solana_raydium.solana_raydium_pump_fun_swap (
     virtual_token_reserves bigint,
     real_sol_reserves bigint,
     real_token_reserves bigint,
-    user_token_pre_balance bigint
+    user_token_pre_balance bigint,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 create table IF NOT EXISTS solana_raydium.solana_raydium_pump_fun_withdraw (
     id text primary key,
@@ -140,7 +149,8 @@ create table IF NOT EXISTS solana_raydium.solana_raydium_pump_fun_create (
     mint text,
     bonding_curve text,
     associated_bonding_curve text,
-    metadata text
+    metadata text,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 create table IF NOT EXISTS solana_raydium.solana_raydium_transfer_with_seed (
     id text primary key,
@@ -157,15 +167,17 @@ create table IF NOT EXISTS solana_raydium.solana_raydium_transfer_with_seed (
     funding_account_pre_balance bigint,
     funding_account_post_balance bigint,
     recipient_account_pre_balance bigint,
-    recipient_account_post_balance bigint
+    recipient_account_post_balance bigint,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- block sol_usd
-create table IF NOT EXISTS solana_raydium.ethereum_block_sol_usd(
+create table IF NOT EXISTS solana_raydium.solana_block_sol_usd(
     id text primary key,
     block_number bigint,
-    price double,
+    price bigint,
     price_text text,
-    remark text
+    remark text,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
