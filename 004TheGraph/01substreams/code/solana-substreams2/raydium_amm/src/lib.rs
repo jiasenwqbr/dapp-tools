@@ -871,9 +871,9 @@ pub fn parse_system_program_instruction<'a>(
         SystemInstruction::CreateAccount(_create_account) => Ok(None),
         SystemInstruction::Assign(_assign) => Ok(None),
         SystemInstruction::Transfer(transfer) => {
-            if transfer.lamports < SOL_MINIMUM_LAMPORTS {
-                return Ok(None);
-            }
+            // if transfer.lamports < SOL_MINIMUM_LAMPORTS {
+            //     return Ok(None);
+            // }
             _parse_transfer_instruction(instruction, context, &transfer)
                 .map(|x| Some(Event::Transfer(x)))
         }
