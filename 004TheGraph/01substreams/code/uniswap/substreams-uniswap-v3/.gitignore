@@ -1,0 +1,11 @@
+.envrc
+.idea
+/target/
+*.spkg
+*~
+/env/
+/build
+debug.log
+replay.log
+/node_modules
+.DS_Store

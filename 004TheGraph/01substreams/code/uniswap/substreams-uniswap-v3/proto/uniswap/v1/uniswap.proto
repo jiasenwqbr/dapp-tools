@@ -1,0 +1,315 @@
+syntax = "proto3";
+
+package uniswap.types.v1;
+
+message ERC20Tokens {
+  repeated ERC20Token tokens = 1;
+}
+
+message ERC20Token {
+  string address = 1;
+  string name = 2;
+  string symbol = 3;
+  uint64 decimals = 4;
+  string total_supply = 5;
+  repeated string whitelist_pools = 6;
+}
+
+message Liquidity {
+  string pool_address = 1;
+  // Decimal
+  string value = 2;
+}
+
+message Pools {
+  repeated Pool pools =1;
+}
+
+message Pool {
+  string address = 1;
+  uint64 created_at_timestamp = 3;
+  uint64 created_at_block_number = 4;
+  ERC20Token token0 = 5;
+  ERC20Token token1 = 6;
+  // Integer
+  string fee_tier = 7;
+
+  // internals
+  int32 tick_spacing = 30;
+  uint64 log_ordinal = 31;
+  string transaction_id = 32;
+  bool ignore_pool = 33;
+}
+
+message Events {
+  repeated PoolSqrtPrice pool_sqrt_prices = 1;
+  repeated PoolLiquidity pool_liquidities = 2;
+  repeated FeeGrowthGlobal fee_growth_global_updates = 7;
+  repeated FeeGrowthInside fee_growth_inside_updates = 10;
+  repeated FeeGrowthOutside fee_growth_outside_updates = 11;
+  repeated PoolEvent pool_events = 3;
+  repeated Transaction transactions = 4;
+  repeated Flash flashes = 6;
+  repeated TickCreated ticks_created = 8;
+  repeated TickUpdated ticks_updated = 9;
+
+  repeated CreatedPosition created_positions = 20;
+  repeated IncreaseLiquidityPosition increase_liquidity_positions = 21;
+  repeated DecreaseLiquidityPosition decrease_liquidity_positions = 22;
+  repeated CollectPosition collect_positions = 23;
+  repeated TransferPosition transfer_positions = 24;
+
+  message FeeGrowthGlobal {
+    string pool_address = 1;
+    uint64 ordinal = 2;
+    int32 token_idx = 3;
+    // Integer
+    string new_value = 4;
+  }
+
+  message FeeGrowthInside {
+    string pool_address = 1;
+    int32 tick_idx = 2;
+    uint64 ordinal = 3;
+    // Integer
+    string new_value = 4;
+  }
+
+  message FeeGrowthOutside {
+    string pool_address = 1;
+    int32 tick_lower = 2;
+    int32 tick_upper = 3;
+    uint64 ordinal = 4;
+    // Integer
+    string new_value = 5;
+  }
+
+  message TickCreated {
+    string pool_address = 1;
+    // Integer
+    string idx = 2;
+    uint64 log_ordinal = 3;
+    uint64 created_at_timestamp = 4;
+    uint64 created_at_block_number = 5;
+    // Decimal
+    string price0 = 6;
+    // Decimal
+    string price1 = 7;
+    // Integer
+    string amount = 8;
+  }
+
+  message TickUpdated {
+    string pool_address = 1;
+    // Integer
+    string idx = 2;
+    uint64 log_ordinal = 3;
+
+    // Integer
+    string fee_growth_outside_0X_128 = 4;
+    // Integer
+    string fee_growth_outside_1X_128 = 5;
+
+    uint64 timestamp = 6;
+  }
+
+  message PoolSqrtPrice {
+    string pool_address = 1;
+    uint64 ordinal = 2;
+    // Integer
+    string sqrt_price = 3;
+    // Integer
+    string tick = 4;
+    bool initialized = 5;
+  }
+
+  message PoolEvent {
+    oneof type {
+      Swap swap = 1;
+      Burn burn = 2;
+      Mint mint = 3;
+    }
+    uint64 log_ordinal = 100;
+    uint64 log_index = 101;
+    string pool_address = 102;
+    string token0 = 103;
+    string token1 = 104;
+    string fee = 105;
+    string transaction_id = 106;
+    uint64 timestamp = 107;
+    uint64 created_at_block_number = 108;
+
+    message Swap {
+      string sender = 1;
+      string recipient = 2;
+      string origin = 3;
+      // Decimal
+      string amount_0 = 4;
+      // Decimal
+      string amount_1 = 5;
+      // Integer
+      string sqrt_price = 6;
+      // Integer
+      string liquidity = 7;
+      // Integer
+      string tick = 8;
+    }
+
+    message Burn {
+      string owner = 1;
+      string origin = 2;
+      // Integer
+      string amount = 3;
+      // Decimal
+      string amount_0 = 4;
+      // Decimal
+      string amount_1 = 5;
+      // Integer
+      string tick_lower = 6;
+      // Integer
+      string tick_upper = 7;
+    }
+
+    message Mint {
+      string owner = 1;
+      string sender = 2;
+      string origin = 3;
+      // Decimal
+      string amount_0 = 4;
+      // Decimal
+      string amount_1 = 5;
+      // Integer
+      string tick_lower = 6;
+      // Integer
+      string tick_upper = 7;
+      // Integer
+      string amount = 8;
+    }
+  }
+
+  message PoolLiquidity {
+    string pool_address = 1;
+    // Integer
+    string liquidity = 2;
+    string token0 = 3;
+    string token1 = 4;
+
+    // internals
+    uint64 log_ordinal = 30;
+  }
+
+  message Flash {
+    string pool_address = 1;
+    // Integer
+    string fee_growth_global_0X_128 = 2;
+    // Integer
+    string fee_growth_global_1X_128 = 3;
+    uint64 log_ordinal = 4;
+  }
+
+  message Transaction {
+    string id = 1;
+    uint64 block_number = 2;
+    uint64 timestamp = 3;
+    uint64 gas_used = 4;
+    // Integer
+    string gas_price = 5;
+    uint64 log_ordinal = 6;
+  }
+
+  message PositionEvent {
+    oneof type {
+      CreatedPosition created_position = 1;
+      IncreaseLiquidityPosition increase_liquidity_position = 2;
+      DecreaseLiquidityPosition decrease_liquidity_position = 3;
+      CollectPosition collect_position = 4;
+      TransferPosition transfer_position = 5;
+    }
+  }
+
+  message CreatedPosition {
+    string token_id = 1;
+    string pool = 2;
+    string token0 = 3;
+    string token1 = 4;
+    string tick_lower = 5;
+    string tick_upper = 6;
+    string transaction = 7;
+    uint64 log_ordinal = 8;
+    uint64 timestamp = 9;
+    uint64 block_number = 10;
+    optional string fee_growth_inside0_last_x128 = 11; // BigInt
+    optional string fee_growth_inside1_last_x128 = 12; // BigInt
+  }
+
+  message IncreaseLiquidityPosition {
+    string token_id = 1;
+    string liquidity = 2; // BigInt
+    string deposited_token0 = 3; // BigDecimal
+    string deposited_token1 = 4; // BigDecimal
+    optional string fee_growth_inside0_last_x128 = 5; // BigInt
+    optional string fee_growth_inside1_last_x128 = 6; // BigInt
+    uint64 log_ordinal = 10;
+  }
+
+  message DecreaseLiquidityPosition {
+    string token_id = 1;
+    string liquidity = 2; // BigInt
+    string withdrawn_token0 = 3; // BigDecimal
+    string withdrawn_token1 = 4; // BigDecimal
+    optional string fee_growth_inside0_last_x128 = 5; // BigInt
+    optional string fee_growth_inside1_last_x128 = 6; // BigInt
+    uint64 log_ordinal = 10;
+  }
+
+  message CollectPosition {
+    string token_id = 1;
+    string collected_fees_token0 = 2; // BigInt
+    string collected_fees_token1 = 3; // BigInt
+    optional string fee_growth_inside0_last_x128 = 5; // BigInt
+    optional string fee_growth_inside1_last_x128 = 6; // BigInt
+    uint64 log_ordinal = 10;
+  }
+
+  message TransferPosition {
+    string token_id = 1;
+    string owner = 2;
+    uint64 log_ordinal = 10;
+  }
+}
+
+
+message SnapshotPositions {
+  repeated SnapshotPosition snapshot_positions = 1;
+}
+
+message SnapshotPosition {
+  string pool = 1;
+  // the token_id of the position
+  string position = 2;
+  uint64 block_number = 3;
+  string owner = 4;
+  uint64 timestamp = 6;
+  // Decimal
+  string liquidity = 7;
+  // Decimal
+  string deposited_token0 = 8;
+  // Decimal
+  string deposited_token1 = 9;
+  // Decimal
+  string withdrawn_token0 = 10;
+  // Decimal
+  string withdrawn_token1 = 11;
+  // Decimal
+  string collected_fees_token0 = 12;
+  // Decimal
+  string collected_fees_token1 = 13;
+  string transaction = 14;
+  // Integer
+  string fee_growth_inside_0_last_X_128 = 15;
+  // Integer
+  string fee_growth_inside_1_last_X_128 = 16;
+
+  // internal
+  uint64 log_ordinal = 17;
+}

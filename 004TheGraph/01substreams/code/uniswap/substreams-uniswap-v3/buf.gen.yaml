@@ -1,0 +1,6 @@
+
+version: v1
+plugins:
+  - plugin: buf.build/community/neoeinstein-prost
+    out: src/pb
+    opt:

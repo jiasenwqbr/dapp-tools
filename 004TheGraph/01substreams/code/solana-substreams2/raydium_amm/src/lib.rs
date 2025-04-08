@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 use anyhow::{anyhow, Context, Error};
+use pumpfun::constants::USDC_ADDRESS;
+use pumpfun::constants::USDT_ADDRESS;
 use regex;
 
 use substreams_solana::pb::sf::solana::r#type::v1::Block;
@@ -8,7 +10,6 @@ use substreams_solana::pb::sf::solana::r#type::v1::ConfirmedTransaction;
 pub mod raydium_amm;
 use raydium_amm::constants::JUPITER_AGG_PROGRAM_ID;
 use raydium_amm::constants::RAYDIUM_AMM_PROGRAM_ID;
-use raydium_amm::constants::SOL_MINIMUM_LAMPORTS;
 use raydium_amm::instruction::AmmInstruction;
 use raydium_amm::log::{decode_ray_log, RayLog};
 
@@ -90,16 +91,16 @@ fn transform_block_meta_to_database_changes(
                         let mint_out = event_data.mint_out.clone();
                         if (
                             (
-                            mint_in == String::from("Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB") 
-                            || mint_out == String::from("Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB")
+                            mint_in == String::from(USDT_ADDRESS) 
+                            || mint_out == String::from(USDT_ADDRESS)
                             )
                             || (
-                                mint_in == String::from("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v") 
-                                || mint_out == String::from("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v")
+                                mint_in == String::from(USDC_ADDRESS) 
+                                || mint_out == String::from(USDC_ADDRESS)
                             )
                         ) && (
-                            mint_in == String::from("So11111111111111111111111111111111111111112") 
-                            || mint_out == String::from("So11111111111111111111111111111111111111112")
+                            mint_in == String::from(pumpfun::constants::WSOL_ADDRESS) 
+                            || mint_out == String::from(pumpfun::constants::WSOL_ADDRESS)
                         )
                          {
                             usd_swaps.push(event_data.clone());
@@ -799,8 +800,8 @@ pub fn parse_transaction(
 
     let mut events: Vec<RaydiumAmmEvent> = Vec::new();
 
-    let mut context = get_context(transaction)?;
-    let instructions = get_structured_instructions(transaction)?;
+    let mut context: TransactionContext<'_> = get_context(transaction)?;
+    let instructions: Vec<std::rc::Rc<StructuredInstruction<'_>>> = get_structured_instructions(transaction)?;
 
     // 检查是否存在 DEX PROGRAM
     let contains_dex_program = instructions.flattened().iter().any(|instruction| {
