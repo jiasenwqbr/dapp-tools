@@ -43,15 +43,15 @@ create table IF NOT EXISTS solana_raydium.solana_raydium_initialize (
     amm text,
     initialize_user text,
     pc_init_amount BIGINT,
-    coin_init_amount bigint,
-    lp_init_amount bigint,
+    coin_init_amount numeric,
+    lp_init_amount numeric,
     pc_mint text,
     coin_mint text,
     lp_mint text,
-    nonce bigint,
+    nonce numeric,
     market text,
-    user_pc_pre_balance bigint,
-    user_coin_pre_balance bigint,
+    user_pc_pre_balance numeric,
+    user_coin_pre_balance numeric,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 create table IF NOT EXISTS solana_raydium.solana_raydium_deposite (
@@ -68,11 +68,11 @@ create table IF NOT EXISTS solana_raydium.solana_raydium_deposite (
     pc_mint text,
     coin_mint text,
     lp_mint text,
-    pool_pc_amount bigint,
-    pool_coin_amount bigint,
-    pool_lp_amount bigint,
-    user_pc_pre_balance bigint,
-    user_coin_pre_balance bigint,
+    pool_pc_amount numeric,
+    pool_coin_amount numeric,
+    pool_lp_amount numeric,
+    user_pc_pre_balance numeric,
+    user_coin_pre_balance numeric,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 create table IF NOT EXISTS solana_raydium.solana_raydium_withdraw (
@@ -104,8 +104,8 @@ create table IF NOT EXISTS solana_raydium.solana_raydium_withdraw_pnl (
     transaction_index text,
     amm text,
     withdraw_pnl_user text,
-    pc_amount bigint,
-    coin_amount bigint,
+    pc_amount numeric,
+    coin_amount numeric,
     pc_mint text,
     coin_mint text,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -119,14 +119,14 @@ create table IF NOT EXISTS solana_raydium.solana_raydium_pump_fun_swap (
     pump_fun_swap_user text,
     mint text,
     bonding_curve text,
-    sol_amount bigint,
-    token_amount bigint,
+    sol_amount numeric,
+    token_amount numeric,
     direction text,
-    virtual_sol_reserves bigint,
-    virtual_token_reserves bigint,
-    real_sol_reserves bigint,
-    real_token_reserves bigint,
-    user_token_pre_balance bigint,
+    virtual_sol_reserves numeric,
+    virtual_token_reserves numeric,
+    real_sol_reserves numeric,
+    real_token_reserves numeric,
+    user_token_pre_balance numeric,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 create table IF NOT EXISTS solana_raydium.solana_raydium_pump_fun_withdraw (
@@ -164,10 +164,10 @@ create table IF NOT EXISTS solana_raydium.solana_raydium_transfer_with_seed (
     lamports bigint,
     from_owner text,
     from_seed text,
-    funding_account_pre_balance bigint,
-    funding_account_post_balance bigint,
-    recipient_account_pre_balance bigint,
-    recipient_account_post_balance bigint,
+    funding_account_pre_balance numeric,
+    funding_account_post_balance numeric,
+    recipient_account_pre_balance numeric,
+    recipient_account_post_balance numeric,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -175,7 +175,7 @@ create table IF NOT EXISTS solana_raydium.solana_raydium_transfer_with_seed (
 create table IF NOT EXISTS solana_raydium.solana_block_sol_usd(
     id text primary key,
     block_number bigint,
-    price bigint,
+    price numeric,
     price_text text,
     remark text,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP

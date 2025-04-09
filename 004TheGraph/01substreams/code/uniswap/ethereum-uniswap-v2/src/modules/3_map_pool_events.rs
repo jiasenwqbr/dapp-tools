@@ -60,6 +60,8 @@ pub fn map_pool_events(
     handle_sync(&block, &mut tx_changes, &pools_store);
     merge_block(&mut tx_changes, &mut block_entity_changes);
 
+    
+
     Ok(block_entity_changes)
 }
 
