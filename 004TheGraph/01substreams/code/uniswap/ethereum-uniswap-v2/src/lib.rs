@@ -8,3 +8,4 @@ pub use modules::*;
 
 mod store_key;
 mod traits;
+mod persistence;

@@ -1,0 +1,36 @@
+specVersion: v0.1.0
+package:
+  name: "map_block_sinkdb"
+  version: v0.0.2
+
+imports:
+  sql: https://github.com/streamingfast/substreams-sink-sql/releases/download/protodefs-v1.0.7/substreams-sink-sql-protodefs-v1.0.7.spkg
+  database_change: https://github.com/streamingfast/substreams-sink-database-changes/releases/download/v1.2.1/substreams-database-change-v1.2.1.spkg
+  # sol: https://spkg.io/streamingfast/solana-common-v0.3.0.spkg
+  # main: ./substreams.dev.yaml
+
+
+network: mainnet
+
+binaries:
+  default:
+    type: wasm/rust-v1
+    file: ../target/wasm32-unknown-unknown/release/ethereum_uniswap_v2.wasm
+
+modules:
+  - name: map_to_postgres
+    kind: map
+    initialBlock: 15614590
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+    output:
+      type: proto:sf.substreams.sink.database.v1.DatabaseChanges
+
+sink:
+  module: map_to_postgres
+  type: sf.substreams.sink.sql.v1.Service
+  config:
+    schema: "../schema.sql"
+    engine: postgres
+    postgraphile_frontend:
+      enabled: true

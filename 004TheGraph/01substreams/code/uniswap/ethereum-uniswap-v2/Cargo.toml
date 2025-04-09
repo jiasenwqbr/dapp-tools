@@ -11,6 +11,7 @@ crate-type = ["cdylib"]
 substreams = "0.5.22"
 substreams-ethereum = "0.9.9"
 prost = "0.11"
+prost-types = "0.11.0"
 ethabi = "18.0.0"
 anyhow = "1.0.75"
 hex-literal = "0.4.1"
@@ -20,9 +21,16 @@ num-bigint = "0.4.4"
 itertools = "0.12.1"
 serde_qs = "0.13.0"
 serde = "1.0.204"
+## added
+substreams-database-change = "1.0.0"
+serde_json = "1.0"
 
 [target.wasm32-unknown-unknown.dependencies]
 getrandom = { version = "0.2", features = ["custom"] }
+
+
+
+
 
 [build-dependencies]
 anyhow = "1.0.75"
