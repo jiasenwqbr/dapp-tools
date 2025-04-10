@@ -89,11 +89,11 @@ create table IF NOT EXISTS solana_raydium.solana_raydium_withdraw (
     pc_mint text,
     coin_mint text,
     lp_mint text,
-    pool_pc_amount bigint,
-    pool_coin_amount bigint,
-    pool_lp_amount bigint,
-    user_pc_pre_balance bigint,
-    user_coin_pre_balance bigint,
+    pool_pc_amount numeric,
+    pool_coin_amount numeric,
+    pool_lp_amount numeric,
+    user_pc_pre_balance numeric,
+    user_coin_pre_balance numeric,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 create table IF NOT EXISTS solana_raydium.solana_raydium_withdraw_pnl (

@@ -20,5 +20,9 @@ pub fn map_to_postgres(
     //     .push_change_composite("ethereum_block_all", composite_key, 1, Operation::Create)
     //     .change("data", (None, json));
     persistence::persistence::save_ethereum_block(block, &mut database_changes);
+    
+
+
+
     Ok(database_changes)
 }
