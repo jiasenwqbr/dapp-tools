@@ -18,7 +18,7 @@ binaries:
     file: ../target/wasm32-unknown-unknown/release/ethereum_uniswap_v2.wasm
 
 modules:
-  - name: map_to_postgres
+  - name: map_swap
     kind: map
     initialBlock: 15614590
     inputs:
@@ -27,10 +27,15 @@ modules:
       type: proto:sf.substreams.sink.database.v1.DatabaseChanges
 
 sink:
-  module: map_to_postgres
+  module: map_swap
   type: sf.substreams.sink.sql.v1.Service
   config:
     schema: "../schema.sql"
     engine: postgres
     postgraphile_frontend:
       enabled: true
+
+# params:
+#   map_swap: factory_address=5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f&protocol_type_name=uniswap_v2_pool
+
+

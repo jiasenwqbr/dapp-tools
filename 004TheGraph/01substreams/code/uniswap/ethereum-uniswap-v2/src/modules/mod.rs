@@ -11,3 +11,5 @@ mod store_pools;
 mod map_pool_events;
 #[path = "4_map_to_postgres.rs"]
 mod map_to_postgres;
+#[path = "5_map_swap.rs"]
+mod map_swaps;

@@ -312,3 +312,6 @@ all done
 
 The block number `17717997` contains a transaction (`f18291982e955f3c2112de58c1d0a08b79449fb473e58b173de7e0e189d34939`) that executes a method of the smart contract, so the Substreams retrieves the corresponding logs.
 You can check out the logs at [Etherscan](https://etherscan.io/tx/0xf18291982e955f3c2112de58c1d0a08b79449fb473e58b173de7e0e189d34939#eventlog) and verify that topics are correct.
+
+
+

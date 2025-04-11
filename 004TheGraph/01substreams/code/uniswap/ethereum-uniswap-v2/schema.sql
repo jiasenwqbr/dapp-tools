@@ -59,7 +59,19 @@ create table IF NOT EXISTS ethereum_uniswap_v2.ethereum_block_uniswapv2_componen
 
 
 
-
+--- block swaps
+create table IF NOT EXISTS ethereum_uniswap_v2.ethereum_block_uniswapv2_swaps(
+    id text primary key,
+    block_number bigint,
+    block_time bigint,
+    swap_from text,
+    swap_to text,
+    amount0_in numberic,
+    amount0_out numberic,
+    amount1_in numberic,
+    amount1_out numberic,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
 
 
 
