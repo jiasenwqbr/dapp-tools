@@ -1,47 +1,86 @@
 --- block 
-create table IF NOT EXISTS ethereum_block_all (id text primary key, data text);
+create table IF NOT EXISTS ethereum_uniswap_v2.ethereum_block_all (id text primary key, data text);
 
---- block uniswapv2 pool
-create table IF NOT EXISTS ethereum_block_uniswapv2_pool(
+--- block transcation_change 
+create table IF NOT EXISTS ethereum_uniswap_v2.ethereum_block_uniswapv2_transcation_change(
     id text primary key,
-    address text,
-    token0 text,
-    token1 text,
-    created_tx_hash text,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-COMMENT ON TABLE ethereum_block_uniswapv2_pool IS 'ethereum_block_uniswapv2_pool';
-COMMENT ON COLUMN ethereum_block_uniswapv2_pool.id IS 'ID';
-
-
---- block uniswapv2 event
-create table IF NOT EXISTS ethereum_block_uniswapv2_event(
-    id text primary key,
-    hash text,
-    log_index bigint,
-    log_ordinal bigint,
-    address_to text,
-    address_from text,
     block_number bigint,
-    event_timestamp bigint,
-    pool text,
-    event_type bigint,
+    block_time bigint,
+    transaction_change_index bigint,
+    transcation_index bigint,
+    balance_change_index bigint,
+
+    token text,
+    trans_from text,
+    trans_to text,
+    balance text,
+    component_id text,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
---- block uniswapv2 event DepositEvent
-create table IF NOT EXISTS ethereum_block_uniswapv2_event_depositevent(
+--- block component_changes
+
+create table IF NOT EXISTS ethereum_uniswap_v2.ethereum_block_uniswapv2_component_change(
     id text primary key,
-    hash text,
-    log_index bigint,
-    log_ordinal bigint,
-    address_to text,
-    address_from text,
     block_number bigint,
-    event_timestamp bigint,
-    pool text,
-    event_type bigint,
-    input_token_amounts numberic,
-    output_token_amount numberic,
+    block_time bigint,
+    transaction_change_index bigint,
+    transcation_index bigint,
+    balance_change_index bigint,
+
+    token text,
+    trans_from text,
+    trans_to text,
+    balance text,
+    component_id text,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+
+
+--- block component_changes 
+create table IF NOT EXISTS ethereum_uniswap_v2.ethereum_block_uniswapv2_component_changes(
+    id text primary key,
+    block_number bigint,
+    block_time bigint,
+    transaction_change_index bigint,
+    transcation_index bigint,
+    contract_change_index bigint,
+    contract_change_id bigint,
+    change bigint,
+    protocol_type_financial_type bigint,
+    protocol_type_implementation_type bigint,
+    protocol_type_name text,
+    protocol_type_attribute_schema text,
+    contract_index bigint,
+    contract text,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
