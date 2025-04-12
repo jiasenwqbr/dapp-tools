@@ -64,12 +64,21 @@ create table IF NOT EXISTS ethereum_uniswap_v2.ethereum_block_uniswapv2_swaps(
     id text primary key,
     block_number bigint,
     block_time bigint,
-    swap_from text,
+    transaction_from text, --钱包地址
+    transaction_to text,  --合约地址
+    transaction_gas_price numeric,
+    transaction_gas_used numeric,
+    transaction_hash text,
+    transaction_public_key text,
+    transaction_max_fee_per_gas numeric,
+    transaction_max_priority_fee_per_gas numeric,
+    pair_address text,
+    swap_sender text,
     swap_to text,
-    amount0_in numberic,
-    amount0_out numberic,
-    amount1_in numberic,
-    amount1_out numberic,
+    amount0_in numeric,
+    amount0_out numeric,
+    amount1_in numeric,
+    amount1_out numeric,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
