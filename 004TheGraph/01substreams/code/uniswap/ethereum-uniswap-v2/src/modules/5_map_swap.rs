@@ -1,19 +1,13 @@
+
 use substreams::log;
 use std::collections::HashMap;
 use substreams::{prelude::BigInt, Hex};
 use substreams_database_change::pb::database::{table_change::Operation, DatabaseChanges};
 use substreams_ethereum::{
     pb::eth::v2::{self as eth, Log},
-    Event,
+    Event
 };
-
-use crate::abi::pool::events::Swap;
-
-// #[derive(Debug, Deserialize)]
-// struct Params {
-//     factory_address: String,
-//     protocol_type_name: String,
-// }
+use crate::{abi::pool::events::Swap, persistence::persistence};
 
 #[derive(Debug)]
 struct SwapV1 {
@@ -38,19 +32,18 @@ struct SwapV1 {
 
 }
 #[substreams::handlers::map]
-pub fn map_swap(block: eth::Block) -> Result<DatabaseChanges, substreams::errors::Error> {
+pub fn map_swap( params: String,block: eth::Block) -> Result<DatabaseChanges, substreams::errors::Error> {
     let block_number = block.number;
     let block_time = block.timestamp_seconds();
     let mut database_changes: DatabaseChanges = Default::default();
-
-    
-    save_swaps(block_number,block_time,block,&mut database_changes);
+    save_swaps(block_number,block_time,&block,&mut database_changes);
+    persistence::save_ethereum_block(params,block, &mut database_changes);
     Ok(database_changes)
 }
 
-fn  save_swaps(block_number: u64,block_time: u64,block:eth::Block,database_changes:&mut DatabaseChanges){
+fn  save_swaps(block_number: u64,block_time: u64,block: &eth::Block,database_changes:&mut DatabaseChanges){
     let mut swaps: Vec<SwapV1> = vec![];
-    for trx in block.transaction_traces {
+    for trx in block.transaction_traces.clone() {
         for log in trx.receipt.unwrap().logs {
             if let Some(swap) = extract_swap_event(&log) {
                 // add transation info 
@@ -106,7 +99,12 @@ fn  save_swaps(block_number: u64,block_time: u64,block:eth::Block,database_chang
                 });
             }
         }
+    
+       
+    
     }
+
+    
    
     for swap in swaps {
         log::info!("sink-sql: {:?}", swap);
@@ -151,3 +149,4 @@ fn save_ethereum_block_uniswapv2_swaps(swap: SwapV1, changes: &mut DatabaseChang
         .change("transaction_max_priority_fee_per_gas", (None,swap.transaction_max_priority_fee_per_gas))
         .change("pair_address", (None,swap.pair_address));
 }
+

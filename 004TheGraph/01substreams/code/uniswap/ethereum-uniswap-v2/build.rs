@@ -8,8 +8,8 @@ fn main() -> Result<(), anyhow::Error> {
     Abigen::new("Pool", "abi/Pool.json")?
         .generate()?
         .write_to_file("src/abi/pool.rs")?;
-    // Abigen::new("Pair", "abi/Pair.json")?
-    //     .generate()?
-    //     .write_to_file("src/abi/pair.rs")?;
+    Abigen::new("ERC20", "abi/ERC20.json")?
+        .generate()?
+        .write_to_file("src/abi/erc20.rs")?;
     Ok(())
 }

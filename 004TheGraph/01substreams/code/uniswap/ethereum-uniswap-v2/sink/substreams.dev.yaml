@@ -22,6 +22,7 @@ modules:
     kind: map
     initialBlock: 15614590
     inputs:
+      - params: string
       - source: sf.ethereum.type.v2.Block
     output:
       type: proto:sf.substreams.sink.database.v1.DatabaseChanges
@@ -35,7 +36,7 @@ sink:
     postgraphile_frontend:
       enabled: true
 
-# params:
-#   map_swap: factory_address=5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f&protocol_type_name=uniswap_v2_pool
+params:
+  map_swap: factory_address=5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f&protocol_type_name=uniswap_v2_pool
 
 

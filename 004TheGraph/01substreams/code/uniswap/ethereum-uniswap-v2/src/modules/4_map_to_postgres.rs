@@ -6,6 +6,7 @@ use crate::persistence;
 
 #[substreams::handlers::map]
 pub fn map_to_postgres(
+    params:String,
     block: eth::Block
 ) -> Result<DatabaseChanges, substreams::errors::Error> {
     
@@ -19,10 +20,7 @@ pub fn map_to_postgres(
     // database_changes
     //     .push_change_composite("ethereum_block_all", composite_key, 1, Operation::Create)
     //     .change("data", (None, json));
-    persistence::persistence::save_ethereum_block(block, &mut database_changes);
+    persistence::persistence::save_ethereum_block(params,block, &mut database_changes);
     
-
-
-
     Ok(database_changes)
 }

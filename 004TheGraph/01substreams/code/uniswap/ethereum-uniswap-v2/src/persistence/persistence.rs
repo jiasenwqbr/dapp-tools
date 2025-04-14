@@ -19,18 +19,12 @@ struct Params {
 }
 
 
-pub fn save_ethereum_block(block: eth::Block, database_changes: &mut DatabaseChanges){
+pub fn save_ethereum_block(params:String,block: eth::Block, database_changes: &mut DatabaseChanges){
     
     let mut new_pools: Vec<TransactionChanges> = vec![];
-    // let params = String::from("factory_address=c0aee478e3658e2610c5f7a4a2e1777ce9e4f2ac&protocol_type_name=sushiswap_v2_pool");
-    // let params: Params = serde_qs::from_str(params.as_str()).expect("Unable to deserialize params");
-    let params: Params = Params {
-        factory_address :String::from("c0aee478e3658e2610c5f7a4a2e1777ce9e4f2ac") ,
-        protocol_type_name: String::from("c0aee478e3658e2610c5f7a4a2e1777ce9e4f2ac")
-
-    };
     let block_number = block.number;
     let block_time = block.timestamp().seconds;
+    let params: Params = serde_qs::from_str(params.as_str()).expect("Unable to deserialize params");
     get_pools(&block, &mut new_pools, &params);
 
     for (transaction_change_index,transaction_change) in new_pools.iter().enumerate(){
@@ -44,8 +38,6 @@ pub fn save_ethereum_block(block: eth::Block, database_changes: &mut DatabaseCha
     }
 
 }
-
-
 
 fn get_pools(block: &eth::Block, new_pools: &mut Vec<TransactionChanges>, params: &Params) {
     // Extract new pools from PairCreated events
@@ -112,6 +104,7 @@ fn get_pools(block: &eth::Block, new_pools: &mut Vec<TransactionChanges>, params
     };
 
     let mut eh = EventHandler::new(block);
+    
 
     eh.filter_by_address(vec![Address::from_str(&params.factory_address).unwrap()]);
 
@@ -156,73 +149,269 @@ fn save_change(
                     database_changes
                 );
             }
-            let component_changes = &transaction_change.component_changes;
-            for (contract_change_index,contract_change) in component_changes.iter().enumerate(){
-                let contract_change_id = &contract_change.id;
-                let change = &contract_change.change;
-                let protocol_type = &contract_change.protocol_type.clone().unwrap(); 
-                let protocol_type_financial_type = protocol_type.financial_type;
-                let protocol_type_implementation_type = protocol_type.implementation_type;
-                let protocol_type_name = &protocol_type.name;
-                let protocol_type_attribute_schema: &Vec<Attribute> =  &protocol_type.attribute_schema;
-                let mut protocol_type_attribute_schema_vec: Vec<HashMap<String,String>> = Vec::new();
-                for attribute in protocol_type_attribute_schema {
-                    let mut map:HashMap<String, String>  = HashMap::new();
-                    map.insert("name".to_string(), attribute.name.clone());
-                    map.insert("".to_string(), attribute.change.to_string());
-                    map.insert("".to_string(),   Hex::encode(&attribute.value));
 
-                    protocol_type_attribute_schema_vec.push(map);
-                }
-                let protocol_type_attribute_schema = serde_json::to_string(&protocol_type_attribute_schema_vec).unwrap();
-                
-            
+            let entity_changes = &transaction_change.entity_changes;
+            for (entity_change_index,entity_change) in entity_changes.iter().enumerate(){
+                let component_id = &entity_change.component_id;
+                let attributes = &entity_change.attributes;
 
-                let contracts = &contract_change.contracts;
-                for (contract_index,contract) in contracts.iter().enumerate(){
-                 let contract =  Hex::encode(&contract);
-                    save_ethereum_block_uniswapv2_contract_changes_contracts(
-                        block_number,
-                        block_time,
-                        transaction_change_index,
-                        transcation_index,
-                        contract_change_index,
-                        &contract_change_id,
-                        change.clone(),
-                        protocol_type_financial_type,
-                        protocol_type_implementation_type,
-                        protocol_type_name,
-                        &protocol_type_attribute_schema,
-                        contract_index,
-                        contract,
-                        database_changes
-                    );
-                }
-                // let contract_changes: &Vec<ContractChange> = &transaction_change.contract_changes;
-                // for (contract_change_index,contract_change) in contract_changes.iter().enumerate(){
+                let reserve0 = &attributes[0].name;
+                let reserve0_value: &Vec<u8> =  &attributes[0].value;
+                let reserve0_value = BigInt::from_signed_bytes_be(&reserve0_value);
+                let reserve0_change = attributes[0].change;
+                let reserve1  = &attributes[1].name;
+                let reserve1_value = &attributes[1].value;
+                let reserve1_value = BigInt::from_signed_bytes_be(&reserve1_value);
+                let reserve1_change = attributes[1].change;
 
-                // }
-
-
-
-                // let static_att: &Vec<Attribute> = &contract_change.static_att;
-                // let tokens: &Vec<Vec<u8>> = &contract_change.tokens;
-                // let tx: &Option<Transaction> = &contract_change.tx;
+                save_ethereum_block_uniswapv2_entity_changes(
+                    block_number,
+                    block_time,
+                    transaction_change_index,
+                    transcation_index,
+                    entity_change_index,
+                    component_id,
+                    reserve0,
+                    reserve0_value,
+                    reserve0_change,
+                    reserve1,
+                    reserve1_value,
+                    reserve1_change,
+                    database_changes
+                );
                 
             }
 
+            let balance_changes = &transaction_change.balance_changes;
+            let token0 = &balance_changes[0].token;
+            let token0 = Hex::encode(token0);
+            let token0_component_id = &balance_changes[0].component_id;     
+            let  token0_component_id = Hex::encode(token0_component_id);
+            let token0_balance = &balance_changes[0].balance;
+            let token0_balance = BigInt::from_signed_bytes_be(&token0_balance);
 
+            let token1 = &balance_changes[1].token;
+            let token1 = Hex::encode(token1);
+            let token1_component_id = &balance_changes[1].component_id;    
+            let token1_component_id = Hex::encode(token1_component_id);
+            let token1_balance = &balance_changes[1].balance;
+            let token1_balance = BigInt::from_signed_bytes_be(&token1_balance);
 
-            // let entity_changes = &transaction_change.entity_changes;
-            // for (entity_change_index,entity_change) in entity_changes.iter().enumerate(){
-            //     let attributes = &entity_change.attributes;
-            //     let component_id = &entity_change.component_id;
-            // }
+            save_ethereum_block_uniswapv2_balance_changes(
+                block_number,
+                block_time,
+                transaction_change_index,
+                transcation_index,
+                token0,
+                token0_component_id,
+                token0_balance,
+                token1,
+                token1_component_id,
+                token1_balance,
+                database_changes
+            );
+
+            let component_changes = &transaction_change.component_changes;
+            for (component_change_index,component_change) in component_changes.iter().enumerate(){
+                let component_change_id = &component_change.id;
+                let token0 = Hex::encode(&component_change.tokens[0]);
+                let token1 = Hex::encode(&component_change.tokens[1]);
+                let fee_value = BigInt::from_signed_bytes_be(&component_change.static_att[0].value);
+                let fee_change = &component_change.static_att[0].change;
+                let pool_address = Hex::encode(&component_change.static_att[1].value);
+                let pool_change = &component_change.static_att[1].change;
+                let change = &component_change.change;
+                let protocol_type = &component_change.protocol_type;
+                let protocol_type_name:String;
+                let protocol_financial_type;
+                let protocol_type_implementation_type;
+                match protocol_type {
+                    Some(val) => {
+                        protocol_type_name = val.name.clone();
+                        protocol_financial_type = val.financial_type;
+                        protocol_type_implementation_type = val.implementation_type;
+
+                    },
+                    None => {
+                        protocol_type_name = String::new();
+                        protocol_financial_type = 0;
+                        protocol_type_implementation_type = 0;
+                    },
+                }
+                let tx_from;
+                let tx_to;
+                let tx_hash;
+                let tx_index;
+                let tx = &transaction_change.tx;
+                match tx {
+                    Some(val) => {
+                        tx_from = Hex::encode(val.from.clone());
+                        tx_to = Hex::encode(val.to.clone());
+                        tx_hash = Hex::encode(val.hash.clone());
+                        tx_index = val.index;
+                    },
+                    None => {
+                        tx_from = String::new();
+                        tx_to = String::new();
+                        tx_hash = String::new();
+                        tx_index = 0;
+                    },
+                }
+                let id = format!("{}_{}_{}_{}_{}",block_number,block_time,transaction_change_index,transcation_index,component_change_index);
+
+                save_ethereum_block_uniswapv2_component_changes(
+                    id ,
+                    block_number,
+                    block_time,
+                    transaction_change_index ,
+                    transcation_index ,
+                    component_change_index ,
+                    component_change_id ,
+                    token0 ,
+                    token1 ,
+                    fee_value ,
+                    fee_change ,
+                    pool_address ,
+                    pool_change ,
+                    change,
+                    protocol_type_name,
+                    protocol_financial_type,
+                    protocol_type_implementation_type,
+                    tx_from ,
+                    tx_to ,
+                    tx_hash ,
+                    tx_index ,
+                    database_changes
+                );
+                
+                
+            }
 
         },
         None => {}
     };
 
+}
+
+fn save_ethereum_block_uniswapv2_component_changes(
+    id :String,
+    block_number:u64,
+    block_time:i64,
+    transaction_change_index:usize,
+    transcation_index:u64,
+    component_change_index:usize,
+    component_change_id:&String,
+    token0 :String,
+    token1:String,
+    fee_value:BigInt,
+    fee_change:&i32,
+    pool_address :String,
+    pool_change:&i32,
+    change:&i32,
+    protocol_type_name:String,
+    protocol_financial_type:i32,
+    protocol_type_implementation_type:i32,
+    tx_from:String,
+    tx_to :String,
+    tx_hash:String,
+    tx_index:u64,
+    changes:&mut DatabaseChanges
+){
+    let mut composite_key: HashMap<String, String> = HashMap::new();
+    composite_key.insert(
+        "id".to_string(),
+        id,
+    );
+    changes.push_change_composite("ethereum_block_uniswapv2_component_changes", composite_key, 1, Operation::Create)
+    .change("block_number", (None,block_number))
+    .change("block_time", (None,block_time))
+    .change("transaction_change_index", (None,transaction_change_index as u64))
+    .change("transcation_index", (None,transcation_index as u64))
+    .change("component_change_index", (None,component_change_index as u64))
+    .change("component_change_id", (None,component_change_id))
+    .change("token0", (None,token0))
+    .change("token1", (None,token1))
+    .change("fee_value", (None,fee_value))
+    .change("fee_change", (None,*fee_change))
+    .change("pool_address", (None,pool_address))
+    .change("pool_change", (None,*pool_change))
+    .change("change", (None,*change))
+    .change("protocol_type_name", (None,protocol_type_name))
+    .change("protocol_financial_type", (None,protocol_financial_type))
+    .change("protocol_type_implementation_type", (None,protocol_type_implementation_type))
+    .change("tx_from", (None,tx_from))
+    .change("tx_to", (None,tx_to))
+    .change("tx_hash", (None,tx_hash))
+    .change("tx_index", (None,tx_index));
+}
+
+fn save_ethereum_block_uniswapv2_balance_changes(
+    block_number:u64,
+    block_time:i64,
+    transaction_change_index:usize,
+    transcation_index:u64,
+    token0:String,
+    token0_component_id:String,
+    token0_balance:BigInt,
+    token1:String,
+    token1_component_id:String,
+    token1_balance:BigInt,
+    changes:&mut DatabaseChanges 
+){
+    let id = format!("{}_{}_{}_{}",block_number,block_time,transaction_change_index,transcation_index);
+    let mut composite_key: HashMap<String, String> = HashMap::new();
+    composite_key.insert(
+        "id".to_string(),
+        id,
+    );
+    changes.push_change_composite("ethereum_block_uniswapv2_balance_changes", composite_key, 1, Operation::Create)
+    .change("block_number", (None,block_number))
+    .change("block_time", (None,block_time))
+    .change("transaction_change_index", (None,transaction_change_index as u64))
+    .change("transcation_index", (None,transcation_index as u64))
+    .change("token0", (None,token0))
+    .change("token0_component_id", (None,token0_component_id))
+    .change("token0_balance", (None,token0_balance))
+    .change("token1", (None,token1))
+    .change("token1_component_id", (None,token1_component_id))
+    .change("token1_balance", (None,token1_balance));
+}
+
+
+fn save_ethereum_block_uniswapv2_entity_changes(
+    block_number:u64,
+    block_time:i64,
+    transaction_change_index:usize,
+    transcation_index:u64,
+    entity_change_index:usize,
+    component_id:&String,
+    reserve0:&String,
+    reserve0_value:BigInt,
+    reserve0_change:i32,
+    reserve1:&String,
+    reserve1_value:BigInt,
+    reserve1_change:i32,
+    changes:&mut DatabaseChanges
+){
+    let id = format!("{}_{}_{}_{}_{}",block_number,block_time,transaction_change_index,transcation_index,entity_change_index);
+    let mut composite_key: HashMap<String, String> = HashMap::new();
+    composite_key.insert(
+        "id".to_string(),
+        id,
+    );
+    changes.push_change_composite("ethereum_block_uniswapv2_entity_changes", composite_key, 1, Operation::Create)
+    .change("block_number", (None,block_number))
+    .change("block_time", (None,block_time))
+    .change("transaction_change_index", (None,transaction_change_index as u64))
+    .change("transcation_index", (None,transcation_index as u64))
+    .change("entity_change_index", (None,entity_change_index as u64))
+    .change("component_id", (None,component_id))
+    .change("reserve0", (None,reserve0))
+    .change("reserve0_value", (None,reserve0_value))
+    .change("reserve0_change", (None,reserve0_change))
+    .change("reserve1",(None,reserve1))
+    .change("reserve1_value", (None,reserve1_value))
+    .change("reserve1_change", (None,reserve1_change));
 }
 
 fn save_ethereum_block_uniswapv2_transcation_change(
@@ -245,7 +434,7 @@ fn save_ethereum_block_uniswapv2_transcation_change(
         id,
     );
 
-    changes.push_change_composite("ethereum_block_uniswapv2_component_change", composite_key, 1, Operation::Create)
+    changes.push_change_composite("ethereum_block_uniswapv2_transcation_change", composite_key, 1, Operation::Create)
     .change("block_number", (None,block_number))
     .change("block_time", (None,block_time))
     .change("transaction_change_index", (None,transaction_change_index as u64))
@@ -255,43 +444,4 @@ fn save_ethereum_block_uniswapv2_transcation_change(
     .change("trans_to", (None,trans_to))
     .change("balance", (None,balance))
     .change("component_id", (None,component_id));
-}
-
-
-fn save_ethereum_block_uniswapv2_contract_changes_contracts(
-    block_number:u64,
-    block_time:i64,
-    transaction_change_index:usize,
-    transcation_index:u64,
-    contract_change_index:usize,
-    contract_change_id:&String,
-    change:i32,
-    protocol_type_financial_type:i32,
-    protocol_type_implementation_type:i32,
-    protocol_type_name:&String,
-    protocol_type_attribute_schema:&String,
-    contract_index:usize,
-    contract:String,
-    changes:&mut DatabaseChanges
-){
-    let id = format!("{}_{}_{}_{}_{}",block_number,block_time,transaction_change_index,transcation_index,contract_change_index);
-    let mut composite_key: HashMap<String, String> = HashMap::new();
-    composite_key.insert(
-        "id".to_string(),
-        id,
-    );
-    changes.push_change_composite("ethereum_block_uniswapv2_transcation_change", composite_key, 1, Operation::Create)
-    .change("block_number", (None,block_number))
-    .change("block_time", (None,block_time))
-    .change("transaction_change_index", (None,transaction_change_index as u64))
-    .change("transcation_index", (None,transcation_index as u64))
-    .change("contract_change_id", (None,contract_change_id))
-    .change("change", (None,change))
-    .change("protocol_type_financial_type", (None,protocol_type_financial_type))
-    .change("protocol_type_implementation_type", (None,protocol_type_implementation_type))
-    .change("protocol_type_name", (None,protocol_type_name))
-    .change("protocol_type_attribute_schema", (None,protocol_type_attribute_schema))
-    .change("contract_index", (None,contract_index as u64))
-    .change("contract", (None,contract));
-
 }

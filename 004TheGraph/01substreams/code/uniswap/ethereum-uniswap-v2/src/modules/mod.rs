@@ -13,3 +13,6 @@ mod map_pool_events;
 mod map_to_postgres;
 #[path = "5_map_swap.rs"]
 mod map_swaps;
+
+#[path = "6_map_erc20.rs"]
+mod map_erc20;

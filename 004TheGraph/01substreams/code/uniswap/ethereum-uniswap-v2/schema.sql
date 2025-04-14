@@ -18,44 +18,87 @@ create table IF NOT EXISTS ethereum_uniswap_v2.ethereum_block_uniswapv2_transcat
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
---- block component_changes
 
-create table IF NOT EXISTS ethereum_uniswap_v2.ethereum_block_uniswapv2_component_change(
+
+--- block entity_changes
+
+create table IF NOT EXISTS ethereum_uniswap_v2.ethereum_block_uniswapv2_entity_changes(
     id text primary key,
     block_number bigint,
     block_time bigint,
     transaction_change_index bigint,
     transcation_index bigint,
-    balance_change_index bigint,
-
-    token text,
-    trans_from text,
-    trans_to text,
-    balance text,
+    entity_change_index bigint,
     component_id text,
+    attribute_index bigint,
+
+    reserve0 text,
+    reserve0_value numeric,
+    reserve0_change bigint,
+    reserve1 text,
+    reserve1_value numeric,
+    reserve1_change bigint,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 
 
---- block component_changes 
+--- block balance_changes
+
+create table IF NOT EXISTS ethereum_uniswap_v2.ethereum_block_uniswapv2_balance_changes(
+    id text primary key,
+    block_number bigint,
+    block_time bigint,
+    transaction_change_index bigint,
+    transcation_index bigint,
+
+    token0 text,
+    token0_balance numeric,
+    token0_component_id text,
+
+    token1 text,
+    token1_balance numeric,
+    token1_component_id text,
+
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+
+
+
+
+
+--- block component_changes
+
 create table IF NOT EXISTS ethereum_uniswap_v2.ethereum_block_uniswapv2_component_changes(
     id text primary key,
     block_number bigint,
     block_time bigint,
     transaction_change_index bigint,
     transcation_index bigint,
-    contract_change_index bigint,
-    contract_change_id bigint,
+    component_change_index bigint,
+
+    component_change_id text,
+    token0 text,
+    token1 text,
+    fee_value bigint,
+    fee_change bigint,
+    pool_address text,
+    pool_change bigint,
     change bigint,
-    protocol_type_financial_type bigint,
-    protocol_type_implementation_type bigint,
     protocol_type_name text,
-    protocol_type_attribute_schema text,
-    contract_index bigint,
-    contract text,
+    protocol_financial_type bigint,
+    protocol_type_implementation_type bigint,
+    tx_from text,
+    tx_to text,
+    tx_hash text,
+    tx_index bigint,
+
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+
+
 
 
 
