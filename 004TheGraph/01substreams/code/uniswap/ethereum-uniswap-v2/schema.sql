@@ -98,10 +98,6 @@ create table IF NOT EXISTS ethereum_uniswap_v2.ethereum_block_uniswapv2_componen
 );
 
 
-
-
-
-
 --- block swaps
 create table IF NOT EXISTS ethereum_uniswap_v2.ethereum_block_uniswapv2_swaps(
     id text primary key,
@@ -124,6 +120,51 @@ create table IF NOT EXISTS ethereum_uniswap_v2.ethereum_block_uniswapv2_swaps(
     amount1_out numeric,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+
+--- block tokens
+create table IF NOT EXISTS ethereum_uniswap_v2.ethereum_block_uniswapv2_tokens(
+    id text primary key,
+    symbol text,
+    token_name text,
+    decimals bigint, 
+    total_liquidity numeric,  
+    total_supply numeric,
+    trade_volume_usd numeric,
+    tx_count bigint,
+    untracked_volume_usd numeric,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE
+);
+
+--- block pairs
+create table IF NOT EXISTS ethereum_uniswap_v2.ethereum_block_uniswapv2_pairs(
+    id text primary key,
+    token0_id text,
+    token0_name text,
+    token1_id text,
+    token1_name text,
+    liquidity_provider_count bigint,
+    reserve0 numeric,
+    reserve1 numeric,
+    reserve_eth numeric,
+    reserve_usd numeric,
+    token0_price numeric,
+    token1_price numeric,
+    total_supply numeric,
+    tracked_reserve_eth numeric,
+    tx_count bigint,
+    untracked_volume_usd numeric,
+    volume_token0 numeric,
+    volume_token1 numeric,
+    volume_usd numeric,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE
+);
+
+
+
+
 
 
 
