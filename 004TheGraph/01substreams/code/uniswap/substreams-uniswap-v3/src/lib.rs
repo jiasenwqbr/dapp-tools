@@ -12,6 +12,7 @@ mod math;
 mod rpc;
 mod storage;
 mod ticks_idx;
+mod db_sink;
 
 use crate::ethpb::v2::{Block, StorageChange};
 use crate::pb::uniswap;
@@ -39,6 +40,8 @@ use substreams::{log, Hex};
 use substreams_entity_change::pb::entity::EntityChanges;
 use substreams_entity_change::tables::Tables;
 use substreams_ethereum::{pb::eth as ethpb, Event as EventTrait};
+
+use substreams_database_change::pb::database::DatabaseChanges;
 
 #[substreams::handlers::map]
 pub fn map_pools_created(block: Block) -> Result<Pools, Error> {
@@ -1391,4 +1394,42 @@ pub fn graph_out(
     );
 
     Ok(tables.to_entity_changes())
+}
+
+
+
+#[substreams::handlers::map]
+pub fn database_out(
+    clock: Clock,
+    pool_count_deltas: Deltas<DeltaBigInt>,              /* store_pool_count */
+    tx_count_deltas: Deltas<DeltaBigInt>,                /* store_total_tx_counts deltas */
+    swaps_volume_deltas: Deltas<DeltaBigDecimal>,        /* store_swaps_volume */
+    derived_factory_tvl_deltas: Deltas<DeltaBigDecimal>, /* store_derived_factory_tvl */
+    derived_eth_prices_deltas: Deltas<DeltaBigDecimal>,  /* store_eth_prices */
+    events: Events,                                      /* map_extract_data_types */
+    pools_created: Pools,                                /* map_pools_created */
+    pool_sqrt_price_deltas: Deltas<DeltaProto<PoolSqrtPrice>>, /* store_pool_sqrt_price */
+    pool_sqrt_price_store: StoreGetProto<PoolSqrtPrice>, /* store_pool_sqrt_price */
+    pool_liquidities_store_deltas: Deltas<DeltaBigInt>,  /* store_pool_liquidities */
+    token_tvl_deltas: Deltas<DeltaBigDecimal>,           /* store_token_tvl */
+    price_deltas: Deltas<DeltaBigDecimal>,               /* store_prices */
+    store_prices: StoreGetBigDecimal,                    /* store_prices */
+    tokens_store: StoreGetInt64,                         /* store_tokens */
+    tokens_whitelist_pools_deltas: Deltas<DeltaArray<String>>, /* store_tokens_whitelist_pools */
+    derived_tvl_deltas: Deltas<DeltaBigDecimal>,         /* store_derived_tvl */
+    ticks_liquidities_deltas: Deltas<DeltaBigInt>,       /* store_ticks_liquidities */
+    tx_count_store: StoreGetBigInt,                      /* store_total_tx_counts */
+    store_eth_prices: StoreGetBigDecimal,                /* store_eth_prices */
+    store_positions: StoreGetProto<PositionEvent>,       /* store_positions */
+    min_windows_deltas: Deltas<DeltaBigDecimal>,         /* store_min_windows */
+    max_windows_deltas: Deltas<DeltaBigDecimal>,         /* store_max_windows */
+) -> Result<DatabaseChanges, substreams::errors::Error>  {
+    let timestamp = clock.timestamp.unwrap().seconds;
+    let mut database_changes: DatabaseChanges = Default::default();
+    let event_data = serde_json::to_string_pretty(&events).expect("序列化失败");    
+    db_sink::save_data(event_data, "event".to_string(), timestamp, &mut database_changes);
+    let pools_created_data = serde_json::to_string_pretty(&pools_created).expect("序列化失败");    
+    db_sink::save_data(pools_created_data, "pools_created".to_string(), timestamp, &mut database_changes);
+   
+    Ok(database_changes)
 }

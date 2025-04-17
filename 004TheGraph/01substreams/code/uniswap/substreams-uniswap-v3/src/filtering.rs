@@ -44,7 +44,7 @@ pub fn extract_pool_events_and_positions(
 
         log::info!("'swap amount 0 {}", swap.amount0);
         log::info!("'swap amount 1 {}", swap.amount1);
-        let amount0 = swap.amount0.to_decimal(token0.decimals);
+        let amount0: BigDecimal = swap.amount0.to_decimal(token0.decimals);
         let amount1 = swap.amount1.to_decimal(token1.decimals);
 
         pool_events.push(events::PoolEvent {
