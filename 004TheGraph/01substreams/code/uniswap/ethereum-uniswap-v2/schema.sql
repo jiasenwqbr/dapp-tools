@@ -133,6 +133,7 @@ create table IF NOT EXISTS ethereum_uniswap_v2.ethereum_block_uniswapv2_tokens(
     trade_volume_usd numeric,
     tx_count bigint,
     untracked_volume_usd numeric,
+    derivedETH numeric,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE
 );
@@ -158,6 +159,8 @@ create table IF NOT EXISTS ethereum_uniswap_v2.ethereum_block_uniswapv2_pairs(
     volume_token0 numeric,
     volume_token1 numeric,
     volume_usd numeric,
+    created_at_block_number bigint,
+    created_at_timestamp bigint,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE
 );
