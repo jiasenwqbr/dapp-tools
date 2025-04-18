@@ -1456,6 +1456,14 @@ pub fn database_out(
     // Tokens:
     db_sink::tokens_created_token_entity_changes(&mut database_changes, &pools_created, tokens_store);
     db_sink::swap_volume_token_entity_change(&mut database_changes, &swaps_volume_deltas);
+    db_sink::tx_count_token_entity_change(&mut database_changes, &tx_count_deltas);
+    db_sink::total_value_locked_by_token_token_entity_change(&mut database_changes, &token_tvl_deltas);
+    db_sink::total_value_locked_usd_token_entity_change(&mut database_changes, &derived_tvl_deltas);
+    db_sink::derived_eth_prices_token_entity_change(&mut database_changes, &derived_eth_prices_deltas);
+    // db_sink::whitelist_token_entity_change(&mut database_changes, tokens_whitelist_pools_deltas);
+    
+    // Tick:
+    
 
     Ok(database_changes)
 }

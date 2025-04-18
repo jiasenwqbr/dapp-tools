@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use substreams::{key, scalar::{BigDecimal, BigInt}, store::{DeltaBigDecimal, DeltaBigInt, DeltaExt, DeltaProto, Deltas, StoreGet, StoreGetInt64}};
+use substreams::{key, scalar::{BigDecimal, BigInt}, store::{DeltaArray, DeltaBigDecimal, DeltaBigInt, DeltaExt, DeltaProto, Deltas, StoreGet, StoreGetInt64}};
 use substreams_database_change::pb::database::{table_change::Operation, DatabaseChanges};
 
 use crate::pb::uniswap::{events::{self, PoolSqrtPrice}, Erc20Token, Pool, Pools};
@@ -430,6 +430,56 @@ pub fn swap_volume_token_entity_change(changes:&mut DatabaseChanges, swaps_volum
     }
 
 }
+
+pub fn tx_count_token_entity_change(changes:&mut DatabaseChanges, tx_count_deltas:&Deltas<DeltaBigInt>){
+    for delta in tx_count_deltas.iter().key_first_segment_eq("token") {
+        let token_address = key::segment_at(&delta.key, 1);
+        let mut keys: HashMap<String, String> = HashMap::new();
+        keys.insert("id".to_string(), format!("0x{}",token_address));
+        changes.push_change_composite("ethereum_uniswap_v3.ethereum_uniswap_v3_tokens", keys, 1, Operation::Update)
+        .change("tx_count", (None,&delta.new_value));
+    }
+}
+
+pub fn total_value_locked_by_token_token_entity_change(changes:&mut DatabaseChanges, token_tvl_deltas:&Deltas<DeltaBigDecimal>){
+    for delta in token_tvl_deltas.iter().key_first_segment_eq("token") {
+        let token_address = key::last_segment(&delta.key);
+        let mut keys: HashMap<String, String> = HashMap::new();
+        keys.insert("id".to_string(), format!("0x{}",token_address));
+        changes.push_change_composite("ethereum_uniswap_v3.ethereum_uniswap_v3_tokens", keys, 1, Operation::Update)
+        .change("total_value_locked", (None,&delta.new_value));
+    }
+}
+
+pub fn total_value_locked_usd_token_entity_change(changes:&mut DatabaseChanges, derived_tvl_deltas : &Deltas<DeltaBigDecimal>){
+    for delta in derived_tvl_deltas.iter()
+    .key_first_segment_eq("token")
+    .key_last_segment_eq("totalValueLockedUSD") {
+        let token_address = key::segment_at(&delta.key, 1);
+        let mut keys: HashMap<String, String> = HashMap::new();
+        keys.insert("id".to_string(), format!("0x{}",token_address));
+        changes.push_change_composite("ethereum_uniswap_v3.ethereum_uniswap_v3_tokens", keys, 1, Operation::Update)
+        .change("total_value_locked_usd", (None,&delta.new_value));
+    }
+}
+
+pub fn derived_eth_prices_token_entity_change(changes:&mut DatabaseChanges, derived_eth_prices_deltas: &Deltas<DeltaBigDecimal>){
+    for delta in derived_eth_prices_deltas.iter().key_first_segment_eq("token") {
+        let field_name: &str = match key::last_segment(&delta.key) {
+            "eth" => "derivedETH",
+            _ => continue,
+        };
+        let token_address = key::segment_at(&delta.key, 1);
+        if field_name == "derivedETH" {
+            let mut keys: HashMap<String, String> = HashMap::new();
+            keys.insert("id".to_string(), format!("0x{}",token_address));
+            changes.push_change_composite("ethereum_uniswap_v3.ethereum_uniswap_v3_tokens", keys, 1, Operation::Update)
+            .change("derived_eth", (None,&delta.new_value));
+        }
+    }
+}
+
+
 
 
 
