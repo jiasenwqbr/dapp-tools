@@ -1426,10 +1426,36 @@ pub fn database_out(
 ) -> Result<DatabaseChanges, substreams::errors::Error>  {
     let timestamp = clock.timestamp.unwrap().seconds;
     let mut database_changes: DatabaseChanges = Default::default();
-    let event_data = serde_json::to_string_pretty(&events).expect("序列化失败");    
-    db_sink::save_data(event_data, "event".to_string(), timestamp, &mut database_changes);
-    let pools_created_data = serde_json::to_string_pretty(&pools_created).expect("序列化失败");    
-    db_sink::save_data(pools_created_data, "pools_created".to_string(), timestamp, &mut database_changes);
-   
+    // let event_data = serde_json::to_string_pretty(&events).expect("序列化失败");    
+    // db_sink::save_data(event_data, "event".to_string(), timestamp, &mut database_changes);
+    // let pools_created_data = serde_json::to_string_pretty(&pools_created).expect("序列化失败");    
+    // db_sink::save_data(pools_created_data, "pools_created".to_string(), timestamp, &mut database_changes);
+
+
+    // pool_count_deltas
+    db_sink::pool_count_deltas(timestamp,pool_count_deltas,&mut database_changes);
+    // tx_count_deltas
+    db_sink::tx_count_deltas(&tx_count_deltas,&mut database_changes);
+    // swaps_volume_deltas
+    db_sink::swaps_volume_deltas(&swaps_volume_deltas,&mut database_changes);
+    // derived_factory_tvl_deltas
+    db_sink::derived_factory_tvl_deltas(derived_factory_tvl_deltas,&mut database_changes);
+
+    // pool
+    // pools_created
+    db_sink::pools_created_pool_entity_changes(&mut database_changes, &pools_created);
+    db_sink::sqrt_price_and_tick_pool_entity_change(&mut database_changes, &pool_sqrt_price_deltas);
+    db_sink::liquidities_pool_entity_change(&mut database_changes, &pool_liquidities_store_deltas);
+    db_sink::fee_growth_global_pool_entity_change(&mut database_changes, &events.fee_growth_global_updates);
+    db_sink::total_value_locked_pool_entity_change(&mut database_changes, &derived_tvl_deltas);
+    db_sink::total_value_locked_by_token_pool_entity_change(&mut database_changes, &token_tvl_deltas);
+    db_sink::price_pool_entity_change(&mut database_changes, &price_deltas);
+    db_sink::tx_count_pool_entity_change(&mut database_changes, &tx_count_deltas);
+    db_sink::swap_volume_pool_entity_change(&mut database_changes, &swaps_volume_deltas);
+
+    // Tokens:
+    db_sink::tokens_created_token_entity_changes(&mut database_changes, &pools_created, tokens_store);
+    db_sink::swap_volume_token_entity_change(&mut database_changes, &swaps_volume_deltas);
+
     Ok(database_changes)
 }
