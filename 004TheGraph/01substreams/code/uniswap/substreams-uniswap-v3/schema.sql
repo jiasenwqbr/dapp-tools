@@ -75,3 +75,89 @@ create table IF NOT EXISTS ethereum_uniswap_v3.ethereum_uniswap_v3_tokens (
      total_value_locked_usd_untracked numeric,
      derived_eth numeric
 );
+
+create table IF NOT EXISTS ethereum_uniswap_v3.ethereum_uniswap_v3_tokens (
+     id text primary key,
+     pool_address text,
+     tick_idx text,
+     pool_address text,
+     liquidity_gross bigint,
+     liquidity_net bigint,
+     price0 numeric,
+     price1 numeric,
+     volume_token0 numeric,
+     volume_token1 numeric,
+     volume_usd numeric,
+     untracked_volume_usd numeric,
+     fees_usd numeric,
+     collected_fees_token0 numeric,
+     collected_fees_token1 numeric,
+     collected_fees_usd numeric,
+     created_at_timestamp bigint,
+     created_at_block_number bigint,
+     liquidity_provider_count bigint,
+     fee_growth_outside_0x128 bigint,
+     fee_growth_outside_1x128 bigint
+);
+
+
+create table IF EXISTS ethereum_uniswap_v3.ethereum_uniswap_v3_positions (
+     id text primary key,
+     owner text,
+     pool text,
+     token0 text,
+     token1 text,
+     tick_lower text,
+     tick_upper text,
+     liquidity text,
+     deposited_token0 numeric,
+     deposited_token1 numeric,
+     withdrawn_token0 numeric,
+     withdrawn_token1 numeric,
+     collected_fees_token0 numeric,
+     collected_fees_token1 numeric,
+     transaction text,
+     fee_growth_inside0_last_x128 text,
+     fee_growth_inside1_last_x128 text
+);
+
+
+create table IF EXISTS  ethereum_uniswap_v3.ethereum_uniswap_v3_position_snapshot (
+     id text primary key,
+     owner text,
+     pool text,
+     position text,
+     block_number text,
+     position_timestamp bigint,
+     liquidity numeric,
+     deposited_token0 numeric,
+     deposited_token1 numeric,
+     withdrawn_token0 numeric,
+     withdrawn_token1 numeric,
+     collected_fees_token0 numeric,
+     collected_fees_token1 numeric,
+     transaction text,
+     fee_growth_inside0_last_x128 numeric,
+     fee_growth_inside1_last_x128 numeric
+);
+
+create table IF EXISTS  ethereum_uniswap_v3.ethereum_uniswap_v3_transaction (
+     id text primary key,
+     block_number bigint,
+     transaction_timestamp bigint,
+     gas_used numeric,
+     gas_price numeric
+
+);
+
+
+
+
+
+
+
+
+
+
+
+

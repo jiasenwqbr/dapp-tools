@@ -1463,7 +1463,49 @@ pub fn database_out(
     // db_sink::whitelist_token_entity_change(&mut database_changes, tokens_whitelist_pools_deltas);
     
     // Tick:
+    db_sink::create_tick_entity_change(&mut database_changes, &events.ticks_created);
+    db_sink::update_tick_entity_change(&mut database_changes, &events.ticks_updated);
+    db_sink::liquidities_tick_entity_change(&mut database_changes, &ticks_liquidities_deltas);
+
     
+    // Position:
+    db_sink::position_create_entity_change(&mut database_changes, &events.created_positions);
+    db_sink::increase_liquidity_position_entity_change(&mut database_changes, &events.increase_liquidity_positions);
+    db_sink::decrease_liquidity_position_entity_change(&mut database_changes, &events.decrease_liquidity_positions);
+    db_sink::collect_position_entity_change(&mut database_changes, &events.collect_positions);
+    db_sink::transfer_position_entity_change(&mut database_changes, &events.transfer_positions);
+    
+    // PositionSnapshot
+    db_sink::snapshot_positions_create_entity_change(&mut database_changes, &events.created_positions);
+    db_sink::increase_liquidity_snapshot_position_entity_change(
+        &mut database_changes,
+        clock.number,
+        &events.increase_liquidity_positions,
+        &store_positions,
+    );
+
+    db_sink::decrease_liquidity_snapshot_position_entity_change(
+        &mut database_changes,
+        clock.number,
+        &events.decrease_liquidity_positions,
+        &store_positions,
+    );
+    db_sink::collect_snapshot_position_entity_change(&mut database_changes, clock.number, &events.collect_positions, &store_positions);
+    db_sink::transfer_snapshot_position_entity_change(
+        &mut database_changes,
+        clock.number,
+        &events.transfer_positions,
+        &store_positions,
+    );
+
+     // Transaction:
+     db_sink::transaction_entity_change(&mut database_changes, &events.transactions);
+
+     // Swap, Mint, Burn:
+     db_sink::swaps_mints_burns_created_entity_change(&mut database_changes, &events.pool_events, tx_count_store, store_eth_prices);
+
+
+
 
     Ok(database_changes)
 }
