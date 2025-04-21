@@ -1439,7 +1439,7 @@ pub fn database_out(
     // swaps_volume_deltas
     db_sink::swaps_volume_deltas(&swaps_volume_deltas,&mut database_changes);
     // derived_factory_tvl_deltas
-    db_sink::derived_factory_tvl_deltas(derived_factory_tvl_deltas,&mut database_changes);
+    db_sink::derived_factory_tvl_deltas(&derived_factory_tvl_deltas,&mut database_changes);
 
     // pool
     // pools_created
@@ -1505,7 +1505,16 @@ pub fn database_out(
      db_sink::swaps_mints_burns_created_entity_change(&mut database_changes, &events.pool_events, tx_count_store, store_eth_prices);
 
 
+     // Uniswap day data:
+     db_sink::uniswap_day_data_create(&mut database_changes, &tx_count_deltas);
+     db_sink::uniswap_day_data_update(
+        &mut database_changes,
+        &swaps_volume_deltas,
+        &derived_factory_tvl_deltas,
+        &tx_count_deltas,
+     );
 
+     
 
     Ok(database_changes)
 }

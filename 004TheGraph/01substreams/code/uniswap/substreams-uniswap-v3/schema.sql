@@ -30,13 +30,13 @@ create table IF NOT EXISTS ethereum_uniswap_v3.ethereum_uniswap_v3_pools (
      token0 text,
      token1 text,
      fee_tier text,
-     liquidity bigint,
-     sqrt_price bigint,
-     fee_growth_global_0x128 bigint,
-     fee_growth_global_1x128 bigint,
+     liquidity numeric,
+     sqrt_price numeric,
+     fee_growth_global_0x128 numeric,
+     fee_growth_global_1x128 numeric,
      token0_price numeric,
      token1_price numeric,
-     tick bigint,
+     tick numeric,
      observation_index bigint,
      volume_token0 numeric,
      volume_token1 numeric,
@@ -76,13 +76,13 @@ create table IF NOT EXISTS ethereum_uniswap_v3.ethereum_uniswap_v3_tokens (
      derived_eth numeric
 );
 
-create table IF NOT EXISTS ethereum_uniswap_v3.ethereum_uniswap_v3_tokens (
+create table IF NOT EXISTS ethereum_uniswap_v3.ethereum_uniswap_v3_ticks (
      id text primary key,
      pool_address text,
      tick_idx text,
-     pool_address text,
-     liquidity_gross bigint,
-     liquidity_net bigint,
+     pool text,
+     liquidity_gross numeric,
+     liquidity_net numeric,
      price0 numeric,
      price1 numeric,
      volume_token0 numeric,
@@ -96,12 +96,12 @@ create table IF NOT EXISTS ethereum_uniswap_v3.ethereum_uniswap_v3_tokens (
      created_at_timestamp bigint,
      created_at_block_number bigint,
      liquidity_provider_count bigint,
-     fee_growth_outside_0x128 bigint,
-     fee_growth_outside_1x128 bigint
+     fee_growth_outside_0x128 numeric,
+     fee_growth_outside_1x128 numeric
 );
 
 
-create table IF EXISTS ethereum_uniswap_v3.ethereum_uniswap_v3_positions (
+create table IF NOT EXISTS ethereum_uniswap_v3.ethereum_uniswap_v3_positions (
      id text primary key,
      owner text,
      pool text,
@@ -122,7 +122,7 @@ create table IF EXISTS ethereum_uniswap_v3.ethereum_uniswap_v3_positions (
 );
 
 
-create table IF EXISTS  ethereum_uniswap_v3.ethereum_uniswap_v3_position_snapshot (
+create table IF NOT EXISTS  ethereum_uniswap_v3.ethereum_uniswap_v3_position_snapshot (
      id text primary key,
      owner text,
      pool text,
@@ -141,19 +141,78 @@ create table IF EXISTS  ethereum_uniswap_v3.ethereum_uniswap_v3_position_snapsho
      fee_growth_inside1_last_x128 numeric
 );
 
-create table IF EXISTS  ethereum_uniswap_v3.ethereum_uniswap_v3_transaction (
+create table IF NOT EXISTS  ethereum_uniswap_v3.ethereum_uniswap_v3_transaction (
      id text primary key,
      block_number bigint,
      transaction_timestamp bigint,
      gas_used numeric,
-     gas_price numeric
+     gas_price text
 
+);
+
+create table IF NOT EXISTS  ethereum_uniswap_v3.ethereum_uniswap_v3_swap (
+   id text primary key,
+   transaction text,
+   swap_timestamp bigint,
+   pool text,
+   token0 text,
+   token1 text,
+   sender text,
+   recipient text,
+   origin text,
+   amount0 numeric,
+   amount1 numeric,
+   amount_usd numeric,
+   sqrt_price_x96 numeric,
+   tick numeric,
+   log_index bigint
+);
+
+create table IF NOT EXISTS  ethereum_uniswap_v3.ethereum_uniswap_v3_mint (
+    id text primary key,
+    transaction text,
+    mint_timestamp bigint,
+    pool text,
+    token0 text,
+    token1 text,
+    owner text,
+    sender text,
+    origin text,
+    amount_usd numeric,
+    tick_lower text,
+    tick_upper text,
+    log_index bigint
+);
+
+create table IF NOT EXISTS  ethereum_uniswap_v3.ethereum_uniswap_v3_burn (
+    id text primary key,
+    transaction text,
+    pool text,
+    token0 text,
+    token1 text,
+    burn_timestamp bigint,
+    owner text,
+    origin text,
+    amount numeric,
+    amount0 numeric,
+    amount1 numeric,
+    amount_usd numeric,
+    tick_lower text,
+    tick_upper text
 );
 
 
 
-
-
+create table IF NOT EXISTS  ethereum_uniswap_v3.ethereum_uniswap_v3_uniswap_day_data (
+    id text primary key,
+    day_start_timestamp bigint,
+    volume_eth numeric,
+    volume_usd numeric,
+    volume_usd_untracked numeric,
+    total_value_locked_usd numeric,
+    fees_usd numeric,
+    tx_count numeric
+);
 
 
 
