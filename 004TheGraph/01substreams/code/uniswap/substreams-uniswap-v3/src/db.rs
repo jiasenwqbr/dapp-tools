@@ -1753,3 +1753,4 @@ pub fn prices_close_token_windows(tables: &mut Tables, eth_prices_deltas: &Delta
             .set("close", &delta.old_value);
     }
 }
+

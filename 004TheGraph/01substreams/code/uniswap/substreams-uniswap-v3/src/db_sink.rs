@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 use std::ops::Div;
-use substreams::{key, log, scalar::{BigDecimal, BigInt}, store::{DeltaBigDecimal, DeltaBigInt, DeltaExt, DeltaProto, Deltas, StoreGet, StoreGetBigDecimal, StoreGetBigInt, StoreGetInt64, StoreGetProto}, Hex};
+use substreams::{key, log, scalar::{BigDecimal, BigInt}, store::{DeltaArray, DeltaBigDecimal, DeltaBigInt, DeltaExt, DeltaProto, Deltas, StoreGet, StoreGetBigDecimal, StoreGetBigInt, StoreGetInt64, StoreGetProto}, Hex};
 use substreams_database_change::pb::database::{table_change::Operation, DatabaseChanges};
 
-use crate::{pb::uniswap::{events::{self, position_event::Type, DecreaseLiquidityPosition, IncreaseLiquidityPosition, PoolSqrtPrice, PositionEvent}, Erc20Token, Pool, Pools}, utils::{self}};
+use crate::{pb::uniswap::{events::{self, position_event::Type, DecreaseLiquidityPosition, IncreaseLiquidityPosition, PoolSqrtPrice, PositionEvent}, Erc20Token, Events, Pool, Pools}, utils::{self, pool_windows_id_fields, time_as_i64_address_as_str, token_windows_id_fields}};
 use crate::pb::uniswap::events::pool_event::Type::{Burn as BurnEvent, Mint as MintEvent, Swap as SwapEvent};
 // pub fn save_data(data: String,data_type:String,timestamp:i64,changes: &mut DatabaseChanges) {
 //     let id = format!("{}_{}",timestamp,data_type);
@@ -23,8 +23,6 @@ pub fn pool_count_deltas(timestamp:i64,pool_count_deltas:Deltas<DeltaBigInt>,cha
         let id = "0x1F98431c8aD98523631AE4a59f267346ea31F984".to_string();
         save_ethereum_uniswap_v3_pool_count_deltas(id,timestamp,changes,delta.new_value.clone());
     });
-
-
 }
 
 fn save_ethereum_uniswap_v3_pool_count_deltas(
@@ -480,6 +478,25 @@ pub fn derived_eth_prices_token_entity_change(changes:&mut DatabaseChanges, deri
 }
 
 
+pub fn whitelist_token_entity_change(changes:&mut DatabaseChanges, tokens_whitelist_pools_deltas: Deltas<DeltaArray<String>>) {
+    for delta in tokens_whitelist_pools_deltas.into_iter() {
+        let token_address = key::segment_at(&delta.key, 1);
+        let whitelist: Vec<_> = delta.new_value.into_iter().map(|item| format!("0x{}", item)).collect();
+        for (white_index,white) in whitelist.iter().enumerate(){
+            let id = format!("{}#{}",token_address,white_index);
+            let mut keys: HashMap<String, String> = HashMap::new();
+            keys.insert("id".to_string(), id);
+
+            changes.push_change_composite("ethereum_uniswap_v3_whitelist_token", keys, 1, Operation::Create)
+            .change("token", (None,token_address))
+            .change("white_pool", (None,white));
+        }
+
+
+    }
+}
+
+
 pub fn create_tick_entity_change(changes:&mut DatabaseChanges, ticks_created: &Vec<events::TickCreated>){
     let bigdecimal0 = BigDecimal::from(0);
     let bigint0 = BigInt::from(0);
@@ -656,6 +673,7 @@ pub fn snapshot_positions_create_entity_change(changes:&mut DatabaseChanges, pos
 
 fn create_snapshot_position(changes : &mut DatabaseChanges, id: &String, position: &events::CreatedPosition){
     let mut keys: HashMap<String, String> = HashMap::new();
+    
     keys.insert("id".to_string(), id.to_string());
     changes.push_change_composite("ethereum_uniswap_v3_position_snapshot", keys, 1, Operation::Create)
     .change("owner", (None,&utils::ZERO_ADDRESS.to_vec()))
@@ -682,8 +700,8 @@ pub fn increase_liquidity_snapshot_position_entity_change(
     positions: &Vec<IncreaseLiquidityPosition>,
     store_positions: &StoreGetProto<PositionEvent>,
 ){
-    for position in positions {
-        let id = format!("{}#{}", position.token_id, block_number);
+    for (position_index,position )in positions.iter().enumerate() {
+        let id = format!("{}#{}#{}", position.token_id, block_number,position_index);
         fetch_and_update_snapshot_position(changes, &position.token_id, &id, &store_positions);
         increase_liquidity_snapshot_position(changes, &id, &position);
     }
@@ -1086,6 +1104,908 @@ pub fn volumes_uniswap_day_data_update(changes:&mut DatabaseChanges, swaps_volum
         }
     }
 }
+
+
+
+pub fn pool_windows_create(changes:&mut DatabaseChanges,  tx_count_deltas: &Deltas<DeltaBigInt>){
+    upsert_entity_change_pool_windows(changes, tx_count_deltas);
+}
+
+pub fn upsert_entity_change_pool_windows(changes:&mut DatabaseChanges,  tx_count_deltas: &Deltas<DeltaBigInt>) {
+    for delta in tx_count_deltas
+        .iter()
+        .key_first_segment_in(["PoolDayData", "PoolHourData"])
+        .operation_not_eq(substreams::pb::substreams::store_delta::Operation::Delete)
+        .filter(|d| d.new_value.eq(&BigInt::one()))
+    {
+        let time_id = key::segment_at(&delta.key, 1).parse::<i64>().unwrap();
+        let pool_address = key::segment_at(&delta.key, 2);
+
+        let pool_time_id = format!("0x{pool_address}-{time_id}");
+        create_pool_windows_entity(
+            changes,
+            key::first_segment(&delta.key),
+            time_id,
+            &pool_time_id,
+            pool_address,
+        );
+    }
+}
+
+fn create_pool_windows_entity(
+    changes:&mut DatabaseChanges,
+    table_name: &str,
+    time_id: i64,
+    pool_time_id: &String,
+    pool_addr: &str,
+) {
+    // todo 
+    let id: String = format!("{}", pool_time_id);
+    let mut keys: HashMap<String, String> = HashMap::new();
+    keys.insert("id".to_string(), id.to_string());
+    
+    match table_name {
+        "PoolDayData" => {
+            changes.push_change_composite("ethereum_uniswap_v3_pool_day_data", keys, 1, Operation::Create)
+            .change("time_id", (None,time_id))
+            .change("pool_time_id", (None,pool_time_id))
+            .change("pool", (None,format!("0x{}", pool_addr)))
+            .change("liquidity", (None,BigInt::zero()))
+            .change("sqrt_price", (None,BigInt::zero()))
+            .change("token0_price", (None,BigInt::zero()))
+            .change("token1_price", (None,BigDecimal::zero()))
+            .change("tick", (None,BigInt::zero()))
+            .change("fee_growth_global_0x128", (None,BigInt::zero()))
+            .change("fee_growth_global_1x128", (None,BigInt::zero()))
+            .change("total_value_locked_usd", (None,BigDecimal::zero()))
+            .change("volume_token0", (None,BigDecimal::zero()))
+            .change("volume_token1", (None,BigDecimal::zero()))
+            .change("volume_usd", (None,BigDecimal::zero()))
+            .change("fees_usd", (None,BigDecimal::zero()))
+            .change("tx_count", (None,BigInt::zero()))
+            .change("open", (None,BigDecimal::zero()))
+            .change("high", (None,BigDecimal::zero()))
+            .change("low", (None,BigDecimal::zero()))
+            .change("close", (None,BigDecimal::zero()))
+            .change("per_day", (None,(time_id * 86400) as i32));
+        }
+        "PoolHourData" => {
+            changes.push_change_composite("ethereum_uniswap_v3_pool_hour_data", keys, 1, Operation::Create)
+            .change("time_id", (None,time_id))
+            .change("pool_time_id", (None,pool_time_id))
+            .change("pool", (None,format!("0x{}", pool_addr)))
+            .change("liquidity", (None,BigInt::zero()))
+            .change("sqrt_price", (None,BigInt::zero()))
+            .change("token0_price", (None,BigInt::zero()))
+            .change("token1_price", (None,BigDecimal::zero()))
+            .change("tick", (None,BigInt::zero()))
+            .change("fee_growth_global_0x128", (None,BigInt::zero()))
+            .change("fee_growth_global_1x128", (None,BigInt::zero()))
+            .change("total_value_locked_usd", (None,BigDecimal::zero()))
+            .change("volume_token0", (None,BigDecimal::zero()))
+            .change("volume_token1", (None,BigDecimal::zero()))
+            .change("volume_usd", (None,BigDecimal::zero()))
+            .change("fees_usd", (None,BigDecimal::zero()))
+            .change("tx_count", (None,BigInt::zero()))
+            .change("open", (None,BigDecimal::zero()))
+            .change("high", (None,BigDecimal::zero()))
+            .change("low", (None,BigDecimal::zero()))
+            .change("close", (None,BigDecimal::zero()))
+            .change("period_start", (None,(time_id * 3600) as i32));
+        }
+        _ => {}
+    }
+
+    
+
+}
+
+
+
+pub fn pool_windows_update(
+    changes:&mut DatabaseChanges,
+    timestamp: i64,
+    tx_count_deltas: &Deltas<DeltaBigInt>,
+    swaps_volume_deltas: &Deltas<DeltaBigDecimal>,
+    events: &Events,
+    pool_sqrt_price_store: &StoreGetProto<PoolSqrtPrice>,
+    pool_liquidities_store_deltas: &Deltas<DeltaBigInt>,
+    price_deltas: &Deltas<DeltaBigDecimal>,
+    store_prices: &StoreGetBigDecimal,
+    derived_tvl_deltas: &Deltas<DeltaBigDecimal>,
+    min_windows_deltas: &Deltas<DeltaBigDecimal>,
+    max_windows_deltas: &Deltas<DeltaBigDecimal>,
+){
+    tx_count_pool_windows(changes, &tx_count_deltas);
+    mint_burn_prices_pool_windows(changes, timestamp, &events.pool_events, &store_prices);
+    prices_pool_windows(changes, &price_deltas);
+    prices_min_pool_windows(changes, &min_windows_deltas);
+    prices_max_pool_windows(changes, &max_windows_deltas);
+    prices_close_pool_windows(changes, &price_deltas);
+    liquidities_and_sqrt_tick_pool_windows(changes, &pool_liquidities_store_deltas, &pool_sqrt_price_store);
+    sqrt_price_and_tick_pool_windows(changes, timestamp, &pool_sqrt_price_store, &events.pool_events);
+    swap_volume_pool_windows(changes, &swaps_volume_deltas);
+    fee_growth_global_x128_pool_windows(changes, timestamp, &events.fee_growth_global_updates);
+    total_value_locked_usd_pool_windows(changes, &derived_tvl_deltas);
+}
+
+pub fn tx_count_pool_windows( changes:&mut DatabaseChanges, tx_count_deltas: &Deltas<DeltaBigInt>) {
+    for delta in tx_count_deltas
+        .iter()
+        .key_first_segment_in(["PoolDayData", "PoolHourData"])
+        .operation_not_eq(substreams::pb::substreams::store_delta::Operation::Delete)
+    {
+        let (table_name, time_id, pool_address) = pool_windows_id_fields(&delta.key);
+
+        // tables
+        //     .update_row(table_name, format!("0x{pool_address}-{time_id}"))
+        //     .set("txCount", &delta.new_value);
+
+        match table_name {
+            "PoolDayData" => {
+                let id: String = format!("0x{pool_address}-{time_id}");
+                let mut keys: HashMap<String, String> = HashMap::new();
+                keys.insert("id".to_string(), id.to_string());
+
+                changes.push_change_composite("ethereum_uniswap_v3_pool_day_data", keys, 1, Operation::Update)
+                .change("tx_count", (None,&delta.new_value));
+
+            }
+            "PoolHourData" => {
+                let id: String = format!("0x{pool_address}-{time_id}");
+                let mut keys: HashMap<String, String> = HashMap::new();
+                keys.insert("id".to_string(), id.to_string());
+
+                changes.push_change_composite("ethereum_uniswap_v3_pool_hour_data", keys, 1, Operation::Update)
+                .change("tx_count", (None,&delta.new_value));
+            }
+            _ => {}
+        }
+    }
+}
+
+
+fn  mint_burn_prices_pool_windows( 
+    changes:&mut DatabaseChanges, 
+    timestamp: i64,
+    pool_events: &Vec<events::PoolEvent>,
+    store_prices: &StoreGetBigDecimal,){
+        for pool_event in pool_events {
+            if pool_event.r#type.is_none() {
+                continue;
+            }
+    
+            let day_id = timestamp / 86400;
+            let hour_id = timestamp / 3600;
+    
+            if pool_event.r#type.is_some() {
+                let token0_address = &pool_event.token0;
+                let token1_address = &pool_event.token1;
+                let pool_address = &pool_event.pool_address;
+                let pool_day_id = format!("0x{pool_address}-{day_id}");
+                let pool_hour_id = format!("0x{pool_address}-{hour_id}");
+
+                let mut token0_price = BigDecimal::zero();
+                let mut token1_price = BigDecimal::zero();
+                match store_prices.get_last(format!("pool:{pool_address}:{token0_address}:token0")) {
+                    None => {} // do nothing
+                    Some(val) => {
+                        token0_price = val;
+                    }
+                }
+
+                match store_prices.get_last(format!("pool:{pool_address}:{token1_address}:token1")) {
+                    None => {} // do nothing
+                    Some(val) => {
+                        token1_price = val;
+                    }
+                }
+
+                match pool_event.r#type.as_ref().unwrap() {
+                    events::pool_event::Type::Swap(_) => {
+                        continue; // the swap event will be taken care of by the prices_pool_windows
+                    }
+                    _ => {}
+                }
+
+                let mut keys: HashMap<String, String> = HashMap::new();
+                keys.insert("id".to_string(), pool_day_id);
+                changes.push_change_composite("ethereum_uniswap_v3_pool_day_data", keys, 1, Operation::Update)
+                .change("open", (None,&token0_price))
+                .change("close", (None,&token0_price))
+                .change("high", (None,&token0_price))
+                .change("low", (None,&token0_price))
+                .change("token1_price", (None,&token1_price))
+                .change("token0_price", (None,&token0_price));
+
+
+                let mut keys: HashMap<String, String> = HashMap::new();
+                keys.insert("id".to_string(), pool_hour_id);
+                changes.push_change_composite("ethereum_uniswap_v3_pool_hour_data", keys, 1, Operation::Update)
+                .change("open", (None,&token0_price))
+                .change("close", (None,&token0_price))
+                .change("high", (None,&token0_price))
+                .change("low", (None,&token0_price))
+                .change("token1_price", (None,&token1_price))
+                .change("token0_price", (None,&token0_price));
+            }
+        }
+
+}
+
+pub fn prices_pool_windows(changes:&mut DatabaseChanges, price_deltas: &Deltas<DeltaBigDecimal>) {
+    for delta in price_deltas
+        .iter()
+        .key_first_segment_in(["PoolDayData", "PoolHourData"])
+        .operation_not_eq(substreams::pb::substreams::store_delta::Operation::Delete)
+    {
+        let (table_name, time_id, pool_address) = pool_windows_id_fields(&delta.key);
+        let field_name = match key::last_segment(&delta.key) {
+            "token0" => "token0Price",
+            "token1" => "token1Price",
+            _ => continue,
+        };
+
+        let pool_hour_id = format!("0x{pool_address}-{time_id}");
+        match table_name {
+            "PoolDayData" => {
+                let mut keys: HashMap<String, String> = HashMap::new();
+                keys.insert("id".to_string(), pool_hour_id);
+                let change = changes.push_change_composite("ethereum_uniswap_v3_pool_day_data", keys, 1, Operation::Update);
+                match field_name {
+                    "token0Price" => {
+                        change.change("token0_price", (None,&delta.new_value));
+                    }
+                    "token1Price" => {
+                        change.change("token1_price", (None,&delta.new_value));
+                    }
+                    _ => {}
+                }
+                
+            }
+            "PoolHourData" => {
+                let mut keys: HashMap<String, String> = HashMap::new();
+                keys.insert("id".to_string(), pool_hour_id);
+                let change = changes.push_change_composite("ethereum_uniswap_v3_pool_hour_data", keys, 1, Operation::Update);
+                match field_name {
+                    "token0Price" => {
+                        change.change("token0_price", (None,&delta.new_value));
+                    }
+                    "token1Price" => {
+                        change.change("token1_price", (None,&delta.new_value));
+                    }
+                    _ => {}
+                }
+
+            }
+            _ => {}
+        }
+    }
+}
+
+pub fn prices_min_pool_windows(changes:&mut DatabaseChanges,  min_pool_prices_deltas: &Deltas<DeltaBigDecimal>) {
+    for delta in min_pool_prices_deltas
+        .iter()
+        .key_first_segment_in(["PoolDayData", "PoolHourData"])
+        .operation_not_eq(substreams::pb::substreams::store_delta::Operation::Delete)
+        .key_last_segment_in(["low", "open"])
+    {
+        let (table_name, time_id, pool_address) = pool_windows_id_fields(&delta.key);
+        let pool_time_id = format!("0x{pool_address}-{time_id}");
+
+        match table_name {
+            "PoolDayData" => {
+                let mut keys: HashMap<String, String> = HashMap::new();
+                keys.insert("id".to_string(), pool_time_id);
+                let change = changes.push_change_composite("ethereum_uniswap_v3_pool_day_data", keys, 1, Operation::Update);
+                change.change(key::last_segment(&delta.key), (None,&delta.new_value));
+            }
+            "PoolHourData" => {
+                let mut keys: HashMap<String, String> = HashMap::new();
+                keys.insert("id".to_string(), pool_time_id);
+                let change = changes.push_change_composite("ethereum_uniswap_v3_pool_hour_data", keys, 1, Operation::Update);
+                change.change(key::last_segment(&delta.key), (None,&delta.new_value));
+            }
+            _ => {}
+        }
+    }
+}
+pub fn prices_max_pool_windows(changes:&mut DatabaseChanges, max_pool_prices_deltas: &Deltas<DeltaBigDecimal>) {
+    for delta in max_pool_prices_deltas
+        .iter()
+        .key_first_segment_in(["PoolDayData", "PoolHourData"])
+        .operation_not_eq(substreams::pb::substreams::store_delta::Operation::Delete)
+    {
+        let (table_name, time_id, pool_address) = pool_windows_id_fields(&delta.key);
+        let pool_time_id = format!("0x{pool_address}-{time_id}");
+        match table_name {
+            "PoolDayData" => {
+                let mut keys: HashMap<String, String> = HashMap::new();
+                keys.insert("id".to_string(), pool_time_id);
+                let change = changes.push_change_composite("ethereum_uniswap_v3_pool_day_data", keys, 1, Operation::Update);
+                change.change("high", (None,&delta.new_value));
+            }
+            "PoolHourData" => {
+                let mut keys: HashMap<String, String> = HashMap::new();
+                keys.insert("id".to_string(), pool_time_id);
+                let change = changes.push_change_composite("ethereum_uniswap_v3_pool_hour_data", keys, 1, Operation::Update);
+                change.change("high", (None,&delta.new_value));
+            }
+            _ => {}
+        }
+    }
+}
+
+
+pub fn prices_close_pool_windows(changes:&mut DatabaseChanges, prices_deltas: &Deltas<DeltaBigDecimal>) {
+    for delta in prices_deltas
+        .iter()
+        .key_first_segment_in(["PoolDayData", "PoolHourData"])
+        .operation_eq(substreams::pb::substreams::store_delta::Operation::Delete)
+    {
+        let (table_name, time_id, pool_address) = pool_windows_id_fields(&delta.key);
+        let pool_time_id = format!("0x{pool_address}-{time_id}");
+        match table_name {
+            "PoolDayData" => {
+                let mut keys: HashMap<String, String> = HashMap::new();
+                keys.insert("id".to_string(), pool_time_id);
+                let change = changes.push_change_composite("ethereum_uniswap_v3_pool_day_data", keys, 1, Operation::Update);
+                change.change("close", (None,&delta.new_value));
+            }
+            "PoolHourData" => {
+                let mut keys: HashMap<String, String> = HashMap::new();
+                keys.insert("id".to_string(), pool_time_id);
+                let change = changes.push_change_composite("ethereum_uniswap_v3_pool_hour_data", keys, 1, Operation::Update);
+                change.change("close", (None,&delta.new_value));
+            }
+            _ => {}
+        }
+    }
+}
+
+pub fn liquidities_and_sqrt_tick_pool_windows(
+    changes:&mut DatabaseChanges, 
+    pool_liquidities_store_deltas: &Deltas<DeltaBigInt>,
+    pool_sqrt_price_store: &StoreGetProto<PoolSqrtPrice>,
+) {
+    for delta in pool_liquidities_store_deltas
+        .iter()
+        .key_first_segment_in(["PoolDayData", "PoolHourData"])
+        .operation_not_eq(substreams::pb::substreams::store_delta::Operation::Delete)
+    {
+        let (table_name, time_id, pool_address) = pool_windows_id_fields(&delta.key);
+
+        match table_name {
+            "PoolDayData" => {
+                let mut keys: HashMap<String, String> = HashMap::new();
+                keys.insert("id".to_string(), format!("0x{pool_address}-{time_id}"));
+                let change = changes.push_change_composite("ethereum_uniswap_v3_pool_day_data", keys, 1, Operation::Update);
+                change.change("liquidity", (None,&delta.new_value));
+                match pool_sqrt_price_store.get_last(format!("pool:{pool_address}")) {
+                    None => {
+                        log::info!("This is not normal, or do we have some use cases where this will be ok??")
+                    }
+                    Some(price) => {
+                        change.change("sqrt_price", (None,BigInt::try_from(&price.sqrt_price).unwrap()))
+                        .change("tick", (None,BigInt::try_from(&price.tick).unwrap()));
+                    }
+                }
+            }
+            "PoolHourData" => {
+                let mut keys: HashMap<String, String> = HashMap::new();
+                keys.insert("id".to_string(), format!("0x{pool_address}-{time_id}"));
+                let change = changes.push_change_composite("ethereum_uniswap_v3_pool_hour_data", keys, 1, Operation::Update);
+                change.change("liquidity", (None,&delta.new_value));
+                match pool_sqrt_price_store.get_last(format!("pool:{pool_address}")) {
+                    None => {
+                        log::info!("This is not normal, or do we have some use cases where this will be ok??")
+                    }
+                    Some(price) => {
+                        change.change("sqrt_price", (None,BigInt::try_from(&price.sqrt_price).unwrap()))
+                        .change("tick", (None,BigInt::try_from(&price.tick).unwrap()));
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+
+pub fn sqrt_price_and_tick_pool_windows(
+    changes:&mut DatabaseChanges, 
+    timestamp: i64,
+    pool_sqrt_price_store: &StoreGetProto<PoolSqrtPrice>,
+    pool_events: &Vec<events::PoolEvent>,
+) {
+    let day_id = timestamp / 86400;
+    let hour_id = timestamp / 3600;
+
+    for pool_event in pool_events {
+        let pool_address = &pool_event.pool_address;
+
+        match pool_sqrt_price_store.get_last(format!("pool:{pool_address}")) {
+            None => continue,
+            Some(pool_sqrt_price) => {
+                let sqrt_price = BigInt::try_from(pool_sqrt_price.sqrt_price).unwrap();
+                let tick = BigInt::try_from(pool_sqrt_price.tick).unwrap();
+                let mut keys: HashMap<String, String> = HashMap::new();
+                keys.insert("id".to_string(), format!("0x{pool_address}-{day_id}"));
+                changes.push_change_composite("ethereum_uniswap_v3_pool_day_data", keys, 1, Operation::Update)
+                .change("sqrt_price", (None,&sqrt_price))
+                .change("tick", (None,&tick));
+
+                let mut keys: HashMap<String, String> = HashMap::new();
+                keys.insert("id".to_string(), format!("0x{pool_address}-{hour_id}"));
+                changes.push_change_composite("ethereum_uniswap_v3_pool_hour_data", keys, 1, Operation::Update)
+                .change("sqrt_price", (None,&sqrt_price))
+                .change("tick", (None,&tick));
+                
+            }
+        }
+    }
+}
+
+pub fn swap_volume_pool_windows( changes:&mut DatabaseChanges,  swaps_volume_deltas: &Deltas<DeltaBigDecimal>) {
+    for delta in swaps_volume_deltas
+        .iter()
+        .key_first_segment_in(["PoolDayData", "PoolHourData"])
+        .operation_not_eq(substreams::pb::substreams::store_delta::Operation::Delete)
+        .key_last_segment_in(["volumeToken0", "volumeToken1", "volumeUSD", "feesUSD"])
+    {
+        let (table_name, time_id, pool_address) = pool_windows_id_fields(&delta.key);
+        match table_name {
+            "PoolDayData" => {
+                let mut keys: HashMap<String, String> = HashMap::new();
+                keys.insert("id".to_string(), format!("0x{pool_address}-{time_id}"));
+                let change = changes.push_change_composite("ethereum_uniswap_v3_pool_day_data", keys, 1, Operation::Update);
+                match key::last_segment(&delta.key) {
+                    "volumeToken0" => {
+                        change.change("volume_token0", (None,&delta.new_value));
+                    }
+                    "volumeToken1" => {
+                        change.change("volume_token1", (None,&delta.new_value));
+                    }
+                    "volumeUSD" => {
+                        change.change("volume_usd", (None,&delta.new_value));
+                    }
+                    "feesUSD" => {
+                        change.change("fees_usd", (None,&delta.new_value));
+                    }
+                     _ => {}
+                }
+            }
+            "PoolHourData" => {
+                let mut keys: HashMap<String, String> = HashMap::new();
+                keys.insert("id".to_string(), format!("0x{pool_address}-{time_id}"));
+                let change = changes.push_change_composite("ethereum_uniswap_v3_pool_hour_data", keys, 1, Operation::Update);
+                match key::last_segment(&delta.key) {
+                    "volumeToken0" => {
+                        change.change("volume_token0", (None,&delta.new_value));
+                    }
+                    "volumeToken1" => {
+                        change.change("volume_token1", (None,&delta.new_value));
+                    }
+                    "volumeUSD" => {
+                        change.change("volume_usd", (None,&delta.new_value));
+                    }
+                    "feesUSD" => {
+                        change.change("fees_usd", (None,&delta.new_value));
+                    }
+                     _ => {}
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+pub fn fee_growth_global_x128_pool_windows(
+    changes:&mut DatabaseChanges, 
+    timestamp: i64,
+    updates: &Vec<events::FeeGrowthGlobal>,
+) {
+    for update in updates {
+        let day_id = timestamp / 86400;
+        let hour_id = timestamp / 3600;
+
+        let pool_address = &update.pool_address;
+
+        if update.token_idx == 0 {
+            let mut keys: HashMap<String, String> = HashMap::new();
+            keys.insert("id".to_string(), format!("0x{pool_address}-{day_id}"));
+            let change = changes.push_change_composite("ethereum_uniswap_v3_pool_day_data", keys, 1, Operation::Update);
+            change.change("fee_growth_global_0x128", (None,&BigInt::try_from(&update.new_value).unwrap()));
+
+            let mut keys: HashMap<String, String> = HashMap::new();
+            keys.insert("id".to_string(), format!("0x{pool_address}-{hour_id}"));
+            let change = changes.push_change_composite("ethereum_uniswap_v3_pool_hour_data", keys, 1, Operation::Update);
+            change.change("fee_growth_global_0x128", (None,&BigInt::try_from(&update.new_value).unwrap()));
+
+
+        } else if update.token_idx == 1 {
+            let mut keys: HashMap<String, String> = HashMap::new();
+            keys.insert("id".to_string(), format!("0x{pool_address}-{day_id}"));
+            let change = changes.push_change_composite("ethereum_uniswap_v3_pool_day_data", keys, 1, Operation::Update);
+            change.change("fee_growth_global_1x128", (None,&BigInt::try_from(&update.new_value).unwrap()));
+
+            let mut keys: HashMap<String, String> = HashMap::new();
+            keys.insert("id".to_string(), format!("0x{pool_address}-{hour_id}"));
+            let change = changes.push_change_composite("ethereum_uniswap_v3_pool_hour_data", keys, 1, Operation::Update);
+            change.change("fee_growth_global_1x128", (None,&BigInt::try_from(&update.new_value).unwrap()));
+        }
+    }
+}
+
+pub fn total_value_locked_usd_pool_windows(changes:&mut DatabaseChanges, derived_tvl_deltas: &Deltas<DeltaBigDecimal>) {
+    for delta in derived_tvl_deltas
+        .iter()
+        .key_first_segment_in(["PoolDayData", "PoolHourData"])
+        .operation_not_eq(substreams::pb::substreams::store_delta::Operation::Delete)
+        .key_last_segment_eq("totalValueLockedUSD")
+    {
+        let (table_name, time_id, pool_address) = pool_windows_id_fields(&delta.key);
+        match table_name {
+            "PoolDayData" => {
+                let mut keys: HashMap<String, String> = HashMap::new();
+                keys.insert("id".to_string(), format!("0x{pool_address}-{time_id}"));
+                let change = changes.push_change_composite("ethereum_uniswap_v3_pool_day_data", keys, 1, Operation::Update);
+                change.change("total_value_locked_usd", (None,&delta.new_value));
+            }
+            "PoolHourData" => {
+                let mut keys: HashMap<String, String> = HashMap::new();
+                keys.insert("id".to_string(), format!("0x{pool_address}-{time_id}"));
+                let change = changes.push_change_composite("ethereum_uniswap_v3_pool_hour_data", keys, 1, Operation::Update);
+                change.change("total_value_locked_usd", (None,&delta.new_value));
+            }
+            _ => {}
+        }
+    }
+}
+
+pub fn token_windows_create(changes:&mut DatabaseChanges, tx_count_deltas: &Deltas<DeltaBigInt>) {
+    create_token_windows(changes, &tx_count_deltas);
+}
+
+pub fn create_token_windows(changes:&mut DatabaseChanges, tx_count_deltas: &Deltas<DeltaBigInt>) {
+    for delta in tx_count_deltas
+        .iter()
+        .key_first_segment_in(["TokenDayData", "TokenHourData"])
+        .operation_not_eq(substreams::pb::substreams::store_delta::Operation::Delete)
+        .filter(|d| d.new_value.eq(&BigInt::one()))
+    {
+        let (time_id, token_address) = time_as_i64_address_as_str(&delta.key);
+
+        let token_time_id = format!("0x{token_address}-{time_id}");
+        create_token_windows_entity(
+            changes,
+            key::first_segment(&delta.key),
+            time_id,
+            &token_time_id,
+            token_address,
+        );
+    }
+}
+
+fn create_token_windows_entity(
+    changes:&mut DatabaseChanges, 
+    table_name: &str,
+    time_id: i64,
+    token_day_time_id: &String,
+    token_addr: &str,
+) {
+    match table_name {
+        "TokenDayData" => {
+            let mut keys: HashMap<String, String> = HashMap::new();
+            keys.insert("id".to_string(), token_day_time_id.to_string());
+            let change = changes.push_change_composite("ethereum_uniswap_v3_token_day_data", keys, 1, Operation::Create);
+            change.change("token", (None,format!("0x{}", token_addr)))
+            .change("volume", (None,BigDecimal::zero()))
+            .change("volume_usd", (None,BigDecimal::zero()))
+            .change("volume_usd_untracked", (None,BigDecimal::zero()))
+            .change("total_value_locked", (None,BigDecimal::zero()))
+            .change("total_value_locked_usd", (None,BigDecimal::zero()))
+            .change("price_usd", (None,BigDecimal::zero()))
+            .change("fees_usd", (None,BigDecimal::zero()))
+            .change("open", (None,BigDecimal::zero()))
+            .change("high", (None,BigDecimal::zero()))
+            .change("low", (None,BigDecimal::zero()))
+            .change("close", (None,BigDecimal::zero()))
+            .change("per_date", (None,(time_id * 86400) as i32));
+
+        }
+        "TokenHourData" => {
+            let mut keys: HashMap<String, String> = HashMap::new();
+            keys.insert("id".to_string(), token_day_time_id.to_string());
+            let change = changes.push_change_composite("ethereum_uniswap_v3_pool_hour_data", keys, 1, Operation::Create);
+            change.change("token", (None,format!("0x{}", token_addr)))
+            .change("volume", (None,BigDecimal::zero()))
+            .change("volume_usd", (None,BigDecimal::zero()))
+            .change("volume_usd_untracked", (None,BigDecimal::zero()))
+            .change("total_value_locked", (None,BigDecimal::zero()))
+            .change("total_value_locked_usd", (None,BigDecimal::zero()))
+            .change("price_usd", (None,BigDecimal::zero()))
+            .change("fees_usd", (None,BigDecimal::zero()))
+            .change("open", (None,BigDecimal::zero()))
+            .change("high", (None,BigDecimal::zero()))
+            .change("low", (None,BigDecimal::zero()))
+            .change("close", (None,BigDecimal::zero()))
+            .change("period_start", (None,(time_id * 3600) as i32));
+        }
+        _ => {}
+    }
+}
+
+
+
+pub fn token_windows_update(
+    changes:&mut DatabaseChanges,
+    timestamp: i64,
+    swaps_volume_deltas: &Deltas<DeltaBigDecimal>,
+    derived_tvl_deltas: &Deltas<DeltaBigDecimal>,
+    min_windows_deltas: &Deltas<DeltaBigDecimal>,
+    max_windows_deltas: &Deltas<DeltaBigDecimal>,
+    derived_eth_prices_deltas: &Deltas<DeltaBigDecimal>,
+    token_tvl_deltas: &Deltas<DeltaBigDecimal>,
+) {
+    swap_volume_token_windows(changes, &swaps_volume_deltas);
+    total_value_locked_usd_token_windows(changes, &derived_tvl_deltas);
+    total_value_locked_token_windows(changes, timestamp, &token_tvl_deltas);
+    total_prices_token_windows(changes, &derived_eth_prices_deltas);
+    prices_min_token_windows(changes, &min_windows_deltas);
+    prices_max_token_windows(changes, &max_windows_deltas);
+    prices_close_token_windows(changes, &derived_eth_prices_deltas);
+}
+
+pub fn swap_volume_token_windows(changes:&mut DatabaseChanges, swaps_volume_deltas: &Deltas<DeltaBigDecimal>) {
+    for delta in swaps_volume_deltas
+        .iter()
+        .key_first_segment_in(["TokenDayData", "TokenHourData"])
+        .operation_not_eq(substreams::pb::substreams::store_delta::Operation::Delete)
+    {
+        let (table_name, time_id, token_address) = pool_windows_id_fields(&delta.key);
+
+        let field_name = match key::last_segment(&delta.key) {
+            "volume" => "volume",
+            "volumeUSD" => "volumeUSD",
+            "feesUSD" => "feesUSD",
+            "untrackedUSD" => "volumeUSDUntracked",
+            _ => continue,
+        };
+
+        let mut keys: HashMap<String, String> = HashMap::new();
+        keys.insert("id".to_string(), format!("0x{token_address}-{time_id}"));
+       
+        match table_name {
+            "TokenDayData" => {
+                let change = changes.push_change_composite("ethereum_uniswap_v3_token_day_data", keys, 1, Operation::Update);
+                match field_name {
+                    "volume" => {
+                        change.change("volume", (None,&delta.new_value));
+                    }
+                    "volumeUSD" => {
+                        change.change("volume_usd", (None,&delta.new_value));
+                    }
+                    "feesUSD" => {
+                        change.change("fees_usd", (None,&delta.new_value));
+                    }
+                    "volumeUSDUntracked" => {
+                        change.change("volume_usd_untracked", (None,&delta.new_value));
+                    }
+                    _ => {}
+                    
+                }
+            }
+            "TokenHourData" => {
+                let change = changes.push_change_composite("ethereum_uniswap_v3_pool_hour_data", keys, 1, Operation::Update);
+                match field_name {
+                    "volume" => {
+                        change.change("volume", (None,&delta.new_value));
+                    }
+                    "volumeUSD" => {
+                        change.change("volume_usd", (None,&delta.new_value));
+                    }
+                    "feesUSD" => {
+                        change.change("fees_usd", (None,&delta.new_value));
+                    }
+                    "volumeUSDUntracked" => {
+                        change.change("volume_usd_untracked", (None,&delta.new_value));
+                    }
+                    _ => {}
+                    
+                }
+            }
+            _ => {}
+        }
+
+
+    }
+}
+
+pub fn total_value_locked_usd_token_windows(changes:&mut DatabaseChanges, derived_tvl_deltas: &Deltas<DeltaBigDecimal>) {
+    for delta in derived_tvl_deltas
+        .iter()
+        .key_first_segment_in(["TokenDayData", "TokenHourData"])
+        .operation_not_eq(substreams::pb::substreams::store_delta::Operation::Delete)
+    {
+        let (table_name, time_id, token_address) = pool_windows_id_fields(&delta.key);
+
+        let mut keys: HashMap<String, String> = HashMap::new();
+        keys.insert("id".to_string(), format!("0x{token_address}-{time_id}"));
+        match table_name {
+            "TokenDayData" => {
+                let change = changes.push_change_composite("ethereum_uniswap_v3_token_day_data", keys, 1, Operation::Update);
+                change.change("total_value_locked_usd", (None,&delta.new_value));
+            }
+            "TokenHourData" => {
+                let change = changes.push_change_composite("ethereum_uniswap_v3_pool_hour_data", keys, 1, Operation::Update);
+                change.change("total_value_locked_usd", (None,&delta.new_value));
+            }
+            _ => {}
+        }
+    }
+}
+
+
+pub fn total_value_locked_token_windows(
+    changes:&mut DatabaseChanges,
+    timestamp: i64,
+    token_tvl_deltas: &Deltas<DeltaBigDecimal>,
+) {
+    let day_id = timestamp / 86400;
+    let hour_id = timestamp / 3600;
+
+    for delta in token_tvl_deltas
+        .iter()
+        .key_first_segment_eq("token")
+        .operation_not_eq(substreams::pb::substreams::store_delta::Operation::Delete)
+    {
+        let token_address = key::segment_at(&delta.key, 1);
+        total_value_locked_token_windows_update(
+            changes,
+            "TokenDayData",
+            format!("0x{token_address}-{day_id}"),
+            &delta.new_value,
+        );
+        total_value_locked_token_windows_update(
+            changes,
+            "TokenHourData",
+            format!("0x{token_address}-{hour_id}"),
+            &delta.new_value,
+        );
+    }
+}
+
+fn total_value_locked_token_windows_update(
+    changes:&mut DatabaseChanges,
+    table_name: &str,
+    token_time_id: String,
+    value: &BigDecimal,
+) {
+    let mut keys: HashMap<String, String> = HashMap::new();
+    keys.insert("id".to_string(), token_time_id.to_string());
+    let change = changes.push_change_composite(table_name, keys, 1, Operation::Update);
+    change.change("total_value_locked", (None,value));
+}
+
+
+pub fn total_prices_token_windows(changes:&mut DatabaseChanges, derived_eth_prices_deltas: &Deltas<DeltaBigDecimal>) {
+    for delta in derived_eth_prices_deltas
+        .iter()
+        .key_first_segment_in(["TokenDayData", "TokenHourData"])
+        .operation_not_eq(substreams::pb::substreams::store_delta::Operation::Delete)
+    {
+        let (table_name, time_id, token_address) = token_windows_id_fields(&delta.key);
+        let mut keys: HashMap<String, String> = HashMap::new();
+        keys.insert("id".to_string(), format!("0x{token_address}-{time_id}"));
+        match table_name {
+            "TokenDayData" => {
+                let change = changes.push_change_composite("ethereum_uniswap_v3_token_day_data", keys, 1, Operation::Update);
+                change.change("price_usd", (None,&delta.new_value));
+            }
+            "TokenHourData" => {
+                let change = changes.push_change_composite("ethereum_uniswap_v3_pool_hour_data", keys, 1, Operation::Update);
+                change.change("price_usd", (None,&delta.new_value));
+
+            }
+            _ => {}
+        }
+    }
+}
+
+pub fn prices_min_token_windows(changes:&mut DatabaseChanges,  min_token_prices_deltas: &Deltas<DeltaBigDecimal>) {
+    for delta in min_token_prices_deltas
+        .iter()
+        .key_first_segment_in(["TokenDayData", "TokenHourData"])
+        .operation_not_eq(substreams::pb::substreams::store_delta::Operation::Delete)
+        .key_last_segment_in(["low", "open"])
+    {
+        let (table_name, time_id, token_address) = token_windows_id_fields(&delta.key);
+        let token_time_id = format!("0x{token_address}-{time_id}");
+        let mut keys: HashMap<String, String> = HashMap::new();
+        keys.insert("id".to_string(), token_time_id.to_string());
+
+
+            match table_name {
+                "TokenDayData" => {
+                    let change = changes.push_change_composite("ethereum_uniswap_v3_token_day_data", keys, 1, Operation::Update);
+                    match key::last_segment(&delta.key) {
+                        "low" => {
+                            change.change("low", (None,&delta.new_value));
+                        }
+                        "open" => {
+                            change.change("open", (None,&delta.new_value));
+                        }
+                        _ => {}
+                    } 
+                }
+                "TokenHourData" => {
+                    let change = changes.push_change_composite("ethereum_uniswap_v3_pool_hour_data", keys, 1, Operation::Update);
+                    match key::last_segment(&delta.key) {
+                        "low" => {
+                            change.change("low", (None,&delta.new_value));
+                        }
+                        "open" => {
+                            change.change("open", (None,&delta.new_value));
+                        }
+                        _ => {}
+                    } 
+                }
+                _ => {}
+            }
+    }
+}
+
+fn prices_max_token_windows(changes:&mut DatabaseChanges, max_token_prices_deltas: &Deltas<DeltaBigDecimal>) {
+    for delta in max_token_prices_deltas
+        .iter()
+        .key_first_segment_in(["TokenDayData", "TokenHourData"])
+        .operation_not_eq(substreams::pb::substreams::store_delta::Operation::Delete)
+    {
+        let (table_name, time_id, token_address) = token_windows_id_fields(&delta.key);
+        let token_time_id = format!("0x{token_address}-{time_id}");
+        let mut keys: HashMap<String, String> = HashMap::new();
+        keys.insert("id".to_string(), token_time_id.to_string());
+        match table_name {
+            "TokenDayData" => {
+                    let change = changes.push_change_composite("ethereum_uniswap_v3_token_day_data", keys, 1, Operation::Update);
+                    change.change("high", (None,&delta.new_value));
+                }
+                "TokenHourData" => {
+                    let change = changes.push_change_composite("ethereum_uniswap_v3_pool_hour_data", keys, 1, Operation::Update);
+                    change.change("high", (None,&delta.new_value));
+                }
+                _ => {}
+        }
+    }
+}
+
+
+pub fn prices_close_token_windows(changes:&mut DatabaseChanges, eth_prices_deltas: &Deltas<DeltaBigDecimal>) {
+    for delta in eth_prices_deltas
+        .iter()
+        .key_first_segment_in(["TokenDayData", "TokenHourData"])
+        .operation_eq(substreams::pb::substreams::store_delta::Operation::Delete)
+    {
+        let (table_name, time_id, token_address) = token_windows_id_fields(&delta.key);
+        let token_time_id = format!("0x{token_address}-{time_id}");
+        let mut keys: HashMap<String, String> = HashMap::new();
+        keys.insert("id".to_string(), token_time_id.to_string());
+        match table_name {
+            "TokenDayData" => {
+                    let change = changes.push_change_composite("ethereum_uniswap_v3_token_day_data", keys, 1, Operation::Update);
+                    change.change("close", (None,&delta.new_value));
+                }
+                "TokenHourData" => {
+                    let change = changes.push_change_composite("ethereum_uniswap_v3_pool_hour_data", keys, 1, Operation::Update);
+                    change.change("close", (None,&delta.new_value));
+                }
+                _ => {}
+        }
+    }
+}
+
+
 
 
 

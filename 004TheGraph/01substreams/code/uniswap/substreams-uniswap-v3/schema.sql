@@ -215,8 +215,93 @@ create table IF NOT EXISTS  ethereum_uniswap_v3.ethereum_uniswap_v3_uniswap_day_
 );
 
 
+create table IF NOT EXISTS ethereum_uniswap_v3.ethereum_uniswap_v3_pool_day_data (
+     id text primary key,
+     time_id bigint,
+     pool_time_id text,
+     pool text,
+     liquidity numeric,
+     token0_price numeric,
+     token1_price numeric,
+     tick bigint,
+     fee_growth_global_0x128 numeric,
+     fee_growth_global_1x128 numeric,
+     total_value_locked_usd numeric,
+     volume_token0 numeric,
+     volume_token1 numeric,
+     volume_usd numeric,
+     fees_usd numeric,
+     tx_count bigint,
+     open numeric,
+     high numeric,
+     low numeric,
+     close numeric,
+     per_day bigint
+);
+
+create table IF NOT EXISTS ethereum_uniswap_v3.ethereum_uniswap_v3_pool_hour_data (
+     id text primary key,
+     time_id bigint,
+     pool_time_id text,
+     pool text,
+     liquidity numeric,
+     token0_price numeric,
+     token1_price numeric,
+     tick bigint,
+     fee_growth_global_0x128 numeric,
+     fee_growth_global_1x128 numeric,
+     total_value_locked_usd numeric,
+     volume_token0 numeric,
+     volume_token1 numeric,
+     volume_usd numeric,
+     fees_usd numeric,
+     tx_count bigint,
+     open numeric,
+     high numeric,
+     low numeric,
+     close numeric,
+     period_start bigint
+);
 
 
+create table IF NOT EXISTS ethereum_uniswap_v3.ethereum_uniswap_v3_token_day_data(
+     id text primary key,
+     token text,
+     volume numeric,
+     volume_usd numeric,
+     volume_usd_untracked numeric,
+     total_value_locked numeric,
+     total_value_locked_usd numeric,
+     price_usd numeric,
+     fees_usd numeric,
+     open numeric,
+     high numeric,
+     low numeric,
+     close numeric,
+     per_date bigint
+);
+
+create table IF NOT EXISTS ethereum_uniswap_v3.ethereum_uniswap_v3_token_hour_data(
+     id text primary key,
+     token text,
+     volume numeric,
+     volume_usd numeric,
+     volume_usd_untracked numeric,
+     total_value_locked numeric,
+     total_value_locked_usd numeric,
+     price_usd numeric,
+     fees_usd numeric,
+     open numeric,
+     high numeric,
+     low numeric,
+     close numeric,
+     period_start bigint
+);
 
 
+create table IF NOT EXISTS ethereum_uniswap_v3.ethereum_uniswap_v3_whitelist_token (
+     id text primary key,
+     token text,
+     white_pool text
+);
 

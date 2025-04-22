@@ -1460,7 +1460,7 @@ pub fn database_out(
     db_sink::total_value_locked_by_token_token_entity_change(&mut database_changes, &token_tvl_deltas);
     db_sink::total_value_locked_usd_token_entity_change(&mut database_changes, &derived_tvl_deltas);
     db_sink::derived_eth_prices_token_entity_change(&mut database_changes, &derived_eth_prices_deltas);
-    // db_sink::whitelist_token_entity_change(&mut database_changes, tokens_whitelist_pools_deltas);
+    db_sink::whitelist_token_entity_change(&mut database_changes, tokens_whitelist_pools_deltas);
     
     // Tick:
     db_sink::create_tick_entity_change(&mut database_changes, &events.ticks_created);
@@ -1514,7 +1514,41 @@ pub fn database_out(
         &tx_count_deltas,
      );
 
+
+     // Pool Day/Hour data:
+     db_sink::pool_windows_create(&mut database_changes, &tx_count_deltas);
+     db_sink::pool_windows_update(
+        &mut database_changes,
+        timestamp,
+        &tx_count_deltas,
+        &swaps_volume_deltas,
+        &events,
+        &pool_sqrt_price_store,
+        &pool_liquidities_store_deltas,
+        &price_deltas,
+        &store_prices,
+        &derived_tvl_deltas,
+        &min_windows_deltas,
+        &max_windows_deltas,
+    );
+
+
+    // Token Day/Hour data:
+    db_sink::token_windows_create(&mut database_changes, &tx_count_deltas);
+    db_sink::token_windows_update(
+        &mut database_changes,
+        timestamp,
+        &swaps_volume_deltas,
+        &derived_tvl_deltas,
+        &min_windows_deltas,
+        &max_windows_deltas,
+        &derived_eth_prices_deltas,
+        &token_tvl_deltas,
+    );
+
      
 
     Ok(database_changes)
 }
+
+
