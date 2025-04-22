@@ -1717,7 +1717,7 @@ fn create_token_windows_entity(
         "TokenHourData" => {
             let mut keys: HashMap<String, String> = HashMap::new();
             keys.insert("id".to_string(), token_day_time_id.to_string());
-            let change = changes.push_change_composite("ethereum_uniswap_v3_pool_hour_data", keys, 1, Operation::Create);
+            let change = changes.push_change_composite("ethereum_uniswap_v3_token_hour_data", keys, 1, Operation::Create);
             change.change("token", (None,format!("0x{}", token_addr)))
             .change("volume", (None,BigDecimal::zero()))
             .change("volume_usd", (None,BigDecimal::zero()))
@@ -1884,8 +1884,19 @@ fn total_value_locked_token_windows_update(
 ) {
     let mut keys: HashMap<String, String> = HashMap::new();
     keys.insert("id".to_string(), token_time_id.to_string());
-    let change = changes.push_change_composite(table_name, keys, 1, Operation::Update);
-    change.change("total_value_locked", (None,value));
+    match table_name {
+        "TokenDayData" => {
+            let change = changes.push_change_composite("ethereum_uniswap_v3_token_day_data", keys, 1, Operation::Update);
+            change.change("total_value_locked", (None,value));
+        }
+        "TokenHourData" => {
+            let change = changes.push_change_composite("ethereum_uniswap_v3_token_day_data", keys, 1, Operation::Update);
+            change.change("total_value_locked", (None,value));
+
+        }
+        _ => {}
+    }
+    
 }
 
 

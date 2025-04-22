@@ -1,13 +1,13 @@
-use serde::{Serialize, Deserialize};  // 引入序列化与反序列化宏
+
 // @generated
 #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message,Serialize, Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Erc20Tokens {
     #[prost(message, repeated, tag="1")]
     pub tokens: ::prost::alloc::vec::Vec<Erc20Token>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message,Serialize, Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Erc20Token {
     #[prost(string, tag="1")]
     pub address: ::prost::alloc::string::String,
@@ -23,7 +23,7 @@ pub struct Erc20Token {
     pub whitelist_pools: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message,Serialize, Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Liquidity {
     #[prost(string, tag="1")]
     pub pool_address: ::prost::alloc::string::String,
@@ -32,13 +32,13 @@ pub struct Liquidity {
     pub value: ::prost::alloc::string::String,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message,Serialize, Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Pools {
     #[prost(message, repeated, tag="1")]
     pub pools: ::prost::alloc::vec::Vec<Pool>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message,Serialize, Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Pool {
     #[prost(string, tag="1")]
     pub address: ::prost::alloc::string::String,
@@ -64,7 +64,7 @@ pub struct Pool {
     pub ignore_pool: bool,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message,Serialize, Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Events {
     #[prost(message, repeated, tag="1")]
     pub pool_sqrt_prices: ::prost::alloc::vec::Vec<events::PoolSqrtPrice>,
@@ -102,7 +102,7 @@ pub mod events {
     use serde::{Deserialize, Serialize};
 
     #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message,Serialize, Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
     pub struct FeeGrowthGlobal {
         #[prost(string, tag="1")]
         pub pool_address: ::prost::alloc::string::String,
@@ -115,7 +115,7 @@ pub mod events {
         pub new_value: ::prost::alloc::string::String,
     }
     #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message,Serialize, Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
     pub struct FeeGrowthInside {
         #[prost(string, tag="1")]
         pub pool_address: ::prost::alloc::string::String,
@@ -128,7 +128,7 @@ pub mod events {
         pub new_value: ::prost::alloc::string::String,
     }
     #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message,Serialize, Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
     pub struct FeeGrowthOutside {
         #[prost(string, tag="1")]
         pub pool_address: ::prost::alloc::string::String,
@@ -143,7 +143,7 @@ pub mod events {
         pub new_value: ::prost::alloc::string::String,
     }
     #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message,Serialize, Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
     pub struct TickCreated {
         #[prost(string, tag="1")]
         pub pool_address: ::prost::alloc::string::String,
@@ -167,7 +167,7 @@ pub mod events {
         pub amount: ::prost::alloc::string::String,
     }
     #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message,Serialize, Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
     pub struct TickUpdated {
         #[prost(string, tag="1")]
         pub pool_address: ::prost::alloc::string::String,
@@ -186,7 +186,7 @@ pub mod events {
         pub timestamp: u64,
     }
     #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message,Serialize, Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
     pub struct PoolSqrtPrice {
         #[prost(string, tag="1")]
         pub pool_address: ::prost::alloc::string::String,
@@ -202,7 +202,7 @@ pub mod events {
         pub initialized: bool,
     }
     #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message,Serialize, Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
     pub struct PoolEvent {
         #[prost(uint64, tag="100")]
         pub log_ordinal: u64,
@@ -230,7 +230,7 @@ pub mod events {
         use serde::{Deserialize, Serialize};
 
         #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message,Serialize, Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
         pub struct Swap {
             #[prost(string, tag="1")]
             pub sender: ::prost::alloc::string::String,
@@ -255,7 +255,7 @@ pub mod events {
             pub tick: ::prost::alloc::string::String,
         }
         #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message,Serialize, Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
         pub struct Burn {
             #[prost(string, tag="1")]
             pub owner: ::prost::alloc::string::String,
@@ -278,7 +278,7 @@ pub mod events {
             pub tick_upper: ::prost::alloc::string::String,
         }
         #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message,Serialize, Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
         pub struct Mint {
             #[prost(string, tag="1")]
             pub owner: ::prost::alloc::string::String,
@@ -303,7 +303,7 @@ pub mod events {
             pub amount: ::prost::alloc::string::String,
         }
         #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Oneof,Serialize, Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Oneof)]
         pub enum Type {
             #[prost(message, tag="1")]
             Swap(Swap),
@@ -314,7 +314,7 @@ pub mod events {
         }
     }
     #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message,Serialize, Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
     pub struct PoolLiquidity {
         #[prost(string, tag="1")]
         pub pool_address: ::prost::alloc::string::String,
@@ -330,7 +330,7 @@ pub mod events {
         pub log_ordinal: u64,
     }
     #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message,Serialize, Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
     pub struct Flash {
         #[prost(string, tag="1")]
         pub pool_address: ::prost::alloc::string::String,
@@ -344,7 +344,7 @@ pub mod events {
         pub log_ordinal: u64,
     }
     #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message,Serialize, Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
     pub struct Transaction {
         #[prost(string, tag="1")]
         pub id: ::prost::alloc::string::String,
@@ -361,7 +361,7 @@ pub mod events {
         pub log_ordinal: u64,
     }
     #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message,Serialize, Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
     pub struct PositionEvent {
         #[prost(oneof="position_event::Type", tags="1, 2, 3, 4, 5")]
         pub r#type: ::core::option::Option<position_event::Type>,
@@ -371,7 +371,7 @@ pub mod events {
         use serde::{Deserialize, Serialize};
 
         #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Oneof,Serialize, Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Oneof)]
         pub enum Type {
             #[prost(message, tag="1")]
             CreatedPosition(super::CreatedPosition),
@@ -386,7 +386,7 @@ pub mod events {
         }
     }
     #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message,Serialize, Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
     pub struct CreatedPosition {
         #[prost(string, tag="1")]
         pub token_id: ::prost::alloc::string::String,
@@ -416,7 +416,7 @@ pub mod events {
         pub fee_growth_inside1_last_x128: ::core::option::Option<::prost::alloc::string::String>,
     }
     #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message,Serialize, Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
     pub struct IncreaseLiquidityPosition {
         #[prost(string, tag="1")]
         pub token_id: ::prost::alloc::string::String,
@@ -439,7 +439,7 @@ pub mod events {
         pub log_ordinal: u64,
     }
     #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message,Serialize, Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
     pub struct DecreaseLiquidityPosition {
         #[prost(string, tag="1")]
         pub token_id: ::prost::alloc::string::String,
@@ -462,7 +462,7 @@ pub mod events {
         pub log_ordinal: u64,
     }
     #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message,Serialize, Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
     pub struct CollectPosition {
         #[prost(string, tag="1")]
         pub token_id: ::prost::alloc::string::String,
@@ -482,7 +482,7 @@ pub mod events {
         pub log_ordinal: u64,
     }
     #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message,Serialize, Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
     pub struct TransferPosition {
         #[prost(string, tag="1")]
         pub token_id: ::prost::alloc::string::String,
@@ -493,13 +493,13 @@ pub mod events {
     }
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message,Serialize, Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SnapshotPositions {
     #[prost(message, repeated, tag="1")]
     pub snapshot_positions: ::prost::alloc::vec::Vec<SnapshotPosition>,
 }
 #[allow(clippy::derive_partial_eq_without_eq)]
-#[derive(Clone, PartialEq, ::prost::Message,Serialize, Deserialize)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SnapshotPosition {
     #[prost(string, tag="1")]
     pub pool: ::prost::alloc::string::String,

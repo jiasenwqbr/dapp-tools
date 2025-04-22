@@ -221,6 +221,7 @@ create table IF NOT EXISTS ethereum_uniswap_v3.ethereum_uniswap_v3_pool_day_data
      pool_time_id text,
      pool text,
      liquidity numeric,
+     sqrt_price numeric,
      token0_price numeric,
      token1_price numeric,
      tick bigint,
@@ -236,6 +237,7 @@ create table IF NOT EXISTS ethereum_uniswap_v3.ethereum_uniswap_v3_pool_day_data
      high numeric,
      low numeric,
      close numeric,
+     price_usd numeric,
      per_day bigint
 );
 
@@ -245,6 +247,7 @@ create table IF NOT EXISTS ethereum_uniswap_v3.ethereum_uniswap_v3_pool_hour_dat
      pool_time_id text,
      pool text,
      liquidity numeric,
+     sqrt_price numeric,
      token0_price numeric,
      token1_price numeric,
      tick bigint,
@@ -260,7 +263,9 @@ create table IF NOT EXISTS ethereum_uniswap_v3.ethereum_uniswap_v3_pool_hour_dat
      high numeric,
      low numeric,
      close numeric,
+      price_usd numeric,
      period_start bigint
+    
 );
 
 
