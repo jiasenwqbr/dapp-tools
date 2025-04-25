@@ -181,3 +181,18 @@ create table IF NOT EXISTS solana_raydium.solana_block_sol_usd(
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+
+--- create index 
+CREATE INDEX swap_amm_ind ON solana_raydium_swap (amm);
+CREATE INDEX swap_block_number_ind ON solana_raydium_swap (block_number);
+CREATE INDEX swap_mint_in_ind ON solana_raydium_swap (mint_in);
+CREATE INDEX swap_mint_out_ind ON solana_raydium_swap (mint_out);
+
+
+
+
+
+
+
+
+

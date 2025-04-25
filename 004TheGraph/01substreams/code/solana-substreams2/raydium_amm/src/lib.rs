@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use anyhow::{anyhow, Context, Error};
 use pumpfun::constants::USDC_ADDRESS;
 use pumpfun::constants::USDT_ADDRESS;
+use raydium_amm::constants::SOL_MINIMUM_LAMPORTS;
 use regex;
 
 use substreams_solana::pb::sf::solana::r#type::v1::Block;
@@ -199,7 +200,7 @@ fn transform_block_meta_to_database_changes(
             }
         }
     }
-
+    let mut usd_sum = 0;
     let mut usd_sol_vec : Vec<SwapUsdSol> = vec![];
     for (_i,swap) in usd_swaps.iter().enumerate(){
         let mut usd_sol : SwapUsdSol = SwapUsdSol{
@@ -217,15 +218,17 @@ fn transform_block_meta_to_database_changes(
             usd_sol.sol = swap.amount_in;
             usd_sol.price =  (swap.amount_out * 1000) as f64/(swap.amount_in as f64);
         }
+        usd_sum += usd_sol.usd;
         usd_sol_vec.push(usd_sol);
     }
-    let sol_price = calculate_sol_price(usd_sol_vec);
-    if sol_price!=0.0{
-        save_solana_block_sol_usd(block_number,sol_price,changes);
+    // filte usd
+
+    if usd_sum > 100000 {
+        let sol_price = calculate_sol_price(usd_sol_vec);
+        if sol_price!=0.0{
+            save_solana_block_sol_usd(block_number,sol_price,changes);
+        }
     }
-    
-
-
 
 }
 
@@ -872,9 +875,9 @@ pub fn parse_system_program_instruction<'a>(
         SystemInstruction::CreateAccount(_create_account) => Ok(None),
         SystemInstruction::Assign(_assign) => Ok(None),
         SystemInstruction::Transfer(transfer) => {
-            // if transfer.lamports < SOL_MINIMUM_LAMPORTS {
-            //     return Ok(None);
-            // }
+            if transfer.lamports < SOL_MINIMUM_LAMPORTS {
+                return Ok(None);
+            }
             _parse_transfer_instruction(instruction, context, &transfer)
                 .map(|x| Some(Event::Transfer(x)))
         }
