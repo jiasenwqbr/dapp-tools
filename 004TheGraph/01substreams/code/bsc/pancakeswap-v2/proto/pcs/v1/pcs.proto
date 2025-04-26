@@ -1,0 +1,116 @@
+syntax = "proto3";
+
+package pcs.types.v1;
+
+option go_package = "github.com/streamingfast/substream-pancakeswap/pcs-go;pcs";
+
+message Pairs {
+  repeated Pair pairs = 1;
+}
+
+message Pair {
+  string address = 1;
+  string token0_address = 2;
+  string token1_address = 3;
+  string creation_transaction_id = 4;
+  uint64 block_num = 5;
+  uint64 log_ordinal = 6;
+}
+
+//message ERC20Token {
+//  string address = 1;
+//  string name = 2;
+//  string symbol = 3;
+//  uint64 decimals = 4;
+//}
+
+message Reserves {
+  repeated Reserve reserves = 1;
+}
+
+message Reserve {
+  uint64 log_ordinal = 1;
+  string pair_address = 2;
+  string reserve0 = 3;
+  string reserve1 = 4;
+  string token0_price = 5;
+  string token1_price = 6;
+}
+
+message Events {
+  repeated Event events = 1;
+}
+
+message Event {
+  oneof type {
+    Swap swap = 1;
+    Burn burn = 2;
+    Mint mint = 3;
+  }
+  uint64 log_ordinal = 100;
+  string pair_address = 101;
+  string token0 = 102;
+  string token1 = 103;
+  string transaction_id = 104;
+  uint64 timestamp = 105;
+}
+
+message Swap {
+  string id = 1;
+  string sender = 2;
+  string to = 3;
+  string from = 4;
+
+  string amount0_in = 5;
+  string amount1_in = 6;
+
+  string amount0_out = 7;
+  string amount1_out = 8;
+
+  string amount_bnb = 9;
+  string amount_usd = 10;
+
+  string trade_volume0 = 11;
+  string trade_volume1 = 12;
+
+  string trade_volume_usd0 = 13;
+  string trade_volume_usd1 = 14;
+
+  // dropped for now...
+  //string untracked_volume_usd0 = 15;
+  //string untracked_volume_usd1 = 16;
+
+  string volume_usd = 17;
+  string volume_token0 = 18;
+  string volume_token1 = 19;
+
+  string log_address = 20;
+}
+
+message Burn {
+  string id = 1;
+  string sender = 2;
+  string to = 3;
+  string fee_to = 4;
+
+  string amount0 = 5;
+  string amount1 = 6;
+  string amount_usd = 7;
+
+  string liquidity = 8;
+  string fee_liquidity = 9;
+}
+
+message Mint {
+  string id = 1;
+  string sender = 2;
+  string to = 3;
+  string fee_to = 4;
+
+  string amount0 = 5;
+  string amount1 = 6;
+  string amount_usd = 7;
+
+  string liquidity = 8;
+  string fee_liquidity = 9;
+}
