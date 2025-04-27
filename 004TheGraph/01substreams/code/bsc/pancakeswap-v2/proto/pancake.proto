@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package pancake;
+
+message Swap {
+  string sender = 1;
+  string to = 2;
+  string pair_address = 3;
+  string token0_address = 4;
+  string token1_address = 5;
+  string trx_hash = 6;
+  uint64 log_ordinal = 7;
+  string amount0_in = 8;
+  string amount1_in = 9;
+  string amount0_out = 10;
+  string amount1_out = 11;
+}
+
+message Swaps {
+  repeated Swap swaps = 1;
+}

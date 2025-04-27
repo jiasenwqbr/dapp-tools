@@ -18,7 +18,5 @@ pad = "0.1"
 substreams = "0.5.22"
 substreams-ethereum = "0.9.9"
 
-
-
 [build-dependencies]
 prost-build = "0.11"
