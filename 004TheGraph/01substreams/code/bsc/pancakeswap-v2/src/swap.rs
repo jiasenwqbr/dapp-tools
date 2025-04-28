@@ -1,10 +1,10 @@
-use prost::Message;
+
 use substreams_ethereum::pb::eth::v2 as eth;
 use substreams_ethereum::pb::eth::v2::Log;
-
+use substreams::log;
 use crate::pb::pancake;
 
-const SWAP_TOPIC: &str = "0xd78ad95fa46c994b6551d0da85fc275fe6131c3d"; // keccak256("Swap(address,uint256,uint256,uint256,uint256,address)")
+const SWAP_TOPIC: &str = "0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73"; // keccak256("Swap(address,uint256,uint256,uint256,uint256,address)")
 
 #[substreams::handlers::map]
 pub fn map_swaps(block: eth::Block) -> Result<pancake::Swaps, substreams::errors::Error> {
@@ -12,14 +12,15 @@ pub fn map_swaps(block: eth::Block) -> Result<pancake::Swaps, substreams::errors
 
     for trx in block.transaction_traces {
         for log in trx.receipt.unwrap().logs {
+            
             if log.topics.len() != 3 {
                 continue;
             }
-
+            
             if hex::encode(&log.topics[0]) != SWAP_TOPIC.trim_start_matches("0x") {
                 continue;
             }
-
+            log::info!("&log.topics[0]:{}",hex::encode(&log.topics[0])); 
             // 解析出事件
             let swap = parse_swap_event(&log, &trx.hash)?;
             swaps.push(swap);
@@ -30,12 +31,7 @@ pub fn map_swaps(block: eth::Block) -> Result<pancake::Swaps, substreams::errors
 }
 
 fn parse_swap_event(log: &Log, trx_hash: &Vec<u8>) -> Result<pancake::Swap, substreams::errors::Error> {
-    use substreams_ethereum::pb::eth::v2::BigInt;
-
-    let amount0_in = BigInt::decode(&log.data[0..32])?;
-    let amount1_in = BigInt::decode(&log.data[32..64])?;
-    let amount0_out: BigInt = BigInt::decode(&log.data[64..96])?;
-    let amount1_out: BigInt = BigInt::decode(&log.data[96..128])?;
+    
     Ok(pancake::Swap {
         sender: hex::encode(&log.topics[1][12..]),
         to: hex::encode(&log.topics[2][12..]),
@@ -44,10 +40,10 @@ fn parse_swap_event(log: &Log, trx_hash: &Vec<u8>) -> Result<pancake::Swap, subs
         token1_address: "".to_string(),
         trx_hash: hex::encode(trx_hash),
         log_ordinal: log.ordinal,
-        amount0_in:hex::encode( amount0_in.bytes),
-        amount1_in:hex::encode( amount1_in.bytes),
-        amount0_out:hex::encode(amount0_out.bytes),
-        amount1_out:hex::encode(amount1_out.bytes),
+        amount0_in:hex::encode( &log.data[0..32]),
+        amount1_in:hex::encode( &log.data[32..64]),
+        amount0_out:hex::encode(&log.data[64..96]),
+        amount1_out:hex::encode(&log.data[96..128]),
     })
 }
 
