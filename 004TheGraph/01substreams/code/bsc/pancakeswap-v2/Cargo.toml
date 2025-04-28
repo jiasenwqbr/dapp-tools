@@ -9,14 +9,22 @@ crate-type = ["cdylib"]
 
 [dependencies]
 wasm-bindgen = "0.2.79"
-prost = { version = "0.13.5" }
-prost-types = "0.13.5"
+prost = { version = "0.11.0" }
+prost-types = "0.11.0"
 hex = "0.4.3"
 num-bigint = "0.4"
 bigdecimal = "0.4.8"
 pad = "0.1"
-substreams = "0.6.1"
-substreams-ethereum = "0.10.4"
+substreams = "0.5.22"
+substreams-ethereum = "0.9.13"
+ethabi = "18.0.0"
+anyhow = "1.0.75"
+## added
+substreams-database-change = "1.0.0"
+serde_qs = "0.13.0"
+serde = "1.0.204"
 
 [build-dependencies]
 prost-build = "0.13.5"
+substreams-ethereum = "0.9.13"
+anyhow = "1.0.75"
