@@ -1,12 +1,11 @@
 use std::collections::HashMap;
 
-use pb::{eth::BigInt, pcs::{self, Pair}};
+use abi::Pancake_pair::events::Swap;
+use pb::pcs::{self, Pair};
 use serde::Deserialize;
+use substreams::{prelude::BigInt, Hex};
 use substreams_database_change::pb::database::{table_change::Operation, DatabaseChanges};
-use substreams_ethereum::{
-    pb::eth::v2::{self as eth, Log},
-    Event
-};
+use substreams_ethereum::pb::eth::v2::{self as eth, Log};
 extern crate core;
 
 mod pb;
@@ -14,66 +13,10 @@ mod swap;
 mod event;
 mod eth_utils ;
 mod utils;
-
-// #[substreams::handlers::map]
-// pub fn map_pairs(blk: pb::eth::Block) -> Result<pcs::Pairs, Error> {
-//     let mut pairs = pcs::Pairs { pairs: vec![] };
-
-//     for trx in blk.transaction_traces {
-//         /* PCS Factory address */
-//         //0xbcfccbde45ce874adcb698cc183debcf17952812
-//         if hex::encode(&trx.to) != "ca143ce32fe78f1f7019d7d551a6402fc5350c73" {
-//             continue;
-//         }
-
-//         for log in trx.receipt.unwrap().logs {
-//             let sig = hex::encode(&log.topics[0]);
-
-//             if !event::is_pair_created_event(sig.as_str()) {
-//                 continue;
-//             }
-
-//             pairs.pairs.push(pcs::Pair {
-//                 address: address_pretty(&log.data[12..32]),
-//                 token0_address: address_pretty(&log.topics[1][12..]),
-//                 token1_address: address_pretty(&log.topics[2][12..]),
-//                 creation_transaction_id: address_pretty(&trx.hash),
-//                 block_num: blk.number,
-//                 log_ordinal: log.block_index as u64,
-//             })
-//         }
-//     }
-
-//     Ok(pairs)
-// }
-
-
-// use substreams::store::StoreNew;
-// #[substreams::handlers::store]
-// pub fn store_pairs(pairs: pcs::Pairs, output:StoreSetRaw) {
-//     log::info!("Building pair state");
-//     for pair in pairs.pairs {
-//         output.set(
-//             pair.log_ordinal,
-//             format!("pair:{}", pair.address),
-//             &proto::encode(&pair).unwrap(),
-//         );
-//         output.set(
-//             pair.log_ordinal as u64,
-//             format!(
-//                 "tokens:{}",
-//                 utils::generate_tokens_key(
-//                     pair.token0_address.as_str(),
-//                     pair.token1_address.as_str(),
-//                 )
-//             ),
-//             &proto::encode(&pair).unwrap(),
-//         );
-//     }
-// }
+pub mod abi;
 
 #[derive(Debug)]
-struct SwapV1 {
+struct SwapV2 {
     id: String,
     pair_address:String,
     sender: String,
@@ -110,7 +53,7 @@ pub fn map_postgres( params: String,block: eth::Block) -> Result<DatabaseChanges
     // pair create
 
     map_pairs(params,&block,&mut database_changes);
-
+    handle_swap(&block,&mut database_changes);
 
     Ok(database_changes)
 }
@@ -176,3 +119,116 @@ fn save_pair(
         .change("creation_transaction_id", (None,pair.creation_transaction_id))
         .change("log_ordinal", (None,pair.log_ordinal));
 }
+
+
+fn handle_swap(block: &eth::Block,database_changes:&mut DatabaseChanges){
+    let block_number = block.number;
+    let block_time = block.timestamp_seconds();
+    let mut swaps: Vec<SwapV2> = vec![];
+    for trx in &block.transaction_traces{
+        for log in trx.receipt.clone().unwrap().logs {
+            if let Some(swap) = extract_swap_event(&log){
+                let transaction_from = &trx.from;
+                let transaction_from = Hex::encode(transaction_from);
+                let transaction_to = &trx.to;
+                let transaction_to = Hex::encode(transaction_to);
+                let gas_price: &Option<eth::BigInt> =  &trx.gas_price;
+                let transaction_gas_price = match gas_price {
+                    Some(val) => BigInt::from_signed_bytes_be(&val.bytes),
+                    None => BigInt::zero(),
+                };
+                let transaction_gas_used = &trx.gas_used;
+                let transaction_hash = &trx.hash;
+                let transaction_hash = Hex::encode(transaction_hash);
+                let transaction_public_key = &trx.public_key;
+                let transaction_public_key = Hex::encode(transaction_public_key);
+                let max_fee_per_gas = &trx.max_fee_per_gas;
+                let transaction_max_fee_per_gas = match max_fee_per_gas {
+                    Some(val) => BigInt::from_signed_bytes_be(&val.bytes),
+                    None => BigInt::zero(),
+                };
+
+                let max_priority_fee_per_gas = &trx.max_priority_fee_per_gas;
+                let transaction_max_priority_fee_per_gas = match max_priority_fee_per_gas {
+                    Some(val) => BigInt::from_signed_bytes_be(&val.bytes),
+                    None => BigInt::zero(),
+                };
+
+                swaps.push(
+                    SwapV2{
+                        id: format!(
+                            "{}_{}_{}",
+                            Hex::encode(log.address.clone()),
+                            Hex::encode(trx.hash.clone()),
+                            log.index
+                        ),
+                        pair_address: Hex::encode(log.address.clone()),
+                        sender: Hex::encode(swap.sender),
+                        to: Hex::encode(swap.to),
+                        amount0_in: swap.amount0_in,
+                        amount0_out: swap.amount0_out,
+                        amount1_in: swap.amount1_in,
+                        amount1_out: swap.amount1_out,
+                        block_number: block_number,
+                        block_time: block_time,
+                        transaction_from :transaction_from,
+                        transaction_to:transaction_to,
+                        transaction_gas_price:transaction_gas_price.into(),
+                        transaction_gas_used:*transaction_gas_used,
+                        transaction_hash:transaction_hash,
+                        transaction_public_key:transaction_public_key,
+                        transaction_max_fee_per_gas:transaction_max_fee_per_gas.into(),
+                        transaction_max_priority_fee_per_gas:transaction_max_priority_fee_per_gas.into()
+                    }
+                );
+            }
+        }
+    }
+    for swap in swaps{
+        save_bsc_pancake_v2_swaps(
+            swap,database_changes
+        );
+    }
+}
+
+fn extract_swap_event(log: &Log) -> Option<abi::Pancake_pair::events::Swap> {
+    if Swap::match_log(log){
+        match  Swap::decode(log) {
+            Ok(event) => Some(event),
+            Err(_) => None,
+        }
+    } else {
+        None
+    }
+    
+}
+
+fn save_bsc_pancake_v2_swaps(swap: SwapV2, changes: &mut DatabaseChanges) {
+    let mut composite_key: HashMap<String, String> = HashMap::new();
+    composite_key.insert("id".to_string(), swap.id);
+    changes
+        .push_change_composite(
+            "ethereum_block_uniswapv2_swaps",
+            composite_key,
+            1,
+            Operation::Create,
+        )
+        .change("block_number", (None, swap.block_number))
+        .change("block_time", (None, swap.block_time))
+        .change("swap_sender", (None, swap.sender))
+        .change("swap_to", (None, swap.to))
+        .change("amount0_in", (None, swap.amount0_in))
+        .change("amount0_out", (None, swap.amount0_out))
+        .change("amount1_in", (None, swap.amount1_in))
+        .change("amount1_out", (None, swap.amount1_out))
+        .change("transaction_from", (None,swap.transaction_from))
+        .change("transaction_to", (None,swap.transaction_to))
+        .change("transaction_gas_price", (None,swap.transaction_gas_price))
+        .change("transaction_gas_used", (None,swap.transaction_gas_used))
+        .change("transaction_hash", (None,swap.transaction_hash))
+        .change("transaction_public_key", (None,swap.transaction_public_key))
+        .change("transaction_max_fee_per_gas", (None,swap.transaction_max_fee_per_gas))
+        .change("transaction_max_priority_fee_per_gas", (None,swap.transaction_max_priority_fee_per_gas))
+        .change("pair_address", (None,swap.pair_address));
+}
+

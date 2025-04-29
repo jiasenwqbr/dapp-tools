@@ -37,6 +37,6 @@ sink:
       enabled: true
 
 params:
-  map_swap: factory_address=5c69bee701ef814a2b6a3edd4b1652cb9cc5aa6f&protocol_type_name=uniswap_v2_pool
+  map_swap: factory_address=ca143ce32fe78f1f7019d7d551a6402fc5350c73&protocol_type_name=pancake_v2_pool
 
 
