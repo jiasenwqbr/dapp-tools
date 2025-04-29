@@ -208,7 +208,7 @@ fn save_bsc_pancake_v2_swaps(swap: SwapV2, changes: &mut DatabaseChanges) {
     composite_key.insert("id".to_string(), swap.id);
     changes
         .push_change_composite(
-            "ethereum_block_uniswapv2_swaps",
+            "bsc_pancake_v2_swaps",
             composite_key,
             1,
             Operation::Create,

@@ -15,12 +15,12 @@ network: mainnet
 binaries:
   default:
     type: wasm/rust-v1
-    file: ../target/wasm32-unknown-unknown/release/ethereum_uniswap_v2.wasm
+    file: ../target/wasm32-unknown-unknown/release/pcs_substreams.wasm
 
 modules:
-  - name: map_swap
+  - name: map_postgres
     kind: map
-    initialBlock: 15614590
+    initialBlock: 6810711
     inputs:
       - params: string
       - source: sf.ethereum.type.v2.Block
@@ -28,7 +28,7 @@ modules:
       type: proto:sf.substreams.sink.database.v1.DatabaseChanges
 
 sink:
-  module: map_swap
+  module: map_postgres
   type: sf.substreams.sink.sql.v1.Service
   config:
     schema: "../schema.sql"
@@ -37,6 +37,6 @@ sink:
       enabled: true
 
 params:
-  map_swap: factory_address=ca143ce32fe78f1f7019d7d551a6402fc5350c73&protocol_type_name=pancake_v2_pool
+  map_postgres: factory_address=ca143ce32fe78f1f7019d7d551a6402fc5350c73&protocol_type_name=pancake_v2_pool
 
 
