@@ -8,8 +8,6 @@ use substreams_ethereum::Event;
 
 #[allow(unused_imports)]
 use num_traits::cast::ToPrimitive;
-use std::str::FromStr;
-use substreams::scalar::BigDecimal;
 
 substreams_ethereum::init!();
 
@@ -551,8 +549,31 @@ fn map_events(blk: eth::Block) -> Result<contract::Events, substreams::errors::E
 }
 #[substreams::handlers::map]
 fn map_calls(blk: eth::Block) -> Result<contract::Calls, substreams::errors::Error> {
-let mut calls = contract::Calls::default();
+    let mut calls = contract::Calls::default();
     map_usdtcontract_calls(&blk, &mut calls);
     Ok(calls)
 }
+
+#[substreams::handlers::map]
+fn map_calls_eth(blk: eth::Block) -> Result<contract::Events, substreams::errors::Error> {
+    let mut events = contract::Events::default();
+    map_usdtcontract_events(&blk, &mut events);
+
+    let evt_block_time =
+        (blk.timestamp().seconds as u64 * 1000) + (blk.timestamp().nanos as u64 / 1000000);
+
+    // Using the decimals function
+    let decimals = get_decimals();
+    substreams::log::info!("Number of decimals for the USDT token: {},evt_block_time is {}", decimals.to_string(),evt_block_time);
+
+    Ok(events)
+}
+
+fn get_decimals() -> substreams::scalar::BigInt {
+    let decimals = abi::usdtcontract_contract::functions::Decimals {};
+    let decimals_option = decimals.call(USDTCONTRACT_TRACKED_CONTRACT.to_vec());
+
+    decimals_option.unwrap()
+}
+
 

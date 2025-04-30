@@ -52,4 +52,16 @@ modules:
       - map: map_calls
     output:
       type: proto:contract.v1.EventsCalls
+  - name: map_calls_eth
+    kind: map
+    initialBlock: 4634748
+    blockFilter:
+      module: ethcommon:index_events
+      query:
+        string: evt_addr:0xdac17f958d2ee523a2206206994597c13d831ec7
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+    output:
+      type: proto:contract.v1.Events
+
 network: mainnet
