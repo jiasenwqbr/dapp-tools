@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
 use abi::Pancake_pair::events::Swap;
-use pb::pcs::{self, Pair};
+use eth_utils::address_pretty;
+use pb::{pcs::{self, Pair}, tokens::Token};
 use serde::Deserialize;
 use substreams::{prelude::BigInt, Hex};
 use substreams_database_change::pb::database::{table_change::Operation, DatabaseChanges};
@@ -93,6 +94,7 @@ fn map_pairs(params: String,block: &eth::Block,changes:&mut DatabaseChanges){
             changes
         );
     }
+
 
     
 }
@@ -232,3 +234,42 @@ fn save_bsc_pancake_v2_swaps(swap: SwapV2, changes: &mut DatabaseChanges) {
         .change("pair_address", (None,swap.pair_address));
 }
 
+fn map_reserves(blk: pb::eth::Block, pairs: Vec<Pair>,tokens:Vec<Token>) {
+    let mut reserves = pcs::Reserves { reserves: vec![] };
+    for trx in blk.transaction_traces {
+        for log in trx.receipt.unwrap().logs {
+            let addr = address_pretty(&log.address);
+                match pairs.get_last(&format!("pair:{}", addr)) {
+                    None => continue,
+                    Some(pair_bytes) => {
+                        let sig = hex::encode(&log.topics[0]);
+
+                        if !event::is_pair_sync_event(sig.as_str()) {
+                            continue;
+                        }
+
+                        let pair: pcs::Pair = proto::decode(&pair_bytes).unwrap();
+
+                        let token0: Token = utils::get_last_token(&tokens, &pair.token0_address);
+                        let reserve0 =
+                            utils::convert_token_to_decimal(&log.data[0..32], &token0.decimals);
+                        let token1: Token = utils::get_last_token(&tokens, &pair.token1_address);
+                        let reserve1 =
+                            utils::convert_token_to_decimal(&log.data[32..64], &token1.decimals);
+
+                        let token0_price = utils::get_token_price(reserve0.clone(), reserve1.clone());
+                        let token1_price = utils::get_token_price(reserve1.clone(), reserve0.clone());
+
+                        reserves.reserves.push(pcs::Reserve {
+                            pair_address: pair.address,
+                            reserve0: reserve0.to_string(),
+                            reserve1: reserve1.to_string(),
+                            log_ordinal: log.block_index as u64,
+                            token0_price: token0_price.to_string(),
+                            token1_price: token1_price.to_string(),
+                        });
+                    }
+                }
+        }
+    }
+}

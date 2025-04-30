@@ -1,0 +1,55 @@
+specVersion: v0.1.0
+package:
+  name: ethcalls
+  version: v0.1.0
+
+imports:
+    ethcommon: https://spkg.io/streamingfast/ethereum-common-v0.3.0.spkg
+
+protobuf:
+  files:
+    - contract.proto
+  importPaths:
+    - ./proto
+  excludePaths:
+    - sf/substreams
+    - google
+
+binaries:
+  default:
+    type: wasm/rust-v1
+    file: ./target/wasm32-unknown-unknown/release/substreams.wasm
+
+modules:
+
+  - name: map_events
+    kind: map
+    initialBlock: 4634748
+    blockFilter:
+      module: ethcommon:index_events
+      query:
+        string: evt_addr:0xdac17f958d2ee523a2206206994597c13d831ec7
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+    output:
+      type: proto:contract.v1.Events
+  - name: map_calls
+    kind: map
+    initialBlock: 4634748
+    blockFilter:
+      module: ethcommon:index_calls
+      query:
+        string: call_to:0xdac17f958d2ee523a2206206994597c13d831ec7
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+    output:
+      type: proto:contract.v1.Calls
+  - name: map_events_calls
+    kind: map
+    initialBlock: 4634748
+    inputs:
+      - map: map_events
+      - map: map_calls
+    output:
+      type: proto:contract.v1.EventsCalls
+network: mainnet

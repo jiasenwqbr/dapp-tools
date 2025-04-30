@@ -1,0 +1,226 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+package contract.v1;
+message Events {
+    repeated Usdtcontract_AddedBlackList usdtcontract_added_black_lists = 1;
+    repeated Usdtcontract_Approval usdtcontract_approvals = 2;
+    repeated Usdtcontract_Deprecate usdtcontract_deprecates = 3;
+    repeated Usdtcontract_DestroyedBlackFunds usdtcontract_destroyed_black_funds = 4;
+    repeated Usdtcontract_Issue usdtcontract_issues = 5;
+    repeated Usdtcontract_Params usdtcontract_params = 6;
+    repeated Usdtcontract_Pause usdtcontract_pauses = 7;
+    repeated Usdtcontract_Redeem usdtcontract_redeems = 8;
+    repeated Usdtcontract_RemovedBlackList usdtcontract_removed_black_lists = 9;
+    repeated Usdtcontract_Transfer usdtcontract_transfers = 10;
+    repeated Usdtcontract_Unpause usdtcontract_unpauses = 11;
+}
+message Calls {
+    repeated Usdtcontract_AddBlackListCall usdtcontract_call_add_black_lists = 1;
+    repeated Usdtcontract_ApproveCall usdtcontract_call_approves = 2;
+    repeated Usdtcontract_DeprecateCall usdtcontract_call_deprecates = 3;
+    repeated Usdtcontract_DestroyBlackFundsCall usdtcontract_call_destroy_black_funds = 4;
+    repeated Usdtcontract_IssueCall usdtcontract_call_issues = 5;
+    repeated Usdtcontract_PauseCall usdtcontract_call_pauses = 6;
+    repeated Usdtcontract_RedeemCall usdtcontract_call_redeems = 7;
+    repeated Usdtcontract_RemoveBlackListCall usdtcontract_call_remove_black_lists = 8;
+    repeated Usdtcontract_SetParamsCall usdtcontract_call_set_params = 9;
+    repeated Usdtcontract_TransferCall usdtcontract_call_transfers = 10;
+    repeated Usdtcontract_TransferFromCall usdtcontract_call_transfer_froms = 11;
+    repeated Usdtcontract_TransferOwnershipCall usdtcontract_call_transfer_ownerships = 12;
+    repeated Usdtcontract_UnpauseCall usdtcontract_call_unpauses = 13;
+}
+message EventsCalls {
+    Events events = 1;
+    Calls calls = 2;
+}
+message Usdtcontract_AddedBlackList {
+    string evt_tx_hash = 1;
+    uint32 evt_index = 2;
+    google.protobuf.Timestamp evt_block_time = 3;
+    uint64 evt_block_number = 4;
+    bytes u_user = 5;
+}
+message Usdtcontract_Approval {
+    string evt_tx_hash = 1;
+    uint32 evt_index = 2;
+    google.protobuf.Timestamp evt_block_time = 3;
+    uint64 evt_block_number = 4;
+    bytes owner = 5;
+    bytes spender = 6;
+    string value = 7;
+}
+message Usdtcontract_Deprecate {
+    string evt_tx_hash = 1;
+    uint32 evt_index = 2;
+    google.protobuf.Timestamp evt_block_time = 3;
+    uint64 evt_block_number = 4;
+    bytes new_address = 5;
+}
+message Usdtcontract_DestroyedBlackFunds {
+    string evt_tx_hash = 1;
+    uint32 evt_index = 2;
+    google.protobuf.Timestamp evt_block_time = 3;
+    uint64 evt_block_number = 4;
+    bytes u_black_listed_user = 5;
+    string u_balance = 6;
+}
+message Usdtcontract_Issue {
+    string evt_tx_hash = 1;
+    uint32 evt_index = 2;
+    google.protobuf.Timestamp evt_block_time = 3;
+    uint64 evt_block_number = 4;
+    string amount = 5;
+}
+message Usdtcontract_Params {
+    string evt_tx_hash = 1;
+    uint32 evt_index = 2;
+    google.protobuf.Timestamp evt_block_time = 3;
+    uint64 evt_block_number = 4;
+    string fee_basis_points = 5;
+    string max_fee = 6;
+}
+message Usdtcontract_Pause {
+    string evt_tx_hash = 1;
+    uint32 evt_index = 2;
+    google.protobuf.Timestamp evt_block_time = 3;
+    uint64 evt_block_number = 4;
+}
+message Usdtcontract_Redeem {
+    string evt_tx_hash = 1;
+    uint32 evt_index = 2;
+    google.protobuf.Timestamp evt_block_time = 3;
+    uint64 evt_block_number = 4;
+    string amount = 5;
+}
+message Usdtcontract_RemovedBlackList {
+    string evt_tx_hash = 1;
+    uint32 evt_index = 2;
+    google.protobuf.Timestamp evt_block_time = 3;
+    uint64 evt_block_number = 4;
+    bytes u_user = 5;
+}
+message Usdtcontract_Transfer {
+    string evt_tx_hash = 1;
+    uint32 evt_index = 2;
+    google.protobuf.Timestamp evt_block_time = 3;
+    uint64 evt_block_number = 4;
+    bytes from = 5;
+    bytes to = 6;
+    string value = 7;
+}
+message Usdtcontract_Unpause {
+    string evt_tx_hash = 1;
+    uint32 evt_index = 2;
+    google.protobuf.Timestamp evt_block_time = 3;
+    uint64 evt_block_number = 4;
+}
+  
+message Usdtcontract_AddBlackListCall {
+    string call_tx_hash = 1;
+    google.protobuf.Timestamp call_block_time = 2;
+    uint64 call_block_number = 3;
+    uint64 call_ordinal = 4;
+    bool call_success = 5;
+    bytes u_evil_user = 6;
+}
+message Usdtcontract_ApproveCall {
+    string call_tx_hash = 1;
+    google.protobuf.Timestamp call_block_time = 2;
+    uint64 call_block_number = 3;
+    uint64 call_ordinal = 4;
+    bool call_success = 5;
+    bytes u_spender = 6;
+    string u_value = 7;
+}
+message Usdtcontract_DeprecateCall {
+    string call_tx_hash = 1;
+    google.protobuf.Timestamp call_block_time = 2;
+    uint64 call_block_number = 3;
+    uint64 call_ordinal = 4;
+    bool call_success = 5;
+    bytes u_upgraded_address = 6;
+}
+message Usdtcontract_DestroyBlackFundsCall {
+    string call_tx_hash = 1;
+    google.protobuf.Timestamp call_block_time = 2;
+    uint64 call_block_number = 3;
+    uint64 call_ordinal = 4;
+    bool call_success = 5;
+    bytes u_black_listed_user = 6;
+}
+message Usdtcontract_IssueCall {
+    string call_tx_hash = 1;
+    google.protobuf.Timestamp call_block_time = 2;
+    uint64 call_block_number = 3;
+    uint64 call_ordinal = 4;
+    bool call_success = 5;
+    string amount = 6;
+}
+message Usdtcontract_PauseCall {
+    string call_tx_hash = 1;
+    google.protobuf.Timestamp call_block_time = 2;
+    uint64 call_block_number = 3;
+    uint64 call_ordinal = 4;
+    bool call_success = 5;
+}
+message Usdtcontract_RedeemCall {
+    string call_tx_hash = 1;
+    google.protobuf.Timestamp call_block_time = 2;
+    uint64 call_block_number = 3;
+    uint64 call_ordinal = 4;
+    bool call_success = 5;
+    string amount = 6;
+}
+message Usdtcontract_RemoveBlackListCall {
+    string call_tx_hash = 1;
+    google.protobuf.Timestamp call_block_time = 2;
+    uint64 call_block_number = 3;
+    uint64 call_ordinal = 4;
+    bool call_success = 5;
+    bytes u_cleared_user = 6;
+}
+message Usdtcontract_SetParamsCall {
+    string call_tx_hash = 1;
+    google.protobuf.Timestamp call_block_time = 2;
+    uint64 call_block_number = 3;
+    uint64 call_ordinal = 4;
+    bool call_success = 5;
+    string new_basis_points = 6;
+    string new_max_fee = 7;
+}
+message Usdtcontract_TransferCall {
+    string call_tx_hash = 1;
+    google.protobuf.Timestamp call_block_time = 2;
+    uint64 call_block_number = 3;
+    uint64 call_ordinal = 4;
+    bool call_success = 5;
+    bytes u_to = 6;
+    string u_value = 7;
+}
+message Usdtcontract_TransferFromCall {
+    string call_tx_hash = 1;
+    google.protobuf.Timestamp call_block_time = 2;
+    uint64 call_block_number = 3;
+    uint64 call_ordinal = 4;
+    bool call_success = 5;
+    bytes u_from = 6;
+    bytes u_to = 7;
+    string u_value = 8;
+}
+message Usdtcontract_TransferOwnershipCall {
+    string call_tx_hash = 1;
+    google.protobuf.Timestamp call_block_time = 2;
+    uint64 call_block_number = 3;
+    uint64 call_ordinal = 4;
+    bool call_success = 5;
+    bytes new_owner = 6;
+}
+message Usdtcontract_UnpauseCall {
+    string call_tx_hash = 1;
+    google.protobuf.Timestamp call_block_time = 2;
+    uint64 call_block_number = 3;
+    uint64 call_ordinal = 4;
+    bool call_success = 5;
+}

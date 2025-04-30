@@ -36,3 +36,55 @@ create table IF NOT EXISTS bsc_pancake_v2.bsc_pancake_v2_swaps(
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE
 );
+
+
+--- block pair tokens 
+create table IF NOT EXISTS bsc_pancake_v2.bsc_pancake_v2_graph_pair_tokens(
+    id text primary key,
+    created_at_block_number text,
+    created_at_timestamp text,
+    liquidity_provider_count text,
+    reserve0 numeric,
+    reserve1 numeric,
+    reserve_bnb numeric,
+    reserve_usd numeric,
+    token0_price numeric,
+    token1_price numeric,
+    total_supply numeric,
+    tracked_reserve_bnb numeric,
+    tx_count bigint,
+    untracked_volume_usd numeric,
+    volume_token0 numeric,
+    volume_token1 numeric,
+    volume_usd numeric,
+    token0_id text,
+    token0_name text,
+    token0_symbol text,
+    token0_decimals text,
+    token0_derived_bnb  numeric,
+    token0_total_liquidity numeric,
+    token0_total_supply numeric,
+    token0_trade_volume numeric,
+    token0_trade_volume_usd numeric,
+    token0_tx_count bigint,
+    token0_untracked_volume_usd numeric,
+    token1_id text,
+    token1_name text,
+    token1_symbol text,
+    token1_decimals text,
+    token1_derived_bnb  numeric,
+    token1_total_liquidity numeric,
+    token1_total_supply numeric,
+    token1_trade_volume numeric,
+    token1_trade_volume_usd numeric,
+    token1_tx_count bigint,
+    token1_untracked_volume_usd numeric,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE
+);
+
+
+
+
+
+

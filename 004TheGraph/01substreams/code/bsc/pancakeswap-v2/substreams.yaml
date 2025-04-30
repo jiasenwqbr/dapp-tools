@@ -42,4 +42,16 @@ modules:
     output:
       type: proto:pancake.Swaps
 
- 
+  - name: map_pairs
+    kind: map
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+    output:
+      type: proto:pb::pcs::Pairs
+
+  - name: store_pairs
+    kind: store
+    update_policy: set
+    value_type: bytes
+    inputs:
+      - map: map_pairs
