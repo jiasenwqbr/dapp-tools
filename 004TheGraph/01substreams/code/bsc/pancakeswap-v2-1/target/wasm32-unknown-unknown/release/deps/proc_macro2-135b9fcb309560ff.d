@@ -1,0 +1,10 @@
+/Users/jason/Desktop/code/web3/dapp-tools/004TheGraph/01substreams/code/bsc/pancakeswap-v2-1/target/wasm32-unknown-unknown/release/deps/proc_macro2-135b9fcb309560ff.rmeta: /Users/jason/.cargo/registry/src/github.com-1ecc6299db9ec823/proc-macro2-1.0.39/src/lib.rs /Users/jason/.cargo/registry/src/github.com-1ecc6299db9ec823/proc-macro2-1.0.39/src/marker.rs /Users/jason/.cargo/registry/src/github.com-1ecc6299db9ec823/proc-macro2-1.0.39/src/parse.rs /Users/jason/.cargo/registry/src/github.com-1ecc6299db9ec823/proc-macro2-1.0.39/src/fallback.rs
+
+/Users/jason/Desktop/code/web3/dapp-tools/004TheGraph/01substreams/code/bsc/pancakeswap-v2-1/target/wasm32-unknown-unknown/release/deps/libproc_macro2-135b9fcb309560ff.rlib: /Users/jason/.cargo/registry/src/github.com-1ecc6299db9ec823/proc-macro2-1.0.39/src/lib.rs /Users/jason/.cargo/registry/src/github.com-1ecc6299db9ec823/proc-macro2-1.0.39/src/marker.rs /Users/jason/.cargo/registry/src/github.com-1ecc6299db9ec823/proc-macro2-1.0.39/src/parse.rs /Users/jason/.cargo/registry/src/github.com-1ecc6299db9ec823/proc-macro2-1.0.39/src/fallback.rs
+
+/Users/jason/Desktop/code/web3/dapp-tools/004TheGraph/01substreams/code/bsc/pancakeswap-v2-1/target/wasm32-unknown-unknown/release/deps/proc_macro2-135b9fcb309560ff.d: /Users/jason/.cargo/registry/src/github.com-1ecc6299db9ec823/proc-macro2-1.0.39/src/lib.rs /Users/jason/.cargo/registry/src/github.com-1ecc6299db9ec823/proc-macro2-1.0.39/src/marker.rs /Users/jason/.cargo/registry/src/github.com-1ecc6299db9ec823/proc-macro2-1.0.39/src/parse.rs /Users/jason/.cargo/registry/src/github.com-1ecc6299db9ec823/proc-macro2-1.0.39/src/fallback.rs
+
+/Users/jason/.cargo/registry/src/github.com-1ecc6299db9ec823/proc-macro2-1.0.39/src/lib.rs:
+/Users/jason/.cargo/registry/src/github.com-1ecc6299db9ec823/proc-macro2-1.0.39/src/marker.rs:
+/Users/jason/.cargo/registry/src/github.com-1ecc6299db9ec823/proc-macro2-1.0.39/src/parse.rs:
+/Users/jason/.cargo/registry/src/github.com-1ecc6299db9ec823/proc-macro2-1.0.39/src/fallback.rs:

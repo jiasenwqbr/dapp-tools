@@ -1,0 +1,22 @@
+[package]
+name = "erc20-price-substreams"
+version = "0.0.1"
+description = "Price all ERC20 tokens."
+edition = "2021"
+repository = "https://github.com/messari/substreams/erc20-price"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+ethabi = "17.0"
+prost = "^0.11.0"
+lazy_static = "1.4.0"
+hex-literal = "0.3.4"
+substreams.workspace = true
+substreams-ethereum.workspace = true
+substreams-helper = { path = "../substreams-helper" }
+
+[build-dependencies]
+anyhow = "1"
+substreams-common = { path = "../common" }

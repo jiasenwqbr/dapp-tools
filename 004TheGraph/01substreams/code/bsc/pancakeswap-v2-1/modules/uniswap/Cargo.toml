@@ -1,0 +1,24 @@
+[package]
+name = "substreams-uniswap"
+version = "0.1.0"
+authors = ["Jannis Pohlmann <jannis@edgeandnode.com>"]
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+ethabi = "17.0"
+hex-literal = "0.3.4"
+prost = "^0.11.0"
+prost-types = "^0.11.0"
+substreams = "0.3.2"
+substreams-ethereum = "0.6.2"
+
+# Required so that ethabi > ethereum-types build correctly under wasm32-unknown-unknown
+[target.wasm32-unknown-unknown.dependencies]
+getrandom = { version = "0.2", features = ["custom"] }
+
+[build-dependencies]
+anyhow = "1"
+substreams-ethereum = "0.6.2"

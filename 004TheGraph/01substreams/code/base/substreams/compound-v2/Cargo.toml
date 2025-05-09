@@ -1,0 +1,21 @@
+[package]
+name = "compoundv2-substreams"
+version = "0.1.0"
+description = "Ongoing effort to index Compound V2 using substreams"
+edition = "2021"
+repository = "https://github.com/0xbe1/compoundv2-substreams"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+ethabi = "17.0"
+prost = "^0.11.0"
+tiny-keccak = { version = "2.0", features = ["keccak"] }
+substreams.workspace = true
+substreams-ethereum.workspace = true
+num-bigint = "0.4"
+
+[build-dependencies]
+anyhow = "1"
+substreams-common = { path = "../common" }

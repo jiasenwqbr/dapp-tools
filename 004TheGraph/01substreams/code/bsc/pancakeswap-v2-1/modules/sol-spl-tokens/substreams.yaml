@@ -1,0 +1,78 @@
+specVersion: v0.1.0
+package:
+  name: solana_spl_transfers
+  version: v0.5.4
+  url: https://github.com/streamingfast/substreams-playground
+  doc: |
+    Solana SPL Token Transfers stream
+
+    This streams out SPL token transfers to the nearest human being.
+
+imports:
+  sol: https://github.com/streamingfast/sf-solana/releases/download/v0.1.0/solana-v0.1.0.spkg
+
+binaries:
+  default:
+    type: wasm/rust-v1
+    file: ../../target/wasm32-unknown-unknown/release/sol_spl_tokens.wasm
+
+protobuf:
+  files:
+    - solana_spl.proto
+  importPaths:
+    - ./proto
+
+modules:
+  - name: map_mints
+    kind: map
+    initialBlock: 31313760
+    inputs:
+      - source: sf.solana.type.v1.Block
+    output:
+      type: proto:solana.spl.v1.Mints
+
+  - name: store_mints
+    kind: store
+    updatePolicy: set
+    valueType: proto:solana.spl.v1.Mint
+    inputs:
+      - map: map_mints
+
+  - name: map_accounts
+    kind: map
+    initialBlock: 31313760
+    inputs:
+      - source: sf.solana.type.v1.Block
+    output:
+      type: proto:sf.solana.type.v1.Accounts
+
+  - name: store_accounts
+    kind: store
+    updatePolicy: set
+    valueType: proto:sf.solana.type.v1.Account
+    inputs:
+      - map: map_accounts
+
+  - name: map_transfers
+    kind: map
+    initialBlock: 31313760
+    inputs:
+      - source: sf.solana.type.v1.Block
+      - store: store_mints
+      - store: store_accounts
+    output:
+      type: proto:solana.spl.v1.TokenTransfers
+
+  - name: store_mint_native_volumes
+    kind: store
+    updatePolicy: add
+    valueType: bigint
+    inputs:
+      - map: map_transfers
+
+  - name: store_mint_decimal_volumes
+    kind: store
+    updatePolicy: add
+    valueType: bigfloat
+    inputs:
+      - map: map_transfers

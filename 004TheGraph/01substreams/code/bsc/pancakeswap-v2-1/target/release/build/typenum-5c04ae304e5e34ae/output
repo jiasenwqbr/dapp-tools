@@ -1,0 +1,2 @@
+cargo:rustc-env=TYPENUM_BUILD_CONSTS=/Users/jason/Desktop/code/web3/dapp-tools/004TheGraph/01substreams/code/bsc/pancakeswap-v2-1/target/release/build/typenum-5c04ae304e5e34ae/out/consts.rs
+cargo:rustc-env=TYPENUM_BUILD_OP=/Users/jason/Desktop/code/web3/dapp-tools/004TheGraph/01substreams/code/bsc/pancakeswap-v2-1/target/release/build/typenum-5c04ae304e5e34ae/out/op.rs

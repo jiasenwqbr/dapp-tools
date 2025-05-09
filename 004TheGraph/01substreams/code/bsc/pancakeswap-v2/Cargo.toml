@@ -16,7 +16,7 @@ num-bigint = "0.4"
 bigdecimal = "0.4.8"
 pad = "0.1"
 substreams = "0.5.0"
-substreams-ethereum = "0.9.13"
+substreams-ethereum = "0.8.0"
 ethabi = "18.0.0"
 anyhow = "1.0.75"
 ## added
@@ -26,5 +26,5 @@ serde = "1.0.204"
 
 [build-dependencies]
 prost-build = "0.13.5"
-substreams-ethereum = "0.9.13"
+substreams-ethereum = "0.8.0"
 anyhow = "1.0.75"
