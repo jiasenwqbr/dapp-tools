@@ -1,3 +1,4 @@
+use std::convert::TryFrom;
 use std::str::FromStr;
 use substreams::store::{StoreAdd, StoreDelete, StoreNew, StoreSet, StoreSetIfNotExists, StoreSetRaw};
 use substreams_database_change::pb::database::DatabaseChanges;
@@ -573,154 +574,171 @@ pub fn store_totals(
     }
 }
 
+use substreams::scalar::BigDecimal as ScalarBigDecimal;
+use crate::swap::store::StoreAddBigDecimal;
+#[substreams::handlers::store]
+pub fn store_volumes(
+    clock: substreams::pb::substreams::Clock,
+    events: pcs::Events,
+    output: store::StoreAddBigDecimal
+) {
+    let timestamp_seconds = clock.timestamp.unwrap().seconds;
+    let day_id: i64 = timestamp_seconds / 86400;
+    let hour_id: i64 = timestamp_seconds / 3600;
 
+    if events.events.len() == 0 {
+        return;
+    }
 
-// #[substreams::handlers::store]
-// pub fn store_volumes(
-//     clock: substreams::pb::substreams::Clock,
-//     events: pcs::Events,
-//     output: store::StoreAddBigDecimal,
-// ) {
-//     let timestamp_seconds = clock.timestamp.unwrap().seconds;
-//     let day_id: i64 = timestamp_seconds / 86400;
-//     let hour_id: i64 = timestamp_seconds / 3600;
+    output.delete_prefix(0, &format!("pair_day:{}:", day_id - 1));
+    output.delete_prefix(0, &format!("token_day:{}:", day_id - 1));
+    output.delete_prefix(0, &format!("pair_hour:{}:", hour_id - 1));
+    output.delete_prefix(0, &format!("global_day:{}", day_id - 1));
 
-//     if events.events.len() == 0 {
-//         return;
-//     }
+    for event in events.events {
+        if event.r#type.is_some() {
+            match event.r#type.unwrap() {
+                Type::Mint(mint) => {
+                    let amount_usd = BigDecimal::from_str(mint.amount_usd.as_str()).unwrap();
+                    if amount_usd.eq(&zero_big_decimal()) {
+                        continue;
+                    }
+                    let scalar_amount = to_scalar(&amount_usd);
+                    
+                    output.add(
+                        event.log_ordinal,
+                        format!("global:liquidity_usd"),
+                        // &amount_usd,
+                       // ScalarBigDecimal::from(amount_usd),
+                        scalar_amount
+                    );
 
-//     output.delete_prefix(0, &format!("pair_day:{}:", day_id - 1));
-//     output.delete_prefix(0, &format!("token_day:{}:", day_id - 1));
-//     output.delete_prefix(0, &format!("pair_hour:{}:", hour_id - 1));
-//     output.delete_prefix(0, &format!("global_day:{}", day_id - 1));
+                    output.add_many(
+                        event.log_ordinal,
+                        &vec![
+                            format!("token:{}:liquidity", mint.to),
+                            format!("pair:{}:total_supply", event.pair_address),
+                        ],
+                        // &BigDecimal::from_str(mint.liquidity.as_str()).unwrap(),
+                        to_scalar(&BigDecimal::from_str(mint.liquidity.as_str()).unwrap()),
+                    );
+                }
+                Type::Burn(burn) => {
+                    let amount_usd = BigDecimal::from_str(burn.amount_usd.as_str()).unwrap();
+                    if amount_usd.eq(&zero_big_decimal()) {
+                        continue;
+                    }
+                    output.add(
+                        event.log_ordinal,
+                        format!("global:liquidity_usd"),
+                        // &amount_usd.neg(),
+                        to_scalar(&amount_usd)
 
-//     for event in events.events {
-//         if event.r#type.is_some() {
-//             match event.r#type.unwrap() {
-//                 Type::Mint(mint) => {
-//                     let amount_usd = BigDecimal::from_str(mint.amount_usd.as_str()).unwrap();
-//                     if amount_usd.eq(&zero_big_decimal()) {
-//                         continue;
-//                     }
-//                     output.add(
-//                         event.log_ordinal,
-//                         format!("global:liquidity_usd"),
-//                         &amount_usd,
-//                     );
+                    );
 
-//                     output.add_many(
-//                         event.log_ordinal,
-//                         &vec![
-//                             format!("token:{}:liquidity", mint.to),
-//                             format!("pair:{}:total_supply", event.pair_address),
-//                         ],
-//                         &BigDecimal::from_str(mint.liquidity.as_str()).unwrap(),
-//                     );
-//                 }
-//                 Type::Burn(burn) => {
-//                     let amount_usd = BigDecimal::from_str(burn.amount_usd.as_str()).unwrap();
-//                     if amount_usd.eq(&zero_big_decimal()) {
-//                         continue;
-//                     }
-//                     output.add(
-//                         event.log_ordinal,
-//                         format!("global:liquidity_usd"),
-//                         &amount_usd.neg(),
-//                     );
+                    output.add_many(
+                        event.log_ordinal,
+                        &vec![
+                            format!("token:{}:liquidity", burn.to),
+                            format!("pair:{}:total_supply", event.pair_address),
+                        ],
+                        // &BigDecimal::from_str(burn.liquidity.as_str()).unwrap().neg(),
+                        to_scalar(&BigDecimal::from_str(burn.liquidity.as_str()).unwrap()),
 
-//                     output.add_many(
-//                         event.log_ordinal,
-//                         &vec![
-//                             format!("token:{}:liquidity", burn.to),
-//                             format!("pair:{}:total_supply", event.pair_address),
-//                         ],
-//                         &BigDecimal::from_str(burn.liquidity.as_str()).unwrap().neg(),
-//                     );
-//                 }
-//                 Type::Swap(swap) => {
-//                     if swap.amount_usd.is_empty() {
-//                         continue;
-//                     }
-//                     let amount_usd = BigDecimal::from_str(swap.amount_usd.as_str()).unwrap();
-//                     if amount_usd.eq(&zero_big_decimal()) {
-//                         continue;
-//                     }
-//                     let amount_bnb = BigDecimal::from_str(swap.amount_bnb.as_str()).unwrap();
+                    );
+                }
+                Type::Swap(swap) => {
+                    if swap.amount_usd.is_empty() {
+                        continue;
+                    }
+                    let amount_usd = BigDecimal::from_str(swap.amount_usd.as_str()).unwrap();
+                    if amount_usd.eq(&zero_big_decimal()) {
+                        continue;
+                    }
+                    let amount_bnb = BigDecimal::from_str(swap.amount_bnb.as_str()).unwrap();
 
-//                     let amount_0_total: BigDecimal =
-//                         utils::compute_amount_total(swap.amount0_out, swap.amount0_in);
-//                     let amount_1_total: BigDecimal =
-//                         utils::compute_amount_total(swap.amount1_out, swap.amount1_in);
+                    let amount_0_total: BigDecimal =
+                        utils::compute_amount_total(swap.amount0_out, swap.amount0_in);
+                    let amount_1_total: BigDecimal =
+                        utils::compute_amount_total(swap.amount1_out, swap.amount1_in);
 
-//                     output.add_many(
-//                         event.log_ordinal,
-//                         &vec![
-//                             format!("pair:{}:usd", event.pair_address),
-//                             format!("pair_day:{}:{}:usd", day_id, event.pair_address),
-//                             format!("pair_hour:{}:{}:usd", hour_id, event.pair_address),
-//                             format!("token_day:{}:{}:usd", day_id, event.token0),
-//                             format!("token_day:{}:{}:usd", day_id, event.token1),
-//                             format!("global:usd"),
-//                             format!("global_day:{}:usd", day_id),
-//                         ],
-//                         &amount_usd,
-//                     );
+                    output.add_many(
+                        event.log_ordinal,
+                        &vec![
+                            format!("pair:{}:usd", event.pair_address),
+                            format!("pair_day:{}:{}:usd", day_id, event.pair_address),
+                            format!("pair_hour:{}:{}:usd", hour_id, event.pair_address),
+                            format!("token_day:{}:{}:usd", day_id, event.token0),
+                            format!("token_day:{}:{}:usd", day_id, event.token1),
+                            format!("global:usd"),
+                            format!("global_day:{}:usd", day_id),
+                        ],
+                        to_scalar(&amount_usd),
+                    );
 
-//                     output.add_many(
-//                         event.log_ordinal,
-//                         &vec![format!("global:bnb"), format!("global_day:{}:bnb", day_id)],
-//                         &amount_bnb,
-//                     );
+                    output.add_many(
+                        event.log_ordinal,
+                        &vec![format!("global:bnb"), format!("global_day:{}:bnb", day_id)],
+                        // &amount_bnb,
+                        to_scalar(&amount_bnb),
+                    );
 
-//                     output.add_many(
-//                         event.log_ordinal,
-//                         &vec![
-//                             format!("pair:{}:token0", event.pair_address),
-//                             format!("pair_day:{}:{}:token0", day_id, event.pair_address),
-//                             format!("pair_hour:{}:{}:token0", day_id, event.pair_address),
-//                         ],
-//                         &amount_0_total,
-//                     );
+                    output.add_many(
+                        event.log_ordinal,
+                        &vec![
+                            format!("pair:{}:token0", event.pair_address),
+                            format!("pair_day:{}:{}:token0", day_id, event.pair_address),
+                            format!("pair_hour:{}:{}:token0", day_id, event.pair_address),
+                        ],
+                        // &amount_0_total,
+                        to_scalar( &amount_0_total),
+                    );
 
-//                     output.add_many(
-//                         event.log_ordinal,
-//                         &vec![
-//                             format!("pair:{}:token1", event.pair_address),
-//                             format!("pair_day:{}:{}:token1", day_id, event.pair_address),
-//                             format!("pair_hour:{}:{}:token1", day_id, event.pair_address),
-//                         ],
-//                         &amount_1_total,
-//                     );
+                    output.add_many(
+                        event.log_ordinal,
+                        &vec![
+                            format!("pair:{}:token1", event.pair_address),
+                            format!("pair_day:{}:{}:token1", day_id, event.pair_address),
+                            format!("pair_hour:{}:{}:token1", day_id, event.pair_address),
+                        ],
+                        // &amount_1_total,
+                        to_scalar(&amount_1_total),
+                    );
 
-//                     output.add(
-//                         event.log_ordinal,
-//                         format!("token:{}:trade", event.token0),
-//                         &BigDecimal::from_str(swap.trade_volume0.as_str()).unwrap(),
-//                     );
-//                     output.add(
-//                         event.log_ordinal,
-//                         format!("token:{}:trade", event.token1),
-//                         &BigDecimal::from_str(swap.trade_volume1.as_str()).unwrap(),
-//                     );
-//                     output.add(
-//                         event.log_ordinal,
-//                         format!("token:{}:trade_usd", event.token0),
-//                         &BigDecimal::from_str(swap.trade_volume_usd0.as_str()).unwrap(),
-//                     );
-//                     output.add(
-//                         event.log_ordinal,
-//                         format!("token:{}:trade_usd", event.token1),
-//                         &BigDecimal::from_str(swap.trade_volume_usd1.as_str()).unwrap(),
-//                     );
+                    output.add(
+                        event.log_ordinal,
+                        format!("token:{}:trade", event.token0),
+                        to_scalar( &BigDecimal::from_str(swap.trade_volume0.as_str()).unwrap()),
+                    );
+                    output.add(
+                        event.log_ordinal,
+                        format!("token:{}:trade", event.token1),
+                        // &BigDecimal::from_str(swap.trade_volume1.as_str()).unwrap(),
+                        to_scalar(&BigDecimal::from_str(swap.trade_volume1.as_str()).unwrap()),
+                    );
+                    output.add(
+                        event.log_ordinal,
+                        format!("token:{}:trade_usd", event.token0),
+                        // &BigDecimal::from_str(swap.trade_volume_usd0.as_str()).unwrap(),
+                        to_scalar( &BigDecimal::from_str(swap.trade_volume_usd0.as_str()).unwrap()),
+                    );
+                    output.add(
+                        event.log_ordinal,
+                        format!("token:{}:trade_usd", event.token1),
+                        // &BigDecimal::from_str(swap.trade_volume_usd1.as_str()).unwrap(),
+                        to_scalar(&BigDecimal::from_str(swap.trade_volume_usd1.as_str()).unwrap()),
+                    );
 
-//                     //todo: token[0,1]Day.dailyVolumeToken, tokenDay[0,1].dailyVolumeBnb ? what about these
-//                 }
-//             }
-//         }
-//     }
-// }
+                    //todo: token[0,1]Day.dailyVolumeToken, tokenDay[0,1].dailyVolumeBnb ? what about these
+                }
+            }
+        }
+    }
+}
 
-
+pub fn to_scalar(amount: &BigDecimal) -> ScalarBigDecimal {
+    ScalarBigDecimal::try_from(amount.to_string()).unwrap()
+}
 
 // todo: create pcs-token proto
 #[substreams::handlers::store]
@@ -811,10 +829,8 @@ pub fn store_pcs_tokens(
     }
 }
 
-
-
 #[substreams::handlers::map]
-pub fn db_out(
+pub fn db_out_postgres(
     block: substreams::pb::substreams::Clock,
     pcs_tokens_deltas: store::StoreGetRaw,
     pairs_deltas: store::StoreGetRaw,
@@ -825,7 +841,7 @@ pub fn db_out(
     pcs_tokens_store: store::StoreGetRaw,
 ) -> Result<DatabaseChanges, substreams::errors::Error> {
     substreams::register_panic_hook();
-    let changes = db::process(
+    let changes: Result<DatabaseChanges, anyhow::Error> = db::process(
         &block,
         pairs_deltas,
         pcs_tokens_deltas,
@@ -835,5 +851,5 @@ pub fn db_out(
         events,
         &pcs_tokens_store,
     );
-    return Ok(changes);
+     changes
 }

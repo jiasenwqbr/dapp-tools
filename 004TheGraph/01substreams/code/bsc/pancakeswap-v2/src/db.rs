@@ -1,4 +1,5 @@
 
+use anyhow::Ok;
 use substreams::pb::substreams::Clock;
 use substreams::store;
 use substreams_database_change::pb::database::DatabaseChanges;
@@ -13,9 +14,7 @@ pub fn process(
     reserves_deltas: store::StoreGetRaw,
     events: Events,
     pcs_tokens_store: &store::StoreGetRaw,
-) -> DatabaseChanges {
-    let mut database_changes: DatabaseChanges = DatabaseChanges {
-        table_changes: vec![],
-    };
-    database_changes
+) ->  Result<DatabaseChanges, substreams::errors::Error> {
+    let mut database_changes: DatabaseChanges = Default::default();
+    Ok(database_changes)
 }
