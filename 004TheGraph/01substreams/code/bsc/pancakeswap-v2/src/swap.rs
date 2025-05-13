@@ -964,7 +964,7 @@ fn map_tokens(blk: pb::eth::Block) -> Result<pb::tokens::Tokens, Error> {
                     continue;
                 };
 
-                let decoded_name = eth_utils::read_string(responses[1].raw.as_ref());
+                let decoded_name = eth_utils::read_string(responses[0].raw.as_ref());
                 if decoded_name.is_err() {
                     log::debug!(
                         "{} is not an ERC20 token contract name `eth_call` failed: {}",
@@ -976,8 +976,8 @@ fn map_tokens(blk: pb::eth::Block) -> Result<pb::tokens::Tokens, Error> {
 
                 let mut decoded_symbol = Ok(String::new()) ;
                 
-                if responses.len()>2 {
-                    decoded_symbol= eth_utils::read_string(responses[2].raw.as_ref());
+                if responses.len()>=2 {
+                    decoded_symbol= eth_utils::read_string(responses[1].raw.as_ref());
                     if decoded_symbol.is_err() {
                         log::debug!(
                             "{} is not an ERC20 token contract symbol `eth_call` failed: {}",
@@ -1025,7 +1025,7 @@ fn store_tokens(tokens: pb::tokens::Tokens, store: store::StoreSetRaw) {
 
 
 
-/////////////////////////////////////////////// unit test
+///////////////////////////////////////////////    Unit test   ////////////////
 #[substreams::handlers::map]
 pub fn map_debug_pairs(
     _blk: pb::eth::Block,
