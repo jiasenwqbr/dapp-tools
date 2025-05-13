@@ -51,16 +51,7 @@ modules:
       - source: sf.ethereum.type.v2.Block
     output:
       type: proto:pcs.types.v1.Pairs
-
-  # - name: store_pcs_tokens
-  #   kind: store
-  #   initialBlock: 6810706
-  #   updatePolicy: set
-  #   valueType: bytes
-  #   inputs:
-  #     - map: map_pairs
-  #     - store: ethtokens_at_pcs:store_tokens
-
+      
   - name: store_pairs
     kind: store
     initialBlock: 6810706
@@ -99,6 +90,9 @@ modules:
     output:
       type: proto:pcs.types.v1.Reserves
 
+
+
+##################################################### The unit test
   - name: map_debug_pairs
     kind: map
     initialBlock: 6810706
@@ -119,7 +113,14 @@ modules:
 
   - name: test_store_tokens
     kind: map
+    initialBlock: 6810706
     inputs:
+      - source: sf.ethereum.type.v2.Block
       - store: store_tokens
+        mode: get
     output:
       type: proto:pcs.types.v1.Reserves
+
+
+
+

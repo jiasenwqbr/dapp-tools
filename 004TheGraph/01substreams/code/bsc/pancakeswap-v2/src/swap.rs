@@ -752,7 +752,7 @@ pub fn store_pcs_tokens(
     tokens: store::StoreGetRaw,
     output: store::StoreSetIfNotExistsRaw,
 ) {
-    
+
     let mut token0_retry: bool = false;
     let mut token0: Token = Token {
         address: "".to_string(),
@@ -861,68 +861,11 @@ pub fn db_out_postgres(
 }
 
 
-#[substreams::handlers::map]
-pub fn map_debug_pairs(
-    _blk: pb::eth::Block,
-    pairs: store::StoreGetRaw,
-) -> Result<pcs::Pairs, substreams::errors::Error> {
-    log::info!("map_debug_pairs triggered");
-
-    // 打印某个 key 测试是否有内容
-    if let Some(val) = pairs.get_last("pair:0xb2678c414ebc63c9cc6d1a0fc45f43e249b50fde") {
-        log::info!("Example pair value: {:?}", val.len());
-    } else {
-        log::info!("No value found for sample pair key");
-    }
-
-    Ok(pcs::Pairs { pairs: vec![] })
-}
-
-#[substreams::handlers::map]
-pub fn map_reserves2(blk: pb::eth::Block, pairs: StoreGetRaw) -> Result<pcs::Reserves, Error> {
-    let mut reserves = pcs::Reserves { reserves: vec![] };
-    
-
-    for trx in blk.transaction_traces {
-        for log in trx.receipt.unwrap().logs {
-            let addr = address_pretty(&log.address);
-            //log::info!("the addr is {}",addr);
-            //log::info!("the addr is {:?}",pairs.get_last(&format!("pair:{}", addr)));
-            
-
-            match pairs.get_last(format!("pair:{}", addr)) {
-                None => continue,
-                Some(pair_bytes) => {
-                    let sig = hex::encode(&log.topics[0]);
-                    log::info!("the addr is---------------------------- {}",addr);
-
-                    if !event::is_pair_sync_event(sig.as_str()) {
-                        continue;
-                    }
-
-                    let pair: pcs::Pair = proto::decode(&pair_bytes).unwrap();
-                    log::info!(" pair value: {:?}", pair);
-                    reserves.reserves.push(pcs::Reserve {
-                        pair_address: pair.address,
-                        reserve0: String::new(),
-                        reserve1: String::new(),
-                        log_ordinal: log.block_index as u64,
-                        token0_price: String::new(),
-                        token1_price: String::new(),
-                    });
-                }
-            }
-        }
-    }
-
-    log::info!(" pair value: {:?}", reserves);
-    Ok(reserves)
-}
 
 
 #[substreams::handlers::map]
 fn map_tokens(blk: pb::eth::Block) -> Result<pb::tokens::Tokens, Error> {
-    let mut tokens = vec![];
+    let mut tokens: Vec<Token> = vec![];
 
     for trx in blk.transaction_traces {
         for call in trx.calls {
@@ -1065,6 +1008,7 @@ fn map_tokens(blk: pb::eth::Block) -> Result<pb::tokens::Tokens, Error> {
         }
     }
 
+    log::info!(" tokens are: {:?}", tokens);
     Ok(pb::tokens::Tokens { tokens })
 }
 
@@ -1078,9 +1022,76 @@ fn store_tokens(tokens: pb::tokens::Tokens, store: store::StoreSetRaw) {
 }
 
 
+
+
+
+/////////////////////////////////////////////// unit test
 #[substreams::handlers::map]
-fn test_store_tokens(store: store::StoreSetRaw)-> Result<pcs::Reserves, Error> {
+pub fn map_debug_pairs(
+    _blk: pb::eth::Block,
+    pairs: store::StoreGetRaw,
+) -> Result<pcs::Pairs, substreams::errors::Error> {
+    log::info!("map_debug_pairs triggered");
+
+    // 打印某个 key 测试是否有内容
+    if let Some(val) = pairs.get_last("pair:0xb2678c414ebc63c9cc6d1a0fc45f43e249b50fde") {
+        log::info!("Example pair value: {:?}", val.len());
+    } else {
+        log::info!("No value found for sample pair key");
+    }
+
+    Ok(pcs::Pairs { pairs: vec![] })
+}
+
+#[substreams::handlers::map]
+pub fn map_reserves2(blk: pb::eth::Block, pairs: StoreGetRaw) -> Result<pcs::Reserves, Error> {
     let mut reserves = pcs::Reserves { reserves: vec![] };
     
+
+    for trx in blk.transaction_traces {
+        for log in trx.receipt.unwrap().logs {
+            let addr = address_pretty(&log.address);
+            //log::info!("the addr is {}",addr);
+            //log::info!("the addr is {:?}",pairs.get_last(&format!("pair:{}", addr)));
+            
+
+            match pairs.get_last(format!("pair:{}", addr)) {
+                None => continue,
+                Some(pair_bytes) => {
+                    let sig = hex::encode(&log.topics[0]);
+                    log::info!("the addr is---------------------------- {}",addr);
+
+                    if !event::is_pair_sync_event(sig.as_str()) {
+                        continue;
+                    }
+
+                    let pair: pcs::Pair = proto::decode(&pair_bytes).unwrap();
+                    log::info!(" pair value: {:?}", pair);
+                    reserves.reserves.push(pcs::Reserve {
+                        pair_address: pair.address,
+                        reserve0: String::new(),
+                        reserve1: String::new(),
+                        log_ordinal: log.block_index as u64,
+                        token0_price: String::new(),
+                        token1_price: String::new(),
+                    });
+                }
+            }
+        }
+    }
+
+    log::info!(" pair value: {:?}", reserves);
+    Ok(reserves)
+}
+
+#[substreams::handlers::map]
+fn test_store_tokens(blk: pb::eth::Block,tokens: store::StoreGetRaw,)-> Result<pcs::Reserves, Error> {
+    log::info!("test_store_tokens the blocknumber is is {}",blk.number);
+    let reserves = pcs::Reserves { reserves: vec![] };
+    let tok = "STGWERTW";
+    match tokens.get_last(&format!("pair:{}", tok)) {
+        Some(val) => log::info!(" is {:?}",val),
+        None =>log::info!("none"),
+    }
     Ok(reserves)
 }
