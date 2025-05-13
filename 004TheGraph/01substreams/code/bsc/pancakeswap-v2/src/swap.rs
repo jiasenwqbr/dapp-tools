@@ -2,9 +2,10 @@ use std::convert::TryFrom;
 use std::str::FromStr;
 use substreams::store::{StoreAdd, StoreDelete, StoreNew, StoreSet, StoreSetIfNotExists, StoreSetRaw};
 use substreams_database_change::pb::database::DatabaseChanges;
-use substreams::{log, proto, store};
-use crate::eth_utils::address_pretty;
+use substreams::{log, proto, store,Hex,hex};
+use crate::eth_utils::{self, address_pretty};
 use crate::pb::pcs::event::Type;
+use crate::rpc::{create_rpc_calls, create_rpc_calls2};
 use crate::utils::zero_big_decimal;
 use crate::{db, event, rpc, utils};
 use crate::pb::tokens::Token;
@@ -18,6 +19,8 @@ use bigdecimal::BigDecimal;
 use substreams::prelude::StoreAddInt64;
 use crate::event::pcs_event::Event;
 use crate::event::PcsEvent;
+use substreams_ethereum::pb::eth as ethpb;
+const INITIALIZE_METHOD_HASH: [u8; 4] = hex!("1459457a");
 // const SWAP_TOPIC: &str = "0xcA143Ce32Fe78f1f7019d7d551a6402fC5350c73"; // keccak256("Swap(address,uint256,uint256,uint256,uint256,address)");
 #[substreams::handlers::map]
 pub fn map_pairs(blk: pb::eth::Block) -> Result<pcs::Pairs, Error> {
@@ -36,7 +39,7 @@ pub fn map_pairs(blk: pb::eth::Block) -> Result<pcs::Pairs, Error> {
             if !event::is_pair_created_event(sig.as_str()) {
                 continue;
             }
-
+            log::info!("Writing pair key: {}", address_pretty(&log.data[12..32]));
             pairs.pairs.push(pcs::Pair {
                 address: address_pretty(&log.data[12..32]),
                 token0_address: address_pretty(&log.topics[1][12..]),
@@ -45,6 +48,7 @@ pub fn map_pairs(blk: pb::eth::Block) -> Result<pcs::Pairs, Error> {
                 block_num: blk.number,
                 log_ordinal: log.block_index as u64,
             })
+            
         }
     }
 
@@ -77,7 +81,7 @@ pub fn store_pairs(pairs: pcs::Pairs, output: store::StoreSetRaw) {
 #[substreams::handlers::map]
 pub fn map_reserves(blk: pb::eth::Block, pairs: StoreGetRaw, tokens: store::StoreGetRaw) -> Result<pcs::Reserves, Error> {
     let mut reserves = pcs::Reserves { reserves: vec![] };
-
+    log::info!(" map_reserves - block number is : {:?}", blk.number);
     for trx in blk.transaction_traces {
         for log in trx.receipt.unwrap().logs {
             let addr = address_pretty(&log.address);
@@ -114,6 +118,7 @@ pub fn map_reserves(blk: pb::eth::Block, pairs: StoreGetRaw, tokens: store::Stor
             }
         }
     }
+    log::info!(" pair value: {:?}", reserves);
 
     Ok(reserves)
 }
@@ -747,6 +752,7 @@ pub fn store_pcs_tokens(
     tokens: store::StoreGetRaw,
     output: store::StoreSetIfNotExistsRaw,
 ) {
+    
     let mut token0_retry: bool = false;
     let mut token0: Token = Token {
         address: "".to_string(),
@@ -852,4 +858,229 @@ pub fn db_out_postgres(
         &pcs_tokens_store,
     );
      changes
+}
+
+
+#[substreams::handlers::map]
+pub fn map_debug_pairs(
+    _blk: pb::eth::Block,
+    pairs: store::StoreGetRaw,
+) -> Result<pcs::Pairs, substreams::errors::Error> {
+    log::info!("map_debug_pairs triggered");
+
+    // 打印某个 key 测试是否有内容
+    if let Some(val) = pairs.get_last("pair:0xb2678c414ebc63c9cc6d1a0fc45f43e249b50fde") {
+        log::info!("Example pair value: {:?}", val.len());
+    } else {
+        log::info!("No value found for sample pair key");
+    }
+
+    Ok(pcs::Pairs { pairs: vec![] })
+}
+
+#[substreams::handlers::map]
+pub fn map_reserves2(blk: pb::eth::Block, pairs: StoreGetRaw) -> Result<pcs::Reserves, Error> {
+    let mut reserves = pcs::Reserves { reserves: vec![] };
+    
+
+    for trx in blk.transaction_traces {
+        for log in trx.receipt.unwrap().logs {
+            let addr = address_pretty(&log.address);
+            //log::info!("the addr is {}",addr);
+            //log::info!("the addr is {:?}",pairs.get_last(&format!("pair:{}", addr)));
+            
+
+            match pairs.get_last(format!("pair:{}", addr)) {
+                None => continue,
+                Some(pair_bytes) => {
+                    let sig = hex::encode(&log.topics[0]);
+                    log::info!("the addr is---------------------------- {}",addr);
+
+                    if !event::is_pair_sync_event(sig.as_str()) {
+                        continue;
+                    }
+
+                    let pair: pcs::Pair = proto::decode(&pair_bytes).unwrap();
+                    log::info!(" pair value: {:?}", pair);
+                    reserves.reserves.push(pcs::Reserve {
+                        pair_address: pair.address,
+                        reserve0: String::new(),
+                        reserve1: String::new(),
+                        log_ordinal: log.block_index as u64,
+                        token0_price: String::new(),
+                        token1_price: String::new(),
+                    });
+                }
+            }
+        }
+    }
+
+    log::info!(" pair value: {:?}", reserves);
+    Ok(reserves)
+}
+
+
+#[substreams::handlers::map]
+fn map_tokens(blk: pb::eth::Block) -> Result<pb::tokens::Tokens, Error> {
+    let mut tokens = vec![];
+
+    for trx in blk.transaction_traces {
+        for call in trx.calls {
+            if call.state_reverted {
+                continue;
+            }
+            if call.call_type == ethpb::v2::CallType::Create as i32
+                || call.call_type == ethpb::v2::CallType::Call as i32
+            // proxy contract creation
+            {
+                let call_input_len = call.input.len();
+                if call.call_type == ethpb::v2::CallType::Call as i32
+                    && (call_input_len < 4 || call.input[0..4] != INITIALIZE_METHOD_HASH)
+                {
+                    // this will check if a proxy contract has been called to create a ERC20 contract.
+                    // if that is the case the Proxy contract will call the initialize function on the ERC20 contract
+                    // this is part of the OpenZeppelin Proxy contract standard
+                    continue;
+                }
+
+                if call.call_type == ethpb::v2::CallType::Create as i32 {
+                    let mut code_change_len = 0;
+                    for code_change in &call.code_changes {
+                        code_change_len += code_change.new_code.len()
+                    }
+
+                    log::debug!(
+                        "found contract creation: {}, caller {}, code change {}, input {}",
+                        Hex(&call.address),
+                        Hex(&call.caller),
+                        code_change_len,
+                        call_input_len,
+                    );
+
+                    if code_change_len <= 150 {
+                        // optimization to skip none viable SC
+                        log::info!(
+                            "skipping too small code to be a token contract: {}",
+                            Hex(&call.address)
+                        );
+                        continue;
+                    }
+                } else {
+                    log::debug!(
+                        "found proxy initialization: contract {}, caller {}",
+                        Hex(&call.address),
+                        Hex(&call.caller)
+                    );
+                }
+
+                if call.caller == hex!("0000000000004946c0e9f43f4dee607b0ef1fa1c")
+                    || call.caller == hex!("00000000687f5b66638856396bee28c1db0178d1")
+                {
+                    log::debug!("skipping known caller address");
+                    continue;
+                }
+
+                let rpc_call_decimal = create_rpc_calls2(&call.address, vec![rpc::DECIMALS]);
+                let rpc_responses_unmarshalled_decimal: ethpb::rpc::RpcResponses =
+                    substreams_ethereum::rpc::eth_call(&rpc_call_decimal);
+                let response_decimal = rpc_responses_unmarshalled_decimal.responses;
+                if response_decimal[0].failed {
+                    let decimals_error = String::from_utf8_lossy(response_decimal[0].raw.as_ref());
+                    log::debug!(
+                        "{} is not an ERC20 token contract because of 'eth_call' failures [decimals: {}]",
+                        Hex(&call.address),
+                        decimals_error,
+                    );
+                    continue;
+                }
+
+                let decoded_decimals = eth_utils::read_uint32(response_decimal[0].raw.as_ref());
+                if decoded_decimals.is_err() {
+                    log::debug!(
+                        "{} is not an ERC20 token contract decimal `eth_call` failed: {}",
+                        Hex(&call.address),
+                        decoded_decimals.err().unwrap(),
+                    );
+                    continue;
+                }
+
+                let rpc_call_name_symbol = create_rpc_calls2(&call.address, vec![rpc::NAME, rpc::SYMBOL]);
+                let rpc_responses_unmarshalled: ethpb::rpc::RpcResponses =
+                    substreams_ethereum::rpc::eth_call(&rpc_call_name_symbol);
+                let responses = rpc_responses_unmarshalled.responses;
+                if responses[0].failed || responses[1].failed {
+                    let name_error = String::from_utf8_lossy(responses[0].raw.as_ref());
+                    let symbol_error = String::from_utf8_lossy(responses[1].raw.as_ref());
+
+                    log::debug!(
+                        "{} is not an ERC20 token contract because of 'eth_call' failures [name: {}, symbol: {}]",
+                        Hex(&call.address),
+                        name_error,
+                        symbol_error,
+                    );
+                    continue;
+                };
+
+                let decoded_name = eth_utils::read_string(responses[1].raw.as_ref());
+                if decoded_name.is_err() {
+                    log::debug!(
+                        "{} is not an ERC20 token contract name `eth_call` failed: {}",
+                        Hex(&call.address),
+                        decoded_name.err().unwrap(),
+                    );
+                    continue;
+                }
+
+                let mut decoded_symbol = Ok(String::new()) ;
+                
+                if responses.len()>2 {
+                    decoded_symbol= eth_utils::read_string(responses[2].raw.as_ref());
+                    if decoded_symbol.is_err() {
+                        log::debug!(
+                            "{} is not an ERC20 token contract symbol `eth_call` failed: {}",
+                            Hex(&call.address),
+                            decoded_symbol.err().unwrap(),
+                        );
+                        continue;
+                    }
+                }
+
+                let decimals = decoded_decimals.unwrap() as u64;
+                let symbol = decoded_symbol.unwrap();
+                let name = decoded_name.unwrap();
+                log::debug!(
+                    "{} is an ERC20 token contract with name {}",
+                    Hex(&call.address),
+                    name,
+                );
+                let token = pb::tokens::Token {
+                    address: Hex(&call.address).to_string(),
+                    name,
+                    symbol,
+                    decimals,
+                };
+
+                tokens.push(token);
+            }
+        }
+    }
+
+    Ok(pb::tokens::Tokens { tokens })
+}
+
+#[substreams::handlers::store]
+fn store_tokens(tokens: pb::tokens::Tokens, store: store::StoreSetRaw) {
+    for token in tokens.tokens {
+        let key = format!("token:{}", token.address);
+        log::info!("token address is : {}",key);
+        store.set(1, key, &proto::encode(&token).unwrap());
+    }
+}
+
+
+#[substreams::handlers::map]
+fn test_store_tokens(store: store::StoreSetRaw)-> Result<pcs::Reserves, Error> {
+    let mut reserves = pcs::Reserves { reserves: vec![] };
+    
+    Ok(reserves)
 }

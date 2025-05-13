@@ -3,7 +3,9 @@ use substreams::Hex;
 use substreams_ethereum::pb::eth;
 use crate::{address_decode, address_pretty, Token};
 use crate::eth_utils::{read_string, read_uint32};
-
+pub const DECIMALS: &str = "313ce567";
+pub const NAME: &str = "06fdde03";
+pub const SYMBOL: &str = "95d89b41";
 pub fn create_rpc_calls(addr: &Vec<u8>) -> eth::rpc::RpcCalls {
     let decimals = hex::decode("313ce567").unwrap();
     let name = hex::decode("06fdde03").unwrap();
@@ -26,6 +28,21 @@ pub fn create_rpc_calls(addr: &Vec<u8>) -> eth::rpc::RpcCalls {
         ],
     };
 }
+
+
+pub fn create_rpc_calls2(addr: &Vec<u8>, method_signatures: Vec<&str>) -> eth::rpc::RpcCalls {
+    let mut rpc_calls = eth::rpc::RpcCalls { calls: vec![] };
+
+    for method_signature in method_signatures {
+        rpc_calls.calls.push(eth::rpc::RpcCall {
+            to_addr: Vec::from(addr.clone()),
+            data: hex::decode(method_signature).unwrap(),
+        })
+    }
+
+    return  rpc_calls
+}
+
 
 pub fn retry_rpc_calls(pair_token_address: &String) -> Result<Token, String> {
     let rpc_calls = create_rpc_calls(&address_decode(pair_token_address));

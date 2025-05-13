@@ -46,6 +46,7 @@ modules:
 
   - name: map_pairs
     kind: map
+    initialBlock: 6810705
     inputs:
       - source: sf.ethereum.type.v2.Block
     output:
@@ -62,18 +63,63 @@ modules:
 
   - name: store_pairs
     kind: store
+    initialBlock: 6810706
     updatePolicy: set
     valueType: proto:pcs.types.v1.Pair
     inputs:
       - map: map_pairs
+  - name: map_tokens
+    kind: map
+    initialBlock: 6810706
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+    output:
+      type: proto:sf.ethereum.tokens.v1.Tokens
+  - name: store_tokens
+    kind: store
+    updatePolicy: set
+    valueType: proto:sf.ethereum.tokens.v1.Token
+    inputs:
+      - map: map_tokens
+  - name: store_pcs_tokens
+    kind: store
+    initialBlock: 6810706
+    updatePolicy: set_if_not_exists
+    valueType: bytes
+    inputs:
+      - map: map_pairs
+      - store: store_tokens
 
-  # - name: map_reserves
-  #   kind: map
-  #   inputs:
-  #     - source: sf.ethereum.type.v1.Block
-  #     - store: store_pairs
-  #     - store: store_pcs_tokens
-  #   output:
-  #     type: proto:pcs.types.v1.Reserves
+  - name: map_reserves
+    kind: map
+    inputs:
+      - source: sf.ethereum.type.v1.Block
+      - store: store_pairs
+      - store: store_pcs_tokens
+    output:
+      type: proto:pcs.types.v1.Reserves
 
-    
+  - name: map_debug_pairs
+    kind: map
+    initialBlock: 6810706
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+      - store: store_pairs
+    output:
+      type: proto:pcs.types.v1.Pairs 
+
+  - name: map_reserves2
+    kind: map
+    initialBlock: 6810706
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+      - store: store_pairs
+    output:
+      type: proto:pcs.types.v1.Reserves 
+
+  - name: test_store_tokens
+    kind: map
+    inputs:
+      - store: store_tokens
+    output:
+      type: proto:pcs.types.v1.Reserves
