@@ -12,6 +12,7 @@ use utils::pubkey::Pubkey;
 pub mod pb;
 use pb::spl_token::*;
 use pb::spl_token::spl_token_event::Event;
+pub mod db;
 
 #[substreams::handlers::map]
 fn spl_token_events(block: Block) -> Result<SplTokenBlockEvents, Error> {

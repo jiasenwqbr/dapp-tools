@@ -47,6 +47,9 @@ fn db_out(block: Block) -> Result<DatabaseChanges, substreams::errors::Error> {
     let mut database_changes: DatabaseChanges = Default::default();
     let block_number = block.slot;
     transform_block_meta_to_database_changes(&mut database_changes, transactions, block_number);
+
+    let spl_transactions = crate::spl_token_substream::parse_block(&block);
+    crate::spl_token_substream::db::transform_block_meta_to_database_changes(&mut database_changes, spl_transactions.unwrap(), block_number);
     Ok(database_changes)
 }
 fn transform_block_meta_to_database_changes(
@@ -778,6 +781,7 @@ fn push_transfer_pump_fun_create(
 
 pub fn parse_block(block: &Block) -> Vec<RaydiumAmmTransactionEvents> {
     let mut block_events: Vec<RaydiumAmmTransactionEvents> = Vec::new();
+  
     let timestamp = block.block_time.as_ref().unwrap().timestamp;
     for (i, transaction) in block.transactions.iter().enumerate() {
         if let Ok(events) = parse_transaction(transaction) {

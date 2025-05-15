@@ -17,6 +17,9 @@ pub mod pb;
 use pb::mpl_token_metadata::*;
 use pb::mpl_token_metadata::mpl_token_metadata_event::Event;
 
+
+
+
 #[substreams::handlers::map]
 fn mpl_token_metadata_events(block: Block) -> Result<MplTokenMetadataBlockEvents, Error> {
     let transactions = parse_block(&block);
@@ -64,7 +67,7 @@ pub fn parse_instruction(
     if instruction.program_id() != MPL_TOKEN_METADATA_PROGRAM_ID {
         return Err("Not a Metaplex Token Metadata instruction.".into());
     }
-    let unpacked = MetadataInstruction::try_from_slice(instruction.data()).map_err(|_| "Failed to parse MetadataInstruction.")?;
+    let unpacked: MetadataInstruction = MetadataInstruction::try_from_slice(instruction.data()).map_err(|_| "Failed to parse MetadataInstruction.")?;
     match unpacked {
         MetadataInstruction::ApproveCollectionAuthority => {
             Ok(Some(Event::ApproveCollectionAuthority(ApproveCollectionAuthorityEvent {})))
