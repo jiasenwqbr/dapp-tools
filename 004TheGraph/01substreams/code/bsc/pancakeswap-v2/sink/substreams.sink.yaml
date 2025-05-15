@@ -1,40 +1,21 @@
 specVersion: v0.1.0
 package:
-  name: pcs
-  version: v0.5.1
-  url: https://github.com/streamingfast/substreams-playground
-  doc: |
-    These substream modules compose all the things to build up the PancakeSwap substreams.
-
-    See individual modules docs for help.
-
-# imports:
-#   eth: https://github.com/streamingfast/sf-ethereum/releases/download/v0.10.2/ethereum-v0.10.3.spkg
-  # ethtokens_at_pcs: https://github.com/streamingfast/substreams-playground/releases/download/v0.5.1/eth-token-at-pcs-v0.5.1.spkg
-  # To use tokens only present at the beginning of PCS, eventually that would be an override on a third-party module's "initialBlock"
+  name: "map_block_sinkdb"
+  version: v0.0.2
 
 imports:
-  # eth: https://github.com/streamingfast/sf-ethereum/releases/download/v0.10.2/ethereum-v0.10.4.spkg
-  # ethtokens_at_pcs: https://github.com/streamingfast/substreams-playground/releases/download/v0.5.1/eth-token-at-pcs-v0.5.1.spkg
+  sql: https://github.com/streamingfast/substreams-sink-sql/releases/download/protodefs-v1.0.7/substreams-sink-sql-protodefs-v1.0.7.spkg
+  database_change: https://github.com/streamingfast/substreams-sink-database-changes/releases/download/v1.2.1/substreams-database-change-v1.2.1.spkg
+  # sol: https://spkg.io/streamingfast/solana-common-v0.3.0.spkg
+  # main: ./substreams.dev.yaml
 
 
-protobuf:
-  files:
-    - pcs/v1/pcs.proto
-    - pcs/v1/database.proto
-    # - pancake.proto
-    # - sf/substreams/rpc/v2/rpc.proto
-  importPaths:
-    - ./proto
-    - ./external-proto
+network: mainnet
 
 binaries:
   default:
     type: wasm/rust-v1
-    file: ./target/wasm32-unknown-unknown/release/pcs_substreams.wasm
-  pcs_fixed:
-    type: wasm/rust-v1
-    file: snapshot.wasm
+    file: ../target/wasm32-unknown-unknown/release/pcs_substreams.wasm
 
 modules:
   - name: map_swaps
@@ -112,7 +93,7 @@ modules:
   - name: map_burn_swaps_events
     kind: map
     inputs:
-      - source: "sf.ethereum.type.v2.Block"
+      - source: sf.ethereum.type.v2.Block
       - store: store_pairs
       - store: store_reserves
       - store: store_pcs_tokens
@@ -137,7 +118,7 @@ modules:
       - source: sf.substreams.v1.Clock
       - map: map_burn_swaps_events
 
-  - name: db_out
+  - name: db_out_postgres
     kind: map
     initialBlock: 6810706
     inputs:
@@ -156,38 +137,22 @@ modules:
       - store: store_pcs_tokens
         mode: get
     output:
-      type: proto:pcs.database.v1.DatabaseChanges
+      type: proto:sf.substreams.sink.database.v1.DatabaseChanges
+
+sink:
+  module: db_out_postgres
+  type: sf.substreams.sink.sql.v1.Service
+  config:
+    schema: "../schema2.sql"
+    engine: postgres
+    postgraphile_frontend:
+      enabled: true
+
+# params:
+#   db_out_postgres: factory_address=ca143ce32fe78f1f7019d7d551a6402fc5350c73&protocol_type_name=pancake_v2_pool
 
 
-##################################################### The unit test
-  # - name: map_debug_pairs
-  #   kind: map
-  #   initialBlock: 6810706
-  #   inputs:
-  #     - source: sf.ethereum.type.v2.Block
-  #     - store: store_pairs
-  #   output:
-  #     type: proto:pcs.types.v1.Pairs 
-
-  # - name: map_reserves2
-  #   kind: map
-  #   initialBlock: 6810706
-  #   inputs:
-  #     - source: sf.ethereum.type.v2.Block
-  #     - store: store_pairs
-  #   output:
-  #     type: proto:pcs.types.v1.Reserves 
-
-  # - name: test_store_tokens
-  #   kind: map
-  #   initialBlock: 6810706
-  #   inputs:
-  #     - source: sf.ethereum.type.v2.Block
-  #     - store: store_tokens
-  #       mode: get
-  #   output:
-  #     type: proto:pcs.types.v1.Reserves
-
-
-
-
+# [profile.release]
+# lto = true
+# opt-level = 's'
+# strip = "debuginfo"

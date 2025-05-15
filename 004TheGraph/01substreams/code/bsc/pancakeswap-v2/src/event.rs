@@ -455,11 +455,13 @@ fn new_pair_transfer_event(log: pb::eth::Log) -> PcsEvent {
 
 /* ---- Structs definition ---- */
 #[derive(Clone, PartialEq)]
+#[derive(Debug)]
 pub struct PcsEvent {
     pub event: Option<Event>,
 }
 
 pub mod pcs_event {
+    #[derive(Debug)]
     #[derive(Clone, PartialEq)]
     pub enum Event {
         PairCreatedEvent(super::PairCreatedEvent),
@@ -471,7 +473,7 @@ pub mod pcs_event {
         PairTransferEvent(super::PairTransferEvent),
     }
 }
-
+#[derive(Debug)]
 #[derive(Clone, PartialEq)]
 pub struct PairCreatedEvent {
     pub log_address: Vec<u8>,
@@ -480,7 +482,7 @@ pub struct PairCreatedEvent {
     pub token1: Vec<u8>,
     pub pair: Vec<u8>,
 }
-
+#[derive(Debug)]
 #[derive(Clone, PartialEq)]
 pub struct PairApprovalEvent {
     pub log_address: Vec<u8>,
@@ -489,7 +491,7 @@ pub struct PairApprovalEvent {
     pub spender: Vec<u8>,
     pub value: Vec<u8>,
 }
-
+#[derive(Debug)]
 #[derive(Clone, PartialEq)]
 pub struct PairBurnEvent {
     pub log_address: Vec<u8>,
@@ -499,7 +501,7 @@ pub struct PairBurnEvent {
     pub amount1: Vec<u8>,
     pub to: Vec<u8>,
 }
-
+#[derive(Debug)]
 #[derive(Clone, PartialEq)]
 pub struct PairMintEvent {
     pub log_address: Vec<u8>,
@@ -508,7 +510,7 @@ pub struct PairMintEvent {
     pub amount0: Vec<u8>,
     pub amount1: Vec<u8>,
 }
-
+#[derive(Debug)]
 #[derive(Clone, PartialEq)]
 pub struct PairSwapEvent {
     pub log_address: Vec<u8>,
@@ -520,7 +522,7 @@ pub struct PairSwapEvent {
     pub amount1_out: Vec<u8>,
     pub to: Vec<u8>,
 }
-
+#[derive(Debug)]
 #[derive(Clone, PartialEq)]
 pub struct PairSyncEvent {
     pub log_address: Vec<u8>,
@@ -528,7 +530,7 @@ pub struct PairSyncEvent {
     pub reserve0: Vec<u8>,
     pub reserve1: Vec<u8>,
 }
-
+#[derive(Debug)]
 #[derive(Clone, PartialEq)]
 pub struct PairTransferEvent {
     pub log_address: Vec<u8>,

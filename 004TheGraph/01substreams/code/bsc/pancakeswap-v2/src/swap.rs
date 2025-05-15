@@ -1,10 +1,11 @@
 use std::convert::TryFrom;
 use std::str::FromStr;
-use substreams::store::{StoreAdd, StoreDelete, StoreNew, StoreSet, StoreSetIfNotExists, StoreSetRaw};
+use substreams::store::{DeltaInt64, DeltaProto, StoreAdd, StoreDelete, StoreNew, StoreSet, StoreSetIfNotExists, StoreSetRaw};
 use substreams_database_change::pb::database::DatabaseChanges;
 use substreams::{log, proto, store,Hex,hex};
 use crate::eth_utils::{self, address_pretty};
 use crate::pb::pcs::event::Type;
+use crate::pb::pcs::Pair;
 use crate::rpc::{create_rpc_calls, create_rpc_calls2};
 use crate::utils::zero_big_decimal;
 use crate::{db, event, rpc, utils};
@@ -330,9 +331,12 @@ pub fn map_burn_swaps_events(blk: pb::eth::Block, pairs_store: store::StoreGetRa
     let mut burn_count: i32 = 0;
     let mut mint_count: i32 = 0;
     let mut swap_count: i32 = 0;
-
+    log::info!("............map_burn_swaps_events");
+    log::info!("transaction_traces.len() = {}", blk.transaction_traces.len());
     for trx in blk.transaction_traces {
+        // log::info!("............trx.hash.as_slice() is {:?}",trx.hash.as_slice());
         let trx_id = address_pretty(trx.hash.as_slice());
+        // log::info!("............trx_id is {}",trx_id);
         for call in trx.calls {
             if call.state_reverted {
                 continue;
@@ -343,19 +347,19 @@ pub fn map_burn_swaps_events(blk: pb::eth::Block, pairs_store: store::StoreGetRa
             }
 
             let pair_addr = address_pretty(call.address.as_slice());
-
+            // log::info!("............pair_addr is {}",pair_addr);
             let pair: pcs::Pair;
             match pairs_store.get_last(&format!("pair:{}", pair_addr)) {
                 None => continue,
                 Some(pair_bytes) => pair = proto::decode(&pair_bytes).unwrap(),
             }
-
+            log::info!("............pair is {:?}",pair);
             let mut pcs_events: Vec<PcsEvent> = Vec::new();
 
             for log in call.logs {
                 pcs_events.push(event::decode_event(log));
             }
-
+            log::info!("............pcs_events is {:?}",pcs_events);
             let mut base_event = pcs::Event {
                 log_ordinal: 0,
                 pair_address: pair_addr,
@@ -372,7 +376,7 @@ pub fn map_burn_swaps_events(blk: pb::eth::Block, pairs_store: store::StoreGetRa
                     .seconds as u64,
                 r#type: None,
             };
-
+           
             if pcs_events.len() == 4 {
                 let ev_tr1 = match pcs_events[0].event.as_ref().unwrap() {
                     Event::PairTransferEvent(pair_transfer_event) => Some(pair_transfer_event),
@@ -515,7 +519,7 @@ pub fn map_burn_swaps_events(blk: pb::eth::Block, pairs_store: store::StoreGetRa
             events.events.push(base_event);
         }
     }
-
+    log::info!("............events are : {:?}",events);
     Ok(events)
 }
 
@@ -835,30 +839,7 @@ pub fn store_pcs_tokens(
     }
 }
 
-#[substreams::handlers::map]
-pub fn db_out_postgres(
-    block: substreams::pb::substreams::Clock,
-    pcs_tokens_deltas: store::StoreGetRaw,
-    pairs_deltas: store::StoreGetRaw,
-    totals_deltas: store::StoreGetRaw,
-    volumes_deltas: store::StoreGetRaw,
-    reserves_deltas: store::StoreGetRaw,
-    events: pcs::Events,
-    pcs_tokens_store: store::StoreGetRaw,
-) -> Result<DatabaseChanges, substreams::errors::Error> {
-    substreams::register_panic_hook();
-    let changes: Result<DatabaseChanges, anyhow::Error> = db::process(
-        &block,
-        pairs_deltas,
-        pcs_tokens_deltas,
-        totals_deltas,
-        volumes_deltas,
-        reserves_deltas,
-        events,
-        &pcs_tokens_store,
-    );
-     changes
-}
+
 
 
 
@@ -1022,7 +1003,34 @@ fn store_tokens(tokens: pb::tokens::Tokens, store: store::StoreSetRaw) {
 }
 
 
-
+#[substreams::handlers::map]
+pub fn db_out_postgres(
+    block: substreams::pb::substreams::Clock,
+    pcs_tokens_deltas: store::Deltas<DeltaProto<Token>>,
+    pairs_deltas: store::Deltas<DeltaProto<Pair>>,
+    totals_deltas: store::Deltas<store::DeltaInt64>,
+    volumes_deltas: store::Deltas<store::DeltaBigDecimal>,
+    reserves_deltas: store::Deltas<store::DeltaString>,
+    events: pcs::Events,
+    pcs_tokens_store: store::StoreGetRaw,
+) -> Result<DatabaseChanges, substreams::errors::Error>  {
+    // substreams::register_panic_hook();
+    let mut database_changes: DatabaseChanges = Default::default();
+    db::process(
+        &block,
+        pcs_tokens_deltas,
+        pairs_deltas,
+        totals_deltas,
+        volumes_deltas,
+        reserves_deltas,
+        events,
+        &pcs_tokens_store,
+        &mut database_changes
+    );
+    log::info!("the database_changes are: {:?}",database_changes);
+     
+    Ok(database_changes)
+}
 
 
 ///////////////////////////////////////////////    Unit test   ////////////////

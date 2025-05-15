@@ -1,7 +1,7 @@
 create table IF NOT EXISTS solana_raydium.solana_raydium_transfer (
     id text primary key,
     signature text,
-    block_time text,
+    block_time bigint,
     transaction_index text,
     funding_account text,
     recipient_account text,
@@ -16,7 +16,7 @@ create table IF NOT EXISTS solana_raydium.solana_raydium_transfer (
 create table IF NOT EXISTS solana_raydium.solana_raydium_swap (
     id text primary key,
     signature text,
-    block_time text,
+    block_time bigint,
     block_number bigint,
     transaction_index text,
     amm text,
