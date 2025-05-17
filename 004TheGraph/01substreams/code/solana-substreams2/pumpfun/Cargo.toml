@@ -18,3 +18,4 @@ lazy_static = { workspace = true }
 anyhow = { workspace = true }
 spl-token-substream = { path = "../spl_token" }
 system-program-substream = { path = "../system_program" }
+substreams-database-change = { workspace = true }

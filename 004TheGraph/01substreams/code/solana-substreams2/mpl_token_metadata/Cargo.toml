@@ -19,3 +19,4 @@ lazy_static = { workspace = true }
 num-derive = { workspace = true }
 num-traits = { workspace = true }
 thiserror = { workspace = true }
+substreams-database-change = { workspace = true }
