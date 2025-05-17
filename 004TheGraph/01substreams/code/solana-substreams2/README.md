@@ -244,3 +244,162 @@ fn process_block_events(events: PumpfunBlockEvents) {
     }
 }
 ```
+### Raydium AMM 事件数据结构
+#### 1. 整体架构
+该数据结构是用于记录 Raydium 自动做市商(AMM)协议事件的 Protocol Buffers 定义，采用分层设计：
+
+- 区块层 (RaydiumAmmBlockEvents)：包含区块内所有交易事件
+
+- 交易层 (RaydiumAmmTransactionEvents)：单笔交易中的事件集合
+
+- 事件层 (RaydiumAmmEvent)：具体事件类型的容器
+
+- 具体事件 (10种不同类型的事件)
+
+```
+RaydiumAmmBlockEvents (区块层)
+└── RaydiumAmmTransactionEvents (交易层)
+    └── RaydiumAmmEvent (事件层)
+        ├── InitializeEvent
+        ├── DepositEvent
+        ├── WithdrawEvent
+        ├── ...
+        └── PumpfunCreateEvent
+```
+
+#### 2. 核心结构解析
+##### 2.1 区块层 (RaydiumAmmBlockEvents)
+```rust
+pub struct RaydiumAmmBlockEvents {
+    pub transactions: Vec<RaydiumAmmTransactionEvents>, // 交易事件数组
+}
+```
+- 功能：按区块组织交易数据
+
+- 设计特点：
+
+    - 使用Vec存储交易，保持原始顺序
+
+    - 对应protobuf的repeated字段
+
+##### 交易层 (RaydiumAmmTransactionEvents)
+```rust
+pub struct RaydiumAmmTransactionEvents {
+    pub signature: String,       // 交易签名(Base58)
+    pub events: Vec<RaydiumAmmEvent>, // 事件列表
+    pub block_time: String,      // ISO8601时间格式
+    pub transaction_index: String // 区块内索引
+}
+```
+- 功能：记录单笔交易触发的所有AMM事件
+
+- 关键字段：
+
+    - signature：交易唯一标识符
+
+    - block_time：ISO格式时间戳(如"2023-05-01T12:34:56Z")
+
+##### 2.3  事件层 (RaydiumAmmEvent)
+```rust
+pub enum Event {
+    Initialize(InitializeEvent),     // 池初始化
+    Deposit(DepositEvent),          // 流动性存入
+    Withdraw(WithdrawEvent),        // 流动性提取
+    WithdrawPnl(WithdrawPnlEvent),  // 收益提取
+    Swap(SwapEvent),                // 代币交换
+    // ...其他6种事件类型...
+}
+```
+- 内存布局
+```
+graph LR
+  A[RaydiumAmmEvent] --> B[InitializeEvent]
+  A --> C[DepositEvent]
+  A --> D[...]
+```
+- 设计优势：使用oneof节省内存，同一时间只有一种事件类型被激活
+#### 3. 关键事件类型分析
+##### 3.1 InitializeEvent (流动性池初始化)
+```rust
+pub struct InitializeEvent {
+    pub amm: String,             // AMM合约地址
+    pub pc_init_amount: u64,     // 初始报价币数量(如USDC)
+    pub coin_init_amount: u64,   // 初始基础币数量(如SOL)
+    pub nonce: u32,              // 派生账户的非ce值
+    pub market: Option<String>,  // 关联Serum市场
+    // ...其他代币合约地址...
+}
+```
+- 业务逻辑：创建新的交易对池
+
+- 关键参数：
+
+    - nonce：用于PDAs(Program Derived Addresses)派生
+
+    - 初始比例决定开盘价格
+
+##### 3.2 SwapEvent (代币交换)
+```rust
+pub struct SwapEvent {
+    pub mint_in: String,         // 输入代币类型
+    pub amount_in: u64,          // 输入数量
+    pub amount_out: u64,         // 输出数量
+    pub direction: String,       // "buy"或"sell"
+    pub pool_pc_amount: Option<u64>, // 池报价币储备
+    // ...其他池状态字段...
+}
+```
+- 价格计算
+```rust
+let price = match swap.direction.as_str() {
+    "buy" => swap.amount_in as f64 / swap.amount_out as f64,
+    _ => swap.amount_out as f64 / swap.amount_in as f64
+};
+```
+- 滑点监控
+```rust
+pub struct DepositEvent {
+    pub pc_amount: u64,          // 存入的报价币
+    pub coin_amount: u64,        // 存入的基础币
+    pub lp_amount: u64,          // 获得的LP代币
+    pub pool_pc_amount: Option<u64>, // 池状态
+    // ...
+}
+```
+
+- 经济模型：
+
+    - 存款：(pcAmount, coinAmount) → lpAmount
+
+    - 取款：lpAmount → (pcAmount, coinAmount)
+
+#### 4. 特殊结构设计
+##### 4.1 账户余额追踪
+```rust
+pub struct AccountBalance {
+    pub pre_balance: u64,    // 操作前余额
+    pub post_balance: u64    // 操作后余额
+}
+```
+- 审计功能：完整记录状态变化
+
+- 典型应用：在TransferEvent中记录SOL转账前后余额
+
+##### 4.2 可选字段设计
+```rust
+pub pool_pc_amount: Option<u64> 
+```
+设计考量：
+
+- 平衡数据完整性和存储效率
+
+- 非关键字段使用Option减少存储开销
+
+
+
+
+
+
+
+
+
