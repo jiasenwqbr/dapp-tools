@@ -585,6 +585,7 @@ dependencies = [
  "bytemuck",
  "lazy_static",
  "prost",
+ "pumpfun-substream",
  "regex",
  "safe-transmute",
  "serde",

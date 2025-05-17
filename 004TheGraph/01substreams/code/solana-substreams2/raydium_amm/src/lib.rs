@@ -40,6 +40,7 @@ pub mod pb;
 use pb::raydium_amm::raydium_amm_event::Event;
 use pb::raydium_amm::*;
 use substreams_database_change::pb::database::{table_change::Operation, DatabaseChanges};
+use pumpfun_substream;
 
 #[substreams::handlers::map]
 fn db_out(block: Block) -> Result<DatabaseChanges, substreams::errors::Error> {
@@ -50,6 +51,9 @@ fn db_out(block: Block) -> Result<DatabaseChanges, substreams::errors::Error> {
 
     let spl_transactions = crate::spl_token_substream::parse_block(&block);
     crate::spl_token_substream::db::transform_block_meta_to_database_changes(&mut database_changes, spl_transactions.unwrap(), block_number);
+    let pumpfun_transaction = crate::pumpfun_substream::parse_block(&block);
+    crate::pumpfun_substream::db::transform_block_meta_to_database_changes(&mut database_changes, pumpfun_transaction.unwrap(), block_number);
+
     Ok(database_changes)
 }
 fn transform_block_meta_to_database_changes(

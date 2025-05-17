@@ -146,14 +146,14 @@ fn handle_transfer_event(
     let destination_address = &destination.address;
     let destination_mint = &destination.mint;
     let destination_owner = &destination.owner;
-    let destination_post_balance = &destination.post_balance.unwrap();
-    let destination_pre_balance = &destination.pre_balance.unwrap();
+    let destination_post_balance = &destination.post_balance.unwrap_or(0);
+    let destination_pre_balance = &destination.pre_balance.unwrap_or(0);
     let source: &crate::pb::spl_token::TokenAccount = &transfer_event.source.clone().unwrap();
     let source_address = &source.address;
     let source_mint = &source.mint;
     let source_owner = &source.owner;
-    let source_post_balance = &source.post_balance.unwrap();
-    let source_pre_balance = &source.pre_balance.unwrap();
+    let source_post_balance = &source.post_balance.unwrap_or(0);
+    let source_pre_balance = &source.pre_balance.unwrap_or(0);
 
     let id  = format!("{block_number}_{signature}_{spl_index}_{spl_token_event_index}");
     
@@ -335,7 +335,7 @@ fn save_initialize_immutable_owner(
 ){
     let mut composite_key: HashMap<String, String> = HashMap::new();
     composite_key.insert( "id".to_string(), id,);
-    changes.push_change_composite("solana_substream_spl_token_initialize_mint", composite_key, 1, Operation::Create)
+    changes.push_change_composite("solana_substream_spl_token_initialize_immutable_owner", composite_key, 1, Operation::Create)
         .change("block_number", (None, block_number))
         .change("signature", (None, signature))
         .change("spl_index", (None, spl_index as i64))
@@ -485,8 +485,8 @@ fn handle_approve_event(
             let approve_address = &approve.address;
             let approve_mint = &approve.mint;
             let approve_owner = &approve.owner;
-            let approve_post_balance = &approve.post_balance.unwrap();
-            let approve_pre_balance = &approve.pre_balance.unwrap();
+            let approve_post_balance = &approve.post_balance.unwrap_or(0);
+            let approve_pre_balance = &approve.pre_balance.unwrap_or(0);
             let id = format!("{block_number}_{signature}_{spl_index}_{spl_token_event_index}");
             save_approve_event(
                 block_number,
@@ -556,8 +556,8 @@ fn handle_mint_to_event(
             let mint_address = &destination.address;
             let mint_mint = &destination.mint;
             let mint_owner = &destination.owner;
-            let approve_post_balance = &destination.post_balance.unwrap();
-            let approve_pre_balance = &destination.pre_balance.unwrap();
+            let approve_post_balance = &destination.post_balance.unwrap_or(0);
+            let approve_pre_balance = &destination.pre_balance.unwrap_or(0);
             let id = format!("{block_number}_{signature}_{spl_index}_{spl_token_event_index}");
             save_mint_to(
                 block_number,
@@ -627,8 +627,8 @@ fn handle_revoke_event(
             let revoke_address = &revoke.address;
             let revoke_mint = &revoke.mint;
             let revoke_owner = &revoke.owner;
-            let revoke_post_balance = &revoke.post_balance.unwrap();
-            let revoke_pre_balance = &revoke.pre_balance.unwrap();
+            let revoke_post_balance = &revoke.post_balance.unwrap_or(0);
+            let revoke_pre_balance = &revoke.pre_balance.unwrap_or(0);
             let id = format!("{block_number}_{signature}_{spl_index}_{spl_token_event_index}");
             save_revoke(
                 block_number,
@@ -747,8 +747,8 @@ fn handle_burn_event(
             let burn_address = &burn.address;
             let burn_mint = &burn.mint;
             let burn_owner = &burn.owner;
-            let burn_post_balance = &burn.post_balance.unwrap();
-            let burn_pre_balance = &burn.pre_balance.unwrap();
+            let burn_post_balance = &burn.post_balance.unwrap_or(0);
+            let burn_pre_balance = &burn.pre_balance.unwrap_or(0);
             let id = format!("{block_number}_{signature}_{spl_index}_{spl_token_event_index}");
             save_burn(
                 block_number,
@@ -815,8 +815,8 @@ fn handle_close_account_event(
             let source_address = &source.address;
             let source_mint = &source.mint;
             let source_owner = &source.owner;
-            let source_post_balance = &source.post_balance.unwrap();
-            let source_pre_balance = &source.pre_balance.unwrap();
+            let source_post_balance = &source.post_balance.unwrap_or(0);
+            let source_pre_balance = &source.pre_balance.unwrap_or(0);
             let id = format!("{block_number}_{signature}_{spl_index}_{spl_token_event_index}");
             save_close_account(
                 block_number,
@@ -881,8 +881,8 @@ fn handle_freeze_account_event(
             let freeze_address = &freeze.address;
             let freeze_mint = &freeze.mint;
             let freeze_owner = &freeze.owner;
-            let freeze_post_balance = &freeze.post_balance.unwrap();
-            let freeze_pre_balance = &freeze.pre_balance.unwrap();
+            let freeze_post_balance = &freeze.post_balance.unwrap_or(0);
+            let freeze_pre_balance = &freeze.pre_balance.unwrap_or(0);
             let id = format!("{block_number}_{signature}_{spl_index}_{spl_token_event_index}");
             save_freeze_account(
                 block_number,
@@ -946,8 +946,8 @@ fn handle_thaw_account_event(
             let source_address = &source.address;
             let source_mint = &source.mint;
             let source_owner = &source.owner;
-            let source_post_balance = &source.post_balance.unwrap();
-            let source_pre_balance = &source.pre_balance.unwrap();
+            let source_post_balance = &source.post_balance.unwrap_or(0);
+            let source_pre_balance = &source.pre_balance.unwrap_or(0);
             let id = format!("{block_number}_{signature}_{spl_index}_{spl_token_event_index}");
             save_thaw_account(
                 block_number,
@@ -1010,8 +1010,8 @@ fn handle_sync_native_event(
         let address = &account.address;
         let mint = &account.mint;
         let owner = &account.owner;
-        let post_balance = &account.post_balance.unwrap();
-        let pre_balance = &account.pre_balance.unwrap();
+        let post_balance = &account.post_balance.unwrap_or(0);
+        let pre_balance = &account.pre_balance.unwrap_or(0);
         let id = format!("{block_number}_{signature}_{spl_index}_{spl_token_event_index}");
         save_sync_native(
             block_number,

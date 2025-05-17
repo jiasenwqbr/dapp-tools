@@ -30,6 +30,7 @@ CREATE INDEX idx_spl_destination_mint ON solana_substream_spl_token (destination
 CREATE INDEX idx_spl_destination_owner ON solana_substream_spl_token (destination_owner);
 
 ----- solana_substream_initialize_mint
+
 CREATE TABLE solana_raydium.solana_substream_spl_token_initialize_mint (
     id TEXT PRIMARY KEY,
     block_number BIGINT,
@@ -49,6 +50,7 @@ CREATE INDEX idx_initialize_mint_mint_authority ON solana_substream_spl_token_in
 CREATE INDEX idx_initialize_mint_freeze_authority ON solana_substream_spl_token_initialize_mint (freeze_authority);
 
 ----- solana_substream_initialize_immutable_owner
+
 CREATE TABLE solana_substream_spl_token_initialize_immutable_owner (
     id TEXT PRIMARY KEY,
     block_number BIGINT,
