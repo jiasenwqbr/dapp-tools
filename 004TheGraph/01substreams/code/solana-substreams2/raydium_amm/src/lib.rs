@@ -48,9 +48,13 @@ fn db_out(block: Block) -> Result<DatabaseChanges, substreams::errors::Error> {
     let mut database_changes: DatabaseChanges = Default::default();
     let block_number = block.slot;
     transform_block_meta_to_database_changes(&mut database_changes, transactions, block_number);
-
+    
     let spl_transactions = crate::spl_token_substream::parse_block(&block);
-    crate::spl_token_substream::db::transform_block_meta_to_database_changes(&mut database_changes, spl_transactions.unwrap(), block_number);
+    let block_time = match   &block.block_time {
+        Some(val) => val.timestamp,
+        None => 0,
+    };
+    crate::spl_token_substream::db::transform_block_meta_to_database_changes(&mut database_changes, spl_transactions.unwrap(), block_number,block_time);
     let pumpfun_transaction = crate::pumpfun_substream::parse_block(&block);
     crate::pumpfun_substream::db::transform_block_meta_to_database_changes(&mut database_changes, pumpfun_transaction.unwrap(), block_number);
 

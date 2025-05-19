@@ -2,6 +2,7 @@
 CREATE TABLE solana_raydium.solana_substream_spl_token (
     id TEXT PRIMARY KEY,
     block_number BIGINT,
+    block_time BIGINT,
     signature TEXT,
     spl_index INTEGER,
     spl_token_event_index INTEGER,
@@ -34,6 +35,7 @@ CREATE INDEX idx_spl_destination_owner ON solana_substream_spl_token (destinatio
 CREATE TABLE solana_raydium.solana_substream_spl_token_initialize_mint (
     id TEXT PRIMARY KEY,
     block_number BIGINT,
+    block_time BIGINT,
     signature TEXT,
     spl_index INTEGER,
     spl_token_event_index INTEGER,
@@ -54,6 +56,7 @@ CREATE INDEX idx_initialize_mint_freeze_authority ON solana_substream_spl_token_
 CREATE TABLE solana_substream_spl_token_initialize_immutable_owner (
     id TEXT PRIMARY KEY,
     block_number BIGINT,
+    block_time BIGINT,
     signature TEXT,
     spl_index INTEGER,
     spl_token_event_index INTEGER,
@@ -74,6 +77,7 @@ CREATE INDEX ON solana_substream_spl_token_initialize_immutable_owner (owner);
 CREATE TABLE solana_substream_spl_token_initialize_account (
     id TEXT PRIMARY KEY,
     block_number BIGINT,
+    block_time BIGINT,
     signature TEXT,
     spl_index INTEGER,
     spl_token_event_index INTEGER,
@@ -93,6 +97,7 @@ CREATE INDEX ON solana_substream_spl_token_initialize_account (owner);
 CREATE TABLE solana_substream_spl_token_initialize_multisig (
     id TEXT PRIMARY KEY,
     block_number BIGINT,
+    block_time BIGINT,
     signature TEXT,
     spl_index BIGINT,
     spl_token_event_index BIGINT,
@@ -111,6 +116,7 @@ CREATE INDEX idx_solana_init_multisig_multisig ON solana_substream_spl_token_ini
 CREATE TABLE solana_substream_spl_token_approve (
     id TEXT PRIMARY KEY,
     block_number BIGINT,
+    block_time BIGINT,
     signature TEXT,
     spl_index BIGINT,
     spl_token_event_index BIGINT,
@@ -135,6 +141,7 @@ CREATE INDEX idx_spl_token_approve_owner ON solana_substream_spl_token_approve (
 CREATE TABLE solana_substream_spl_token_mint_to (
     id TEXT PRIMARY KEY,
     block_number BIGINT,
+    block_time BIGINT,
     signature TEXT,
     spl_index BIGINT,
     spl_token_event_index BIGINT,
@@ -161,6 +168,7 @@ CREATE INDEX idx_spl_mint_to_mint_address ON solana_substream_spl_token_mint_to 
 CREATE TABLE solana_substream_spl_token_revoke (
     id TEXT PRIMARY KEY,
     block_number BIGINT,
+    block_time BIGINT,
     signature TEXT,
     spl_index BIGINT,
     spl_token_event_index BIGINT,
@@ -181,6 +189,7 @@ CREATE INDEX idx_spl_revoke_owner ON solana_substream_spl_token_revoke (revoke_o
 CREATE TABLE solana_substream_spl_token_set_authority (
     id TEXT PRIMARY KEY,
     block_number BIGINT,
+    block_time BIGINT,
     signature TEXT,
     spl_index BIGINT,
     spl_token_event_index BIGINT,
@@ -198,6 +207,7 @@ CREATE INDEX idx_spl_set_authority_block_number ON solana_substream_spl_token_se
 CREATE TABLE solana_substream_spl_token_burn (
     id TEXT PRIMARY KEY,
     block_number BIGINT,
+    block_time BIGINT,
     signature TEXT,
     spl_index BIGINT,
     spl_token_event_index BIGINT,
@@ -222,6 +232,7 @@ CREATE INDEX idx_spl_burn_owner ON solana_substream_spl_token_burn (burn_owner);
 CREATE TABLE solana_substream_spl_token_close_account (
     id TEXT PRIMARY KEY,
     block_number BIGINT,
+    block_time BIGINT,
     signature TEXT,
     spl_index BIGINT,
     spl_token_event_index BIGINT,
@@ -245,6 +256,7 @@ CREATE INDEX idx_spl_close_account_source_owner ON solana_substream_spl_token_cl
 CREATE TABLE solana_substream_spl_token_freeze_account (
     id TEXT PRIMARY KEY,
     block_number BIGINT,
+    block_time BIGINT,
     signature TEXT,
     spl_index BIGINT,
     spl_token_event_index BIGINT,
@@ -268,6 +280,7 @@ CREATE INDEX idx_spl_freeze_owner ON solana_substream_spl_token_freeze_account (
 CREATE TABLE solana_substream_spl_token_thaw_account (
     id TEXT PRIMARY KEY,
     block_number BIGINT,
+    block_time BIGINT,
     signature TEXT,
     spl_index BIGINT,
     spl_token_event_index BIGINT,
@@ -291,6 +304,7 @@ CREATE INDEX idx_spl_thaw_source_owner ON solana_substream_spl_token_thaw_accoun
 CREATE TABLE solana_substream_spl_token_sync_native (
     id TEXT PRIMARY KEY,
     block_number BIGINT,
+    block_time BIGINT,
     signature TEXT,
     spl_index BIGINT,
     spl_token_event_index BIGINT,

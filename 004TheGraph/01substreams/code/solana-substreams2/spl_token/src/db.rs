@@ -7,15 +7,19 @@ use crate::pb::spl_token::{ApproveEvent, BurnEvent, CloseAccountEvent, FreezeAcc
 pub fn transform_block_meta_to_database_changes(
     changes: &mut DatabaseChanges,
     spl_transactions: Vec<SplTokenTransactionEvents>, 
-    block_number: u64,){
+    block_number: u64,
+    block_time: i64,
+    ){
         for (spl_index,spl_token_transaction_event) in spl_transactions.iter().enumerate(){
             let events = &spl_token_transaction_event.events;
             let signature = &spl_token_transaction_event.signature;
+            
             for (spl_token_event_index,spl_token_event) in events.iter().enumerate(){
                 if let Some(event) = &spl_token_event.event {
                     match event {
                         crate::pb::spl_token::spl_token_event::Event::Transfer(transfer_event) => handle_transfer_event(
                             block_number,
+                            block_time,
                             signature,
                             spl_index,
                             spl_token_event_index,
@@ -24,6 +28,7 @@ pub fn transform_block_meta_to_database_changes(
                         ),
                         crate::pb::spl_token::spl_token_event::Event::InitializeMint(initialize_mint_event) => handle_initialize_mint_event(
                             block_number,
+                            block_time,
                             signature,
                             spl_index,
                             spl_token_event_index,
@@ -32,6 +37,7 @@ pub fn transform_block_meta_to_database_changes(
                         ),
                         crate::pb::spl_token::spl_token_event::Event::InitializeImmutableOwner(initialize_immutable_owner_event) => handle_initialize_immutable_owner_event(
                             block_number,
+                            block_time,
                             signature,
                             spl_index,
                             spl_token_event_index,
@@ -40,6 +46,7 @@ pub fn transform_block_meta_to_database_changes(
                         ),
                         crate::pb::spl_token::spl_token_event::Event::InitializeAccount(initialize_account_event) => handle_initialize_account_event(
                             block_number,
+                            block_time,
                             signature,
                             spl_index,
                             spl_token_event_index,
@@ -48,6 +55,7 @@ pub fn transform_block_meta_to_database_changes(
                         ),
                         crate::pb::spl_token::spl_token_event::Event::InitializeMultisig(initialize_multisig_event) => handle_initialize_multisig_event(
                             block_number,
+                            block_time,
                             signature,
                             spl_index,
                             spl_token_event_index,
@@ -56,6 +64,7 @@ pub fn transform_block_meta_to_database_changes(
                         ),
                         crate::pb::spl_token::spl_token_event::Event::Approve(approve_event) => handle_approve_event(
                             block_number,
+                            block_time,
                             signature,
                             spl_index,
                             spl_token_event_index,
@@ -64,6 +73,7 @@ pub fn transform_block_meta_to_database_changes(
                         ),
                         crate::pb::spl_token::spl_token_event::Event::MintTo(mint_to_event) => handle_mint_to_event(
                             block_number,
+                            block_time,
                             signature,
                             spl_index,
                             spl_token_event_index,
@@ -72,6 +82,7 @@ pub fn transform_block_meta_to_database_changes(
                         ),
                         crate::pb::spl_token::spl_token_event::Event::Revoke(revoke_event) => handle_revoke_event(
                             block_number,
+                            block_time,
                             signature,
                             spl_index,
                             spl_token_event_index,
@@ -80,6 +91,7 @@ pub fn transform_block_meta_to_database_changes(
                         ),
                         crate::pb::spl_token::spl_token_event::Event::SetAuthority(set_authority_event) => handle_set_authority_event(
                             block_number,
+                            block_time,
                             signature,
                             spl_index,
                             spl_token_event_index,
@@ -88,6 +100,7 @@ pub fn transform_block_meta_to_database_changes(
                         ),
                         crate::pb::spl_token::spl_token_event::Event::Burn(burn_event) => handle_burn_event(
                             block_number,
+                            block_time,
                             signature,
                             spl_index,
                             spl_token_event_index,
@@ -96,6 +109,7 @@ pub fn transform_block_meta_to_database_changes(
                         ),
                         crate::pb::spl_token::spl_token_event::Event::CloseAccount(close_account_event) => handle_close_account_event(
                             block_number,
+                            block_time,
                             signature,
                             spl_index,
                             spl_token_event_index,
@@ -104,6 +118,7 @@ pub fn transform_block_meta_to_database_changes(
                         ),
                         crate::pb::spl_token::spl_token_event::Event::FreezeAccount(freeze_account_event) => handle_freeze_account_event(
                             block_number,
+                            block_time,
                             signature,
                             spl_index,
                             spl_token_event_index,
@@ -112,6 +127,7 @@ pub fn transform_block_meta_to_database_changes(
                         ),
                         crate::pb::spl_token::spl_token_event::Event::ThawAccount(thaw_account_event) => handle_thaw_account_event(
                             block_number,
+                            block_time,
                             signature,
                             spl_index,
                             spl_token_event_index,
@@ -120,6 +136,7 @@ pub fn transform_block_meta_to_database_changes(
                         ),
                         crate::pb::spl_token::spl_token_event::Event::SyncNative(sync_native_event) => handle_sync_native_event(
                             block_number,
+                            block_time,
                             signature,
                             spl_index,
                             spl_token_event_index,
@@ -134,6 +151,7 @@ pub fn transform_block_meta_to_database_changes(
 
 fn handle_transfer_event(
     block_number:u64,
+    block_time:i64,
     signature:&String,
     spl_index: usize,
     spl_token_event_index:usize,
@@ -160,6 +178,7 @@ fn handle_transfer_event(
     save_transfer_event(
         id,
         block_number,
+        block_time,
         signature,
         spl_index,
         spl_token_event_index,
@@ -182,6 +201,7 @@ fn handle_transfer_event(
 fn save_transfer_event(
     id: String,
     block_number: u64,
+    block_time: i64,
     signature: &String,
     spl_index: usize,
     spl_token_event_index: usize,
@@ -203,6 +223,7 @@ fn save_transfer_event(
 
     changes.push_change_composite("solana_substream_spl_token", composite_key, 1, Operation::Create)
         .change("block_number", (None, block_number))
+        .change("block_time", (None,block_time))
         .change("signature", (None,signature))
         .change("spl_index", (None, spl_index as i64)) // usize to i64
         .change("spl_token_event_index", (None, spl_token_event_index as i64))
@@ -222,6 +243,7 @@ fn save_transfer_event(
 
 fn handle_initialize_mint_event(
     block_number: u64,
+    block_time: i64,
     signature: &String,
     spl_index: usize,
     spl_token_event_index:usize,
@@ -242,6 +264,7 @@ fn handle_initialize_mint_event(
 
     save_initialize_mint_event(
         block_number,
+        block_time,
         signature,
         spl_index,
         spl_token_event_index,
@@ -256,6 +279,7 @@ fn handle_initialize_mint_event(
 
 fn save_initialize_mint_event(
     block_number: u64,
+    block_time: i64,
     signature: &String,
     spl_index: usize,
     spl_token_event_index:usize,
@@ -270,6 +294,7 @@ fn save_initialize_mint_event(
     composite_key.insert( "id".to_string(), id,);
     changes.push_change_composite("solana_substream_spl_token_initialize_mint", composite_key, 1, Operation::Create)
         .change("block_number", (None, block_number))
+        .change("block_time,", (None, block_time))
         .change("signature", (None, signature.to_string()))
         .change("spl_index", (None, spl_index as i64))
         .change("spl_token_event_index", (None, spl_token_event_index as i64))
@@ -281,6 +306,7 @@ fn save_initialize_mint_event(
 
 fn handle_initialize_immutable_owner_event(
     block_number: u64,
+    block_time: i64,
     signature: &String,
     spl_index: usize,
     spl_token_event_index:usize,
@@ -303,6 +329,7 @@ fn handle_initialize_immutable_owner_event(
             let id = format!("{block_number}_{signature}_{spl_index}_{spl_token_event_index}");
             save_initialize_immutable_owner(
                 block_number,
+                block_time,
                 signature,
                 spl_index,
                 spl_token_event_index,
@@ -322,6 +349,7 @@ fn handle_initialize_immutable_owner_event(
 
 fn save_initialize_immutable_owner(
     block_number: u64,
+    block_time: i64,
     signature: &String,
     spl_index: usize,
     spl_token_event_index:usize,
@@ -337,6 +365,7 @@ fn save_initialize_immutable_owner(
     composite_key.insert( "id".to_string(), id,);
     changes.push_change_composite("solana_substream_spl_token_initialize_immutable_owner", composite_key, 1, Operation::Create)
         .change("block_number", (None, block_number))
+        .change(" block_time,", (None, block_time))
         .change("signature", (None, signature))
         .change("spl_index", (None, spl_index as i64))
         .change("spl_token_event_index", (None, spl_token_event_index as i64))
@@ -350,6 +379,7 @@ fn save_initialize_immutable_owner(
 
 fn handle_initialize_account_event(
     block_number: u64,
+    block_time: i64,
     signature: &String,
     spl_index: usize,
     spl_token_event_index:usize,
@@ -372,6 +402,7 @@ fn handle_initialize_account_event(
             let id = format!("{block_number}_{signature}_{spl_index}_{spl_token_event_index}");
             save_initialize_account_event(
                 block_number,
+                block_time,
                 signature,
                 spl_index,
                 spl_token_event_index,
@@ -390,6 +421,7 @@ fn handle_initialize_account_event(
 
 fn save_initialize_account_event(
     block_number: u64,
+    block_time:i64,
     signature: &String,
     spl_index: usize,
     spl_token_event_index:usize,
@@ -405,6 +437,7 @@ fn save_initialize_account_event(
     composite_key.insert( "id".to_string(), id,);
     changes.push_change_composite("solana_substream_spl_token_initialize_account", composite_key, 1, Operation::Create)
         .change("block_number", (None, block_number))
+        .change("block_time", (None,block_time))
         .change("signature", (None, signature))
         .change("spl_index", (None, spl_index as i64))
         .change("spl_token_event_index", (None, spl_token_event_index as i64))
@@ -418,6 +451,7 @@ fn save_initialize_account_event(
 
 fn handle_initialize_multisig_event(
     block_number: u64,
+    block_time: i64,
     signature: &String,
     spl_index: usize,
     spl_token_event_index:usize,
@@ -431,6 +465,7 @@ fn handle_initialize_multisig_event(
         let id =  format!("{block_number}_{signature}_{spl_index}_{spl_token_event_index}_{signer_index}");
         save_initialize_multisig(
             block_number,
+            block_time,
             signature,
             spl_index,
             spl_token_event_index,
@@ -446,6 +481,7 @@ fn handle_initialize_multisig_event(
 
 fn save_initialize_multisig(
     block_number: u64,
+    block_time: i64,
     signature: &String,
     spl_index: usize,
     spl_token_event_index:usize,
@@ -460,6 +496,7 @@ fn save_initialize_multisig(
     composite_key.insert( "id".to_string(), id,);
     changes.push_change_composite("solana_substream_spl_token_initialize_multisig", composite_key, 1, Operation::Create)
         .change("block_number", (None, block_number))
+        .change("block_time", (None,block_time))
         .change("signature", (None, signature.clone()))
         .change("spl_index", (None, spl_index as i64)) // 转换为i64以兼容更多数据库
         .change("spl_token_event_index", (None, spl_token_event_index as i64))
@@ -472,6 +509,7 @@ fn save_initialize_multisig(
 
 fn handle_approve_event(
     block_number: u64,
+    block_time: i64,
     signature: &String,
     spl_index: usize,
     spl_token_event_index:usize,
@@ -490,6 +528,7 @@ fn handle_approve_event(
             let id = format!("{block_number}_{signature}_{spl_index}_{spl_token_event_index}");
             save_approve_event(
                 block_number,
+                block_time,
                 signature,
                 spl_index,
                 spl_token_event_index,
@@ -511,6 +550,7 @@ fn handle_approve_event(
 
 fn save_approve_event(
     block_number: u64,
+    block_time: i64,
     signature: &String,
     spl_index: usize,
     spl_token_event_index:usize,
@@ -528,6 +568,7 @@ fn save_approve_event(
     composite_key.insert( "id".to_string(), id,);
     changes.push_change_composite("solana_substream_spl_token_approve", composite_key, 1, Operation::Create)
         .change("block_number", (None, block_number))
+        .change("block_time", (None,block_time))
         .change("signature", (None, signature.clone()))
         .change("spl_index", (None, spl_index as i64))
         .change("spl_token_event_index", (None, spl_token_event_index as i64))
@@ -542,6 +583,7 @@ fn save_approve_event(
 
 fn handle_mint_to_event(
     block_number: u64,
+    block_time: i64,
     signature: &String,
     spl_index: usize,
     spl_token_event_index:usize,
@@ -561,6 +603,7 @@ fn handle_mint_to_event(
             let id = format!("{block_number}_{signature}_{spl_index}_{spl_token_event_index}");
             save_mint_to(
                 block_number,
+                block_time,
                 signature,
                 spl_index,
                 spl_token_event_index,
@@ -583,6 +626,7 @@ fn handle_mint_to_event(
 
 fn save_mint_to(
     block_number: u64,
+    block_time: i64,
     signature: &String,
     spl_index: usize,
     spl_token_event_index:usize,
@@ -601,6 +645,7 @@ fn save_mint_to(
     composite_key.insert( "id".to_string(), id,);
     changes.push_change_composite("solana_substream_spl_token_mint_to", composite_key, 1, Operation::Create)
         .change("block_number", (None, block_number))
+        .change("block_time", (None,block_time))
         .change("signature", (None, signature.clone()))
         .change("spl_index", (None, spl_index as i64))
         .change("spl_token_event_index", (None, spl_token_event_index as i64))
@@ -616,6 +661,7 @@ fn save_mint_to(
 
 fn handle_revoke_event(
     block_number: u64,
+    block_time: i64,
     signature: &String,
     spl_index: usize,
     spl_token_event_index:usize,
@@ -632,6 +678,7 @@ fn handle_revoke_event(
             let id = format!("{block_number}_{signature}_{spl_index}_{spl_token_event_index}");
             save_revoke(
                 block_number,
+                block_time,
                 signature,
                 spl_index,
                 spl_token_event_index,
@@ -651,6 +698,7 @@ fn handle_revoke_event(
 
 fn save_revoke(
     block_number: u64,
+    block_time: i64,
     signature: &String,
     spl_index: usize,
     spl_token_event_index:usize,
@@ -666,6 +714,7 @@ fn save_revoke(
     composite_key.insert( "id".to_string(), id,);
     changes.push_change_composite("solana_substream_spl_token_revoke", composite_key, 1, Operation::Create)
         .change("block_number", (None, block_number))
+        .change("block_time", (None,block_time))
         .change("signature", (None, signature.clone()))
         .change("spl_index", (None, spl_index as i64))
         .change("spl_token_event_index", (None, spl_token_event_index as i64))
@@ -678,6 +727,7 @@ fn save_revoke(
 
 fn handle_set_authority_event(
     block_number: u64,
+    block_time: i64,
     signature: &String,
     spl_index: usize,
     spl_token_event_index:usize,
@@ -695,6 +745,7 @@ fn handle_set_authority_event(
     let id = format!("{block_number}_{signature}_{spl_index}_{spl_token_event_index}");
     save_set_authority(
         block_number,
+        block_time,
         signature,
         spl_index,
         spl_token_event_index,
@@ -709,6 +760,7 @@ fn handle_set_authority_event(
 
 fn save_set_authority(
     block_number: u64,
+    block_time: i64,
     signature: &String,
     spl_index: usize,
     spl_token_event_index:usize,
@@ -723,6 +775,7 @@ fn save_set_authority(
     composite_key.insert( "id".to_string(), id,);
     changes.push_change_composite("solana_substream_spl_token_set_authority", composite_key, 1, Operation::Create)
         .change("block_number", (None, block_number))
+        .change("block_time", (None,block_time))
         .change("signature", (None, signature.clone()))
         .change("spl_index", (None, spl_index as i64))
         .change("spl_token_event_index", (None, spl_token_event_index as i64))
@@ -734,6 +787,7 @@ fn save_set_authority(
 
 fn handle_burn_event(
     block_number: u64,
+    block_time: i64,
     signature: &String,
     spl_index: usize,
     spl_token_event_index:usize,
@@ -752,6 +806,7 @@ fn handle_burn_event(
             let id = format!("{block_number}_{signature}_{spl_index}_{spl_token_event_index}");
             save_burn(
                 block_number,
+                block_time,
                 signature,
                 spl_index,
                 spl_token_event_index,
@@ -772,6 +827,7 @@ fn handle_burn_event(
 
 fn save_burn(
     block_number: u64,
+    block_time: i64,
     signature: &String,
     spl_index: usize,
     spl_token_event_index:usize,
@@ -789,6 +845,7 @@ fn save_burn(
     composite_key.insert( "id".to_string(), id,);
     changes.push_change_composite("solana_substream_spl_token_burn", composite_key, 1, Operation::Create)
         .change("block_number", (None, block_number))
+        .change("block_time", (None,block_time))
         .change("signature", (None, signature.clone()))
         .change("spl_index", (None, spl_index as i64))
         .change("spl_token_event_index", (None, spl_token_event_index as i64))
@@ -803,6 +860,7 @@ fn save_burn(
 
 fn handle_close_account_event(
     block_number: u64,
+    block_time: i64,
     signature: &String,
     spl_index: usize,
     spl_token_event_index:usize,
@@ -820,6 +878,7 @@ fn handle_close_account_event(
             let id = format!("{block_number}_{signature}_{spl_index}_{spl_token_event_index}");
             save_close_account(
                 block_number,
+                block_time,
                 signature,
                 spl_index,
                 spl_token_event_index,
@@ -839,6 +898,7 @@ fn handle_close_account_event(
 
 fn save_close_account(
     block_number: u64,
+    block_time: i64,
     signature: &String,
     spl_index: usize,
     spl_token_event_index:usize,
@@ -855,6 +915,7 @@ fn save_close_account(
     composite_key.insert( "id".to_string(), id,);
     changes.push_change_composite("solana_substream_spl_token_close_account", composite_key, 1, Operation::Create)
         .change("block_number", (None, block_number))
+        .change("block_time", (None,block_time))
         .change("signature", (None, signature.clone()))
         .change("spl_index", (None, spl_index as i64))
         .change("spl_token_event_index", (None, spl_token_event_index as i64))
@@ -869,6 +930,7 @@ fn save_close_account(
 
 fn handle_freeze_account_event(
     block_number: u64,
+    block_time: i64,
     signature: &String,
     spl_index: usize,
     spl_token_event_index:usize,
@@ -886,6 +948,7 @@ fn handle_freeze_account_event(
             let id = format!("{block_number}_{signature}_{spl_index}_{spl_token_event_index}");
             save_freeze_account(
                 block_number,
+                block_time,
                 signature,
                 spl_index,
                 spl_token_event_index,
@@ -905,6 +968,7 @@ fn handle_freeze_account_event(
 
 fn save_freeze_account(
     block_number: u64,
+    block_time: i64,
     signature: &String,
     spl_index: usize,
     spl_token_event_index:usize,
@@ -921,6 +985,7 @@ fn save_freeze_account(
     composite_key.insert( "id".to_string(), id,);
     changes.push_change_composite("solana_substream_spl_token_freeze_account", composite_key, 1, Operation::Create)
         .change("block_number", (None, block_number))
+        .change("block_time", (None,block_time))
         .change("signature", (None, signature.clone()))
         .change("spl_index", (None, spl_index as i64))
         .change("spl_token_event_index", (None, spl_token_event_index as i64))
@@ -934,6 +999,7 @@ fn save_freeze_account(
 
 fn handle_thaw_account_event(
     block_number: u64,
+    block_time: i64,
     signature: &String,
     spl_index: usize,
     spl_token_event_index:usize,
@@ -951,6 +1017,7 @@ fn handle_thaw_account_event(
             let id = format!("{block_number}_{signature}_{spl_index}_{spl_token_event_index}");
             save_thaw_account(
                 block_number,
+                block_time,
                 signature,
                 spl_index,
                 spl_token_event_index,
@@ -970,6 +1037,7 @@ fn handle_thaw_account_event(
 
 fn save_thaw_account(
     block_number: u64,
+    block_time: i64,
     signature: &String,
     spl_index: usize,
     spl_token_event_index:usize,
@@ -986,6 +1054,7 @@ fn save_thaw_account(
     composite_key.insert( "id".to_string(), id,);
     changes.push_change_composite("solana_substream_spl_token_thaw_account", composite_key, 1, Operation::Create)
         .change("block_number", (None, block_number))
+        .change("block_time", (None,block_time))
         .change("signature", (None, signature.clone()))
         .change("spl_index", (None, spl_index as i64))
         .change("spl_token_event_index", (None, spl_token_event_index as i64))
@@ -999,6 +1068,7 @@ fn save_thaw_account(
 
 fn handle_sync_native_event(
     block_number: u64,
+    block_time: i64,
     signature: &String,
     spl_index: usize,
     spl_token_event_index:usize,
@@ -1015,6 +1085,7 @@ fn handle_sync_native_event(
         let id = format!("{block_number}_{signature}_{spl_index}_{spl_token_event_index}");
         save_sync_native(
             block_number,
+            block_time,
             signature,
             spl_index,
             spl_token_event_index,
@@ -1033,6 +1104,7 @@ fn handle_sync_native_event(
 
 fn save_sync_native(
     block_number: u64,
+    block_time: i64,
     signature: &String,
     spl_index: usize,
     spl_token_event_index:usize,
@@ -1048,6 +1120,7 @@ fn save_sync_native(
     composite_key.insert( "id".to_string(), id,);
     changes.push_change_composite("solana_substream_spl_token_sync_native", composite_key, 1, Operation::Create)
         .change("block_number", (None, block_number))
+        .change("block_time", (None,block_time))
         .change("signature", (None, signature.clone()))
         .change("spl_index", (None, spl_index as i64))
         .change("spl_token_event_index", (None, spl_token_event_index as i64))

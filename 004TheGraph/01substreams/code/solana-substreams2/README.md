@@ -396,10 +396,125 @@ pub pool_pc_amount: Option<u64>
 - 非关键字段使用Option减少存储开销
 
 
+### SPL-token数据结构
 
+这是一个使用 Protocol Buffers (protobuf) 定义的数据结构，用于表示 Solana 区块链上 SPL Token (Solana Program Library Token) 的各种事件。这些结构是用 Rust 通过 prost 库生成的。
 
+#### 主要结构层次
 
+- SplTokenBlockEvents
 
+    - 表示一个区块中的所有 SPL Token 交易事件
 
+    - 包含一个 transactions 字段，是 SplTokenTransactionEvents 的数组
 
+- SplTokenTransactionEvents
 
+表示单个交易中的 SPL Token 事件
+
+包含:
+
+    - signature: 交易签名
+
+    - events: SplTokenEvent 的数组
+
+- SplTokenEvent
+
+表示单个 SPL Token 事件
+
+使用 oneof 结构表示不同类型的事件
+
+#### 事件类型
+SplTokenEvent 可以包含以下 14 种具体事件类型：
+
+TransferEvent: 代币转账事件
+
+包含源账户、目标账户、授权地址和转账金额
+
+InitializeMintEvent: 初始化代币 mint 的事件
+
+包含 mint 地址、小数位数、mint 授权地址和可选的冻结授权地址
+
+InitializeImmutableOwnerEvent: 初始化不可变所有者账户的事件
+
+包含账户信息
+
+InitializeAccountEvent: 初始化代币账户的事件
+
+包含账户信息
+
+InitializeMultisigEvent: 初始化多签账户的事件
+
+包含多签地址、签名者列表和所需的签名数量(m)
+
+ApproveEvent: 授权事件
+
+包含源账户、被授权地址和授权金额
+
+MintToEvent: 铸币事件
+
+包含 mint 地址、铸币授权地址、目标账户和铸币金额
+
+RevokeEvent: 撤销授权事件
+
+包含源账户
+
+SetAuthorityEvent: 设置权限事件
+
+包含 mint 地址、当前授权地址、授权类型和新授权地址(可选)
+
+BurnEvent: 销毁代币事件
+
+包含源账户、授权地址和销毁金额
+
+CloseAccountEvent: 关闭账户事件
+
+包含源账户和目标地址
+
+FreezeAccountEvent: 冻结账户事件
+
+包含源账户和冻结授权地址
+
+ThawAccountEvent: 解冻账户事件
+
+包含源账户和解冻授权地址
+
+SyncNativeEvent: 同步原生代币事件
+
+包含账户信息
+
+辅助结构
+TokenAccount: 表示代币账户
+
+包含地址、所有者、mint 地址、以及可选的余额变更前后信息
+
+AuthorityType: 枚举类型，表示不同的权限类型
+
+Null
+
+MintTokens (铸币权限)
+
+FreezeAccount (冻结权限)
+
+AccountOwner (账户所有者)
+
+CloseAccount (关闭账户权限)
+
+技术细节
+这些结构使用了 prost 库的派生宏:
+
+#[derive(Clone, PartialEq, ::prost::Message)] 用于消息类型
+
+#[derive(Clone, PartialEq, ::prost::Oneof)] 用于 oneof 类型
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)] 用于枚举类型
+
+使用了 protobuf 的标签系统:
+
+每个字段都有一个数字标签(如 tag="1")
+
+oneof 变体也使用标签区分
+
+注释中的 @generated 和 @@protoc_insertion_point 表明这是由代码生成器生成的代码
+
+这个数据结构设计用于捕获和序列化 Solana 区块链上 SPL Token 程序产生的各种事件，便于在链下处理和分析代币相关的活动。
