@@ -6,7 +6,8 @@ use crate::pb::pumpfun::{InitializeEvent, PumpfunCreateEvent, PumpfunSwapEvent, 
 pub fn transform_block_meta_to_database_changes(
     changes: &mut DatabaseChanges,
     block_events: Vec<PumpfunTransactionEvents>,
-    block_number: u64,){
+    block_number: u64,
+    block_time: i64,){
     for (pump_index,pubfun) in block_events.iter().enumerate(){
         let signature = &pubfun.signature;
        for(event_index,event) in pubfun.events.iter().enumerate(){
@@ -15,6 +16,7 @@ pub fn transform_block_meta_to_database_changes(
                     match pumpfun_event {
                         crate::pb::pumpfun::pumpfun_event::Event::Initialize(initialize_event) => handle_initialize_event(
                             block_number,
+                            block_time
                             signature,
                             pump_index,
                             event_index,
@@ -23,6 +25,7 @@ pub fn transform_block_meta_to_database_changes(
                         ),
                         crate::pb::pumpfun::pumpfun_event::Event::SetParams(set_params_event) => handle_set_params_event(
                             block_number,
+                            block_time
                             signature,
                             pump_index,
                             event_index,
@@ -31,6 +34,7 @@ pub fn transform_block_meta_to_database_changes(
                         ),
                         crate::pb::pumpfun::pumpfun_event::Event::PumpfunSwap(pumpfun_swap_event) => handle_pumpfun_swap_event(
                             block_number,
+                            block_time
                             signature,
                             pump_index,
                             event_index,
@@ -39,6 +43,7 @@ pub fn transform_block_meta_to_database_changes(
                         ),
                         crate::pb::pumpfun::pumpfun_event::Event::PumpfunWithdraw(pumpfun_withdraw_event) => handle_pumpfun_withdraw_event(
                             block_number,
+                            block_time
                             signature,
                             pump_index,
                             event_index,
@@ -47,6 +52,7 @@ pub fn transform_block_meta_to_database_changes(
                         ),
                         crate::pb::pumpfun::pumpfun_event::Event::PumpfunCreate(pumpfun_create_event) => handle_pumpfun_create_event(
                             block_number,
+                            block_time
                             signature,
                             pump_index,
                             event_index,
@@ -65,6 +71,7 @@ pub fn transform_block_meta_to_database_changes(
 
 fn handle_initialize_event(
     block_number:u64,
+    block_time: i64,
     signature:&String,
     pump_index:usize,
     event_index:usize,
@@ -75,6 +82,7 @@ fn handle_initialize_event(
     let id = format!("{block_number}_{signature}_{pump_index}_{event_index}");
     save_initialize_user(
         block_number,
+        block_time,
         signature,
         pump_index,
         event_index,
@@ -86,6 +94,7 @@ fn handle_initialize_event(
 
 fn save_initialize_user(
     block_number:u64,
+    block_time:i64,
     signature:&String,
     pump_index:usize,
     event_index:usize,
@@ -98,6 +107,7 @@ fn save_initialize_user(
 
     changes.push_change_composite("solana_substream_pumpfun_initialize_user", composite_key, 1, Operation::Create)
         .change("block_number", (None, block_number))
+        .change("block_time", (None,block_time))
         .change("signature", (None, signature.clone()))
         .change("pump_index", (None, pump_index as i64))
         .change("event_index", (None, event_index as i64))
@@ -106,6 +116,7 @@ fn save_initialize_user(
 
 fn handle_set_params_event(
     block_number:u64,
+    block_time: i64,
     signature:&String,
     pump_index:usize,
     event_index:usize,
@@ -122,6 +133,7 @@ fn handle_set_params_event(
     let id = format!("{block_number}_{signature}_{pump_index}_{event_index}");
     save_set_params(
         block_number,
+        block_time,
         signature,
         pump_index,
         event_index,
@@ -140,6 +152,7 @@ fn handle_set_params_event(
 
 fn save_set_params(
     block_number:u64,
+    block_time: i64,
     signature:&String,
     pump_index:usize,
     event_index:usize,
@@ -158,6 +171,7 @@ fn save_set_params(
 
     changes.push_change_composite("solana_substream_pumpfun_set_params", composite_key, 1, Operation::Create)
         .change("block_number", (None, block_number))
+        .change("block_time", (None,block_time))
         .change("signature", (None, signature.clone()))
         .change("pump_index", (None, pump_index as i64))
         .change("event_index", (None, event_index as i64))
@@ -172,6 +186,7 @@ fn save_set_params(
 
 fn handle_pumpfun_swap_event(
     block_number:u64,
+    block_time: i64,
     signature:&String,
     pump_index:usize,
     event_index:usize,
@@ -192,6 +207,7 @@ fn handle_pumpfun_swap_event(
     let id = format!("{block_number}_{signature}_{pump_index}_{event_index}");
     save_pumpfun_swap(
         block_number,
+        block_time,
         signature,
         pump_index,
         event_index,
@@ -213,6 +229,7 @@ fn handle_pumpfun_swap_event(
 }
 fn save_pumpfun_swap(
     block_number:u64,
+    block_time: i64,
     signature:&String,
     pump_index:usize,
     event_index:usize,
@@ -235,6 +252,7 @@ fn save_pumpfun_swap(
 
     changes.push_change_composite("solana_substream_pumpfun_swap", composite_key, 1, Operation::Create)
         .change("block_number", (None, block_number))
+        .change("block_time", (None,block_time))
         .change("signature", (None, signature.clone()))
         .change("pump_index", (None, pump_index as i64))
         .change("event_index", (None, event_index as i64))
@@ -254,6 +272,7 @@ fn save_pumpfun_swap(
 
 fn handle_pumpfun_withdraw_event(
     block_number:u64,
+    block_time: i64,
     signature:&String,
     pump_index:usize,
     event_index:usize,
@@ -264,6 +283,7 @@ fn handle_pumpfun_withdraw_event(
     let id = format!("{block_number}_{signature}_{pump_index}_{event_index}");
     save_pumpfun_withdraw(
         block_number,
+        block_time,
         signature,
         pump_index,
         event_index,
@@ -275,6 +295,7 @@ fn handle_pumpfun_withdraw_event(
 
 fn save_pumpfun_withdraw(
     block_number:u64,
+    block_time:i64,
     signature:&String,
     pump_index:usize,
     event_index:usize,
@@ -287,6 +308,7 @@ fn save_pumpfun_withdraw(
 
     changes.push_change_composite("solana_substream_pumpfun_withdraw", composite_key, 1, Operation::Create)
         .change("block_number", (None, block_number))
+        .change("block_time", (None,block_time))
         .change("signature", (None, signature.clone()))
         .change("pump_index", (None, pump_index as i64))
         .change("event_index", (None, event_index as i64))
@@ -295,6 +317,7 @@ fn save_pumpfun_withdraw(
 
 fn handle_pumpfun_create_event(
     block_number:u64,
+    block_time: i64,
     signature:&String,
     pump_index:usize,
     event_index:usize,
@@ -312,6 +335,7 @@ fn handle_pumpfun_create_event(
     let id = format!("{block_number}_{signature}_{pump_index}_{event_index}");
     save_create(
         block_number,
+        block_time,
         signature,
         pump_index,
         event_index,
@@ -330,6 +354,7 @@ fn handle_pumpfun_create_event(
 
 fn save_create(
     block_number:u64,
+    block_time: i64,
     signature:&String,
     pump_index:usize,
     event_index:usize,
@@ -349,6 +374,7 @@ fn save_create(
 
     changes.push_change_composite("solana_substream_pumpfun_create", composite_key, 1, Operation::Create)
         .change("block_number", (None, block_number))
+        .change("block_time", (None,block_time))
         .change("signature", (None, signature.clone()))
         .change("pump_index", (None, pump_index as i64))
         .change("event_index", (None, event_index as i64))

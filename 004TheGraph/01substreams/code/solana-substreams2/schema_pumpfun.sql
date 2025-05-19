@@ -2,6 +2,7 @@
 CREATE TABLE solana_substream_pumpfun_initialize_user (
     id TEXT PRIMARY KEY,
     block_number BIGINT,
+    block_time BIGINT,
     signature TEXT,
     pump_index BIGINT,
     event_index BIGINT,
@@ -15,6 +16,7 @@ CREATE INDEX idx_pumpfun_init_user_block_number ON solana_substream_pumpfun_init
 CREATE TABLE solana_substream_pumpfun_set_params (
     id TEXT PRIMARY KEY,
     block_number BIGINT,
+    block_time BIGINT,
     signature TEXT,
     pump_index BIGINT,
     event_index BIGINT,
@@ -35,6 +37,7 @@ CREATE INDEX idx_set_params_user ON solana_substream_pumpfun_set_params (set_use
 CREATE TABLE solana_substream_pumpfun_swap (
     id TEXT PRIMARY KEY,
     block_number BIGINT,
+    block_time BIGINT,
     signature TEXT,
     pump_index INTEGER,
     event_index INTEGER,
@@ -76,6 +79,7 @@ CREATE INDEX idx_pumpfun_withdraw_mint ON solana_substream_pumpfun_withdraw (min
 CREATE TABLE solana_substream_pumpfun_create (
     id TEXT PRIMARY KEY,
     block_number BIGINT,
+    block_time BIGINT,
     signature TEXT,
     pump_index INTEGER,
     event_index INTEGER,

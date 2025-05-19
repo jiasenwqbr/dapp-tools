@@ -56,7 +56,7 @@ fn db_out(block: Block) -> Result<DatabaseChanges, substreams::errors::Error> {
     };
     crate::spl_token_substream::db::transform_block_meta_to_database_changes(&mut database_changes, spl_transactions.unwrap(), block_number,block_time);
     let pumpfun_transaction = crate::pumpfun_substream::parse_block(&block);
-    crate::pumpfun_substream::db::transform_block_meta_to_database_changes(&mut database_changes, pumpfun_transaction.unwrap(), block_number);
+    crate::pumpfun_substream::db::transform_block_meta_to_database_changes(&mut database_changes, pumpfun_transaction.unwrap(), block_number,block_time);
 
     Ok(database_changes)
 }
