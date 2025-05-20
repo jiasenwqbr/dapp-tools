@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use substreams_database_change::pb::database::{self, table_change::Operation, DatabaseChanges};
+use substreams_database_change::pb::database::{table_change::Operation, DatabaseChanges};
 
 use crate::pb::pumpfun::{InitializeEvent, PumpfunCreateEvent, PumpfunSwapEvent, PumpfunTransactionEvents, PumpfunWithdrawEvent, SetParamsEvent};
 pub fn transform_block_meta_to_database_changes(
@@ -16,7 +16,7 @@ pub fn transform_block_meta_to_database_changes(
                     match pumpfun_event {
                         crate::pb::pumpfun::pumpfun_event::Event::Initialize(initialize_event) => handle_initialize_event(
                             block_number,
-                            block_time
+                            block_time,
                             signature,
                             pump_index,
                             event_index,
@@ -25,7 +25,7 @@ pub fn transform_block_meta_to_database_changes(
                         ),
                         crate::pb::pumpfun::pumpfun_event::Event::SetParams(set_params_event) => handle_set_params_event(
                             block_number,
-                            block_time
+                            block_time,
                             signature,
                             pump_index,
                             event_index,
@@ -34,7 +34,7 @@ pub fn transform_block_meta_to_database_changes(
                         ),
                         crate::pb::pumpfun::pumpfun_event::Event::PumpfunSwap(pumpfun_swap_event) => handle_pumpfun_swap_event(
                             block_number,
-                            block_time
+                            block_time,
                             signature,
                             pump_index,
                             event_index,
@@ -43,7 +43,7 @@ pub fn transform_block_meta_to_database_changes(
                         ),
                         crate::pb::pumpfun::pumpfun_event::Event::PumpfunWithdraw(pumpfun_withdraw_event) => handle_pumpfun_withdraw_event(
                             block_number,
-                            block_time
+                            block_time,
                             signature,
                             pump_index,
                             event_index,
@@ -52,7 +52,7 @@ pub fn transform_block_meta_to_database_changes(
                         ),
                         crate::pb::pumpfun::pumpfun_event::Event::PumpfunCreate(pumpfun_create_event) => handle_pumpfun_create_event(
                             block_number,
-                            block_time
+                            block_time,
                             signature,
                             pump_index,
                             event_index,

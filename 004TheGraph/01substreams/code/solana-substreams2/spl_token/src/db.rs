@@ -1,6 +1,6 @@
-use std::{cmp::min, collections::HashMap};
+use std::collections::HashMap;
 
-use substreams_database_change::pb::database::{self, table_change::Operation, DatabaseChanges};
+use substreams_database_change::pb::database::{table_change::Operation, DatabaseChanges};
 
 use crate::pb::spl_token::{ApproveEvent, BurnEvent, CloseAccountEvent, FreezeAccountEvent, InitializeAccountEvent, InitializeImmutableOwnerEvent, InitializeMintEvent, InitializeMultisigEvent, MintToEvent, RevokeEvent, SetAuthorityEvent, SplTokenTransactionEvents, SyncNativeEvent, ThawAccountEvent, TransferEvent};
 
@@ -294,7 +294,7 @@ fn save_initialize_mint_event(
     composite_key.insert( "id".to_string(), id,);
     changes.push_change_composite("solana_substream_spl_token_initialize_mint", composite_key, 1, Operation::Create)
         .change("block_number", (None, block_number))
-        .change("block_time,", (None, block_time))
+        .change("block_time", (None, block_time))
         .change("signature", (None, signature.to_string()))
         .change("spl_index", (None, spl_index as i64))
         .change("spl_token_event_index", (None, spl_token_event_index as i64))
@@ -365,7 +365,7 @@ fn save_initialize_immutable_owner(
     composite_key.insert( "id".to_string(), id,);
     changes.push_change_composite("solana_substream_spl_token_initialize_immutable_owner", composite_key, 1, Operation::Create)
         .change("block_number", (None, block_number))
-        .change(" block_time,", (None, block_time))
+        .change("block_time", (None, block_time))
         .change("signature", (None, signature))
         .change("spl_index", (None, spl_index as i64))
         .change("spl_token_event_index", (None, spl_token_event_index as i64))

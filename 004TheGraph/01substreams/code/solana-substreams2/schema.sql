@@ -12,7 +12,7 @@ create table IF NOT EXISTS solana_raydium.solana_raydium_transfer (
     recipient_account_balance_pre_balance text,
     recipient_account_balance_post_balance text,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
+) PARTITION BY RANGE (block_time);
 create table IF NOT EXISTS solana_raydium.solana_raydium_swap (
     id text primary key,
     signature text,
@@ -128,7 +128,7 @@ create table IF NOT EXISTS solana_raydium.solana_raydium_pump_fun_swap (
     real_token_reserves numeric,
     user_token_pre_balance numeric,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
+) PARTITION BY RANGE (block_time);
 create table IF NOT EXISTS solana_raydium.solana_raydium_pump_fun_withdraw (
     id text primary key,
     signature text,
