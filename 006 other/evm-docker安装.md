@@ -763,7 +763,7 @@ with open('/blockchain/eth/node2.json') as f:
     keystore = json.load(f)
 
 # 2. 输入密码
-password = 'J8!eP5r#oX2@vD'
+password = ''
 
 # 3. 解密
 private_key = Web3().eth.account.decrypt(keystore, password)
