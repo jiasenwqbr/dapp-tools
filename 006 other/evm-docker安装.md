@@ -9,7 +9,6 @@ evm安装
 #### 1. 更新系统和依赖包
 
 ```bash
-sudo apt update
 sudo apt upgrade -y
 sudo apt install ca-certificates curl gnupg lsb-release -y
 ```
@@ -38,6 +37,14 @@ echo \
 sudo apt update
 sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
 ```
+
+验证：
+
+```
+docker version
+```
+
+
 
 ### 二、安装 Docker Compose（独立版本）
 
@@ -83,6 +90,7 @@ newgrp docker  # 或重新登录会话
 
 ### 安装geth
 ```shell
+mkdir -p /blockchain/eth
 cd /blockchain/eth
 wget https://gethstore.blob.core.windows.net/builds/geth-linux-amd64-1.13.10-bc0be1b1.tar.gz
 tar -xvf geth-linux-amd64-1.13.10-bc0be1b1.tar.gz
@@ -289,11 +297,11 @@ root@jason-VMware-Virtual-Platform:/blockchain/eth# ./05_get_node_hex.sh
 
 ```
 StaticNodes=[
-"enode://87a2e1a230a37f774a5c684a16aeb3f13334bcd6537c7949e4d61110a2a99e828a849f699ebaabb3530a8c736f95362d88d95a1d0d1865dbc0481ee66c041c30@172.16.238.10:30300?discport=0",
-"enode://61a2af91ff9a997f01fe1d317c2f1c4de0a7b618e2f40df18daac51c0354638cffbd381ee5aa18367bd8e3a0dadbb833149b595f019d1aa839ebe1daa391b205@172.16.238.11:30301?discport=0",
-"enode://41e83b4b32b6e3b2ac48778edd8bef88aef4d26f875b6c575f3d1e241d488368b0a6c14eb1dad3bf65822b6a049d029be39088a576cf7d4dee92c712bb3b4bc9@172.16.238.12:30302?discport=0",
-"enode://e45f96d357c50b220ff0c5111242c4bc2eecba617610cfd57da9d1ea971765db2d1c9d430cec257e0de9c92a4e25764571a0d4afd3c8db83613677f6101225d4@172.16.238.13:30303?discport=0",
-"enode://4fff69414a45d4a4225b2d44447383c6c6e2fc91e8d744bf0d3b467feaa4f96622b26fe8021886b5e995688badf59f1fce81a1e00c1a5550ac6c16c630da90fc@172.16.238.14:30304?discport=0"
+"enode://87a2e1a230a37f774a5c684a16aeb3f13334bcd6537c7949e4d61110a2a99e828a849f699ebaabb3530a8c736f95362d88d95a1d0d1865dbc0481ee66c041c30@134.122.135.200:30300?discport=0",
+"enode://61a2af91ff9a997f01fe1d317c2f1c4de0a7b618e2f40df18daac51c0354638cffbd381ee5aa18367bd8e3a0dadbb833149b595f019d1aa839ebe1daa391b205@134.122.135.200:30301?discport=0",
+"enode://41e83b4b32b6e3b2ac48778edd8bef88aef4d26f875b6c575f3d1e241d488368b0a6c14eb1dad3bf65822b6a049d029be39088a576cf7d4dee92c712bb3b4bc9@134.122.135.200:30302?discport=0",
+"enode://89bcdde710c9e47b24fea4a4c393d86d394948ef038da9ce6235cea17b800686455c8a71031016bc8b4465e06cb87f995b9b686cc2e56c2f391d84cdc5fb50c6@172.16.238.13:30305?discport=0",
+"enode://6511e126addaf457d26f48e7242778fac351dc05a1f1a21b52d6a260176e16b0545470abf7ea807609a7476525d55cea931bf26dea5af9014c19801e39b50ce3@172.16.238.14:30306?discport=0"
 ]
 ```
 
@@ -602,6 +610,21 @@ docker-compose stop  (dockerName  不填就停止所有)
 docker-compose restart
 ```
 
+#### 删除内在文件
+
+```shell
+# 停止并删除所有容器、网络（保留卷）
+docker-compose down
+
+# 如果要同时删除卷（永久删除数据）
+docker-compose down -v
+
+# 如果要删除所有内容（容器、网络、卷和镜像）
+docker-compose down --rmi all -v
+```
+
+
+
 
 
 #### 链接geth控制台：
@@ -752,6 +775,39 @@ docker exec -it <dockerName> /bin/bash
 
 
 
+#### 查看各个节点区块
+
+
+
+#### **安装 `expect` 工具**
+
+在 Ubuntu/Debian 系统上运行：
+
+```
+sudo apt update
+sudo apt install expect -y
+```
+
+运行脚本：
+
+```shell
+#!/usr/bin/expect -f
+
+for {set i 0} {$i <= 4} {incr i} {
+    puts "---- Node $i ----"
+    spawn docker exec -it node$i geth attach /data/geth.ipc
+    expect ">"
+    send "eth.blockNumber\n"
+    expect ">"
+    send "exit\n"
+    expect eof
+}
+```
+
+
+
+
+
 ### 解析私钥
 
 ```python
@@ -769,6 +825,111 @@ password = ''
 private_key = Web3().eth.account.decrypt(keystore, password)
 print(private_key.hex())
 ```
+
+### 
+
+
+
+
+
+##
+
+
+
+docker run -d --name nginx-rpc-proxy -p 80:80  -v /blockchain/eth/nginx/nginx.conf:/etc/nginx/conf nginx
+
+
+
+### 测试
+
+#### rpc
+
+```
+curl -X POST \
+  -H "Content-Type: application/json" \
+  --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
+  http://localhost:8543
+```
+
+```
+
+```
+
+#### websocket
+
+```
+curl --include \
+     --no-buffer \
+     --header "Connection: Upgrade" \
+     --header "Upgrade: websocket" \
+     --header "Sec-WebSocket-Key: SGVsbG8sIHdvcmxkIQ==" \
+     --header "Sec-WebSocket-Version: 13" \
+     http://172.16.238.15:8546
+```
+
+
+
+```yml
+  node5:
+    
+    image: ethereum/client-go:v1.13.10  # 使用官方Geth镜像
+    container_name: node5            # 容器名称
+    ports:
+      - "8543:8543"                  # HTTP-RPC端口映射（宿主机:容器）
+      - "30305:30305/tcp"                # P2P网络端口
+      - "30305:30305/udp"                # P2P网络端口
+      - "8546:8546"
+    volumes:                         # 目录挂载配置（关键参数）
+      - ./nodes/node5/data:/data           # 区块链数据目录（持久化存储）
+      - ./nodes/node5/keystore:/keystore   # 账户密钥存储目录
+      - /env/evm/password:/password
+    command:                         # Geth启动参数
+      - --nat=extip:172.16.238.15
+      - --port=30305
+      #- --nodiscover                 # 禁用自动发现
+      - --datadir=/data              # 数据存储路径
+      - --networkid=31419            # 网络标识符（必须相同）
+      - --syncmode=full              # 全同步模式
+      #- --mine                       # 启用挖矿（POA出块）
+      ##- --miner.threads=1            # 挖矿线程数
+      #- --miner.etherbase=0xb1b9ccC71C564A47065c2B3fD5ee865d7AFB928b      # 出块奖励地址
+      #- --unlock=0xb1b9ccC71C564A47065c2B3fD5ee865d7AFB928b               # 解锁地址
+      #- --password=/password         # 解锁密码
+      #- --allow-insecure-unlock   # 允许非安全环境解锁
+      - --ws                     # 启用 WebSocket
+      - --ws.port=8546           # WebSocket 端口
+      - --ws.addr=0.0.0.0        # 允许所有 IP 连接
+      - --ws.api=eth,net,web3    # 开放的 API
+      - --ws.origins=*         # 允许跨域
+      - --http                       # 启用HTTP-RPC
+      - --http.port=8543
+      - --http.addr=0.0.0.0          # 监听所有IP
+      - --http.api=eth,net,web3 # 开放的API
+      - --http.corsdomain=*
+      - --http.vhosts=*
+      - --rpc.gascap=10000000
+      - --rpc.txfeecap=10
+      - --rpc.batch-request-limit=500
+      ##- --vm.mode=archive            # 存档模式（记录所有交易细节）
+      ##- --vm.evm=debug               (支持DEBUG)
+      - --vmdebug=true
+      - --log.rotate 
+      - --log.maxsize=50 
+      - --log.maxage=7 
+      - --log.compress
+      - --cache=2048
+      - --cache.database=30
+      - --cache.trie=25
+      - --db.engine=pebble
+      - --config=/data/config.toml
+      
+    networks:
+      evm_net:
+        ipv4_address: 172.16.238.15  # 固定IP（保证节点稳定互联）
+        aliases:  [node5]
+```
+
+
 
 
 
@@ -1074,7 +1235,47 @@ services:
 
 
 
+### 其他
 
+#### python
+
+1. 更新包管理器
+
+```bash
+
+sudo apt update
+sudo apt upgrade
+```
+
+2. 安装 Python3 和 pip（Python 包管理器）
+
+```bash
+sudo apt install python3 python3-pip -y
+```
+
+3. 验证安装
+
+```bash
+python3 --version
+pip3 --version
+```
+
+测试ws
+
+```python
+import websocket
+
+headers = {
+    "Origin": "http://localhost"
+}
+
+ws = websocket.WebSocket()
+ws.connect("ws://172.16.238.15:8546", header=headers)
+
+ws.send('{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}')
+print(ws.recv())
+ws.close()
+```
 
 
 

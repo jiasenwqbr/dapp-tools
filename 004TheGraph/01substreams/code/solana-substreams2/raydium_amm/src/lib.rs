@@ -60,6 +60,22 @@ fn db_out(block: Block) -> Result<DatabaseChanges, substreams::errors::Error> {
 
     Ok(database_changes)
 }
+#[substreams::handlers::map]
+fn raydium_meta_out(block: Block) -> Result<DatabaseChanges, substreams::errors::Error> {
+    let mut database_changes: DatabaseChanges = Default::default();
+    let transactions: Vec<RaydiumAmmTransactionEvents> = parse_block(&block);
+    let block_number = block.slot;
+    transform_block_rayduim_meta_to_database_changes(&mut database_changes, transactions, block_number);
+    Ok(database_changes)
+}
+
+fn transform_block_rayduim_meta_to_database_changes(
+    changes: &mut DatabaseChanges,
+    transactions: Vec<RaydiumAmmTransactionEvents>,
+    block_number: u64,){
+
+}
+
 fn transform_block_meta_to_database_changes(
     changes: &mut DatabaseChanges,
     transactions: Vec<RaydiumAmmTransactionEvents>,
