@@ -66,6 +66,13 @@ fn raydium_meta_out(block: Block) -> Result<DatabaseChanges, substreams::errors:
     let transactions: Vec<RaydiumAmmTransactionEvents> = parse_block(&block);
     let block_number = block.slot;
     transform_block_rayduim_meta_to_database_changes(&mut database_changes, transactions, block_number);
+    let spl_transactions = crate::spl_token_substream::parse_block(&block);
+    let block_time = match   &block.block_time {
+        Some(val) => val.timestamp,
+        None => 0,
+    };
+    crate::spl_token_substream::db::transform_block_meta_to_spl_database_changes(&mut database_changes, spl_transactions.unwrap(), block_number,block_time);
+
     Ok(database_changes)
 }
 
@@ -73,8 +80,160 @@ fn transform_block_rayduim_meta_to_database_changes(
     changes: &mut DatabaseChanges,
     transactions: Vec<RaydiumAmmTransactionEvents>,
     block_number: u64,){
+        for (i, transaction) in transactions.iter().enumerate() {
+            let events  = &transaction.events;
+            for (j, event) in events.iter().enumerate(){
+                if let Some(inner_event) = &event.event{
+                    let block_time = &transaction.block_time;
+                    let signature = &transaction.signature;
+                    let transaction_index: &String = &transaction.transaction_index;
+                    match inner_event {
+                        Event::Initialize(initialize_event) => {
+                            handle_initialize_event(
+                                block_time,
+                                signature,
+                                transaction_index,
+                                block_number,
+                                (i * j + j).try_into().unwrap(),
+                                initialize_event,
+                                changes
+                            );
+                        },
+                        Event::PumpfunCreate(pumpfun_create_event) => {
+                            handle_pumpfun_create_event(
+                                block_time,
+                                signature,
+                                transaction_index,
+                                block_number,
+                                (i * j + j).try_into().unwrap(),
+                                pumpfun_create_event,
+                                changes
+                            );
+                        },
+                        _ => {}
+                    }
+
+                }
+            }
+        }
+}
+
+fn handle_initialize_event(
+    block_time:&String,
+    signature:&String,
+    transaction_index:&String,
+    block_number:u64,
+    counter:u64,
+    initialize_event:&InitializeEvent,
+    changes:&mut DatabaseChanges,
+){
+    let amm = &initialize_event.amm;
+    let coin_init_amount = &initialize_event.coin_init_amount;
+    let coin_mint = &initialize_event.coin_mint;
+    let lp_init_amount = &initialize_event.lp_init_amount;
+    let lp_mint = &initialize_event.lp_mint;
+    let binding = String::new();
+    let market = match &initialize_event.market {
+        Some(val) => val,
+        None => &binding,
+    };
+    let nonce = &initialize_event.nonce;
+    let pc_init_amount = &initialize_event.pc_init_amount;
+    let pc_mint = &initialize_event.pc_mint;
+    let user = &initialize_event.user;
+    let zero: u64 = 0;
+    let user_coin_pre_balance = match &initialize_event.user_coin_pre_balance {
+        Some(val) => val,
+        None => &zero,
+    };
+    let user_pc_pre_balance =  match &initialize_event.user_pc_pre_balance {
+        Some(val) => val,
+        None => &zero,
+    };
+    let mut composite_key: HashMap<String, String> = HashMap::new();
+    composite_key.insert(
+        "id".to_string(),
+        format!(
+            "{}_{}_{}_{}_{}",
+            signature, counter, transaction_index, block_number, amm
+        ),
+    );
+    changes
+        .push_change_composite(
+            "solana_sunstreams_raydium_pair_initialize",
+            composite_key,
+            1,
+            Operation::Create,
+        )
+        .change("signature", (None, signature))
+        .change("block_time", (None,block_time))
+        .change("block_number", (None,block_number))
+        .change("transaction_index", (None,transaction_index))
+        .change("amm", (None,amm))
+        .change("initialize_user", (None,user))
+        .change("pc_init_amount", (None,*pc_init_amount))
+        .change("coin_init_amount", (None,*coin_init_amount))
+        .change("lp_init_amount", (None,*lp_init_amount))
+        .change("pc_mint", (None,pc_mint))
+        .change("coin_mint", (None,coin_mint))
+        .change("lp_mint", (None,lp_mint))
+        .change("nonce", (None,*nonce))
+        .change("market", (None,market))
+        .change("user_pc_pre_balance", (None,*user_pc_pre_balance))
+        .change("user_coin_pre_balance", (None,*user_coin_pre_balance));
+}
+
+fn handle_pumpfun_create_event(
+    block_time:&String,
+    signature:&String,
+    transaction_index:&String,
+    block_number:u64,
+    counter:u64,
+    pumpfun_create_event:&PumpfunCreateEvent,
+    changes:&mut DatabaseChanges,
+){
+    let associated_bonding_curve = &pumpfun_create_event.associated_bonding_curve;
+    let bonding_curve  = &pumpfun_create_event.bonding_curve;
+    let metadata = &pumpfun_create_event.metadata;
+    let mint = &pumpfun_create_event.mint;
+    let name = &pumpfun_create_event.name;
+    let symbol = &pumpfun_create_event.symbol;
+    let uri = &pumpfun_create_event.uri;
+    let user = &pumpfun_create_event.user;
+
+    let mut composite_key: HashMap<String, String> = HashMap::new();
+    composite_key.insert(
+        "id".to_string(),
+        format!(
+            "{}_{}_{}_{}_{}",
+            signature, counter, transaction_index, block_number, mint
+        ),
+    );
+    changes
+        .push_change_composite(
+            "solana_raydium_substreams_pump_fun_create",
+            composite_key,
+            1,
+            Operation::Create,
+        )
+        .change("signature", (None, signature))
+        .change("block_time", (None,block_time))
+        .change("block_number", (None,block_number))
+        .change("transaction_index", (None,transaction_index))
+        .change("fun_name", (None,name))
+        .change("symbol", (None,symbol))
+        .change("uri", (None,uri))
+        .change("mint", (None,mint))
+        .change("bonding_curve", (None,bonding_curve))
+        .change("associated_bonding_curve", (None,associated_bonding_curve))
+        .change("metadata", (None,metadata))
+        .change("user", (None,user));
+
+
 
 }
+
+
 
 fn transform_block_meta_to_database_changes(
     changes: &mut DatabaseChanges,

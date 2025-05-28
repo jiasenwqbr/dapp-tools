@@ -149,6 +149,44 @@ pub fn transform_block_meta_to_database_changes(
         }
 }
 
+pub fn transform_block_meta_to_spl_database_changes(
+    changes: &mut DatabaseChanges,
+    spl_transactions: Vec<SplTokenTransactionEvents>, 
+    block_number: u64,
+    block_time: i64,
+    ){
+        for (spl_index,spl_token_transaction_event) in spl_transactions.iter().enumerate(){
+            let events = &spl_token_transaction_event.events;
+            let signature = &spl_token_transaction_event.signature;
+            for (spl_token_event_index,spl_token_event) in events.iter().enumerate(){
+                if let Some(event) = &spl_token_event.event {
+                    match event {
+                        crate::pb::spl_token::spl_token_event::Event::InitializeMint(initialize_mint_event) => handle_initialize_mint_event(
+                            block_number,
+                            block_time,
+                            signature,
+                            spl_index,
+                            spl_token_event_index,
+                            initialize_mint_event,
+                            changes,
+                        ),
+                        crate::pb::spl_token::spl_token_event::Event::InitializeAccount(initialize_account_event) => handle_initialize_account_event(
+                            block_number,
+                            block_time,
+                            signature,
+                            spl_index,
+                            spl_token_event_index,
+                            initialize_account_event,
+                            changes,
+                        ),
+                        _ => {},
+                    }
+                }
+            }
+
+        }
+    }
+
 fn handle_transfer_event(
     block_number:u64,
     block_time:i64,
