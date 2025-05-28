@@ -38,6 +38,7 @@ create table IF NOT EXISTS solana_raydium_meta.solana_raydium_substreams_pump_fu
     bonding_curve text,
     associated_bonding_curve text,
     metadata text,
+    user text,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
