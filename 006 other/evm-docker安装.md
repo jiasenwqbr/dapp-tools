@@ -152,7 +152,7 @@ mkdir -p {node0,node1,node2,node3,node4}/data/geth
 
 ```shell
 mkdir -p /env/evm/ && chmod 700 /env/evm/
-echo "J8$qL!eP5r#oX2@vD" > /env/evm/password
+echo "11111" > /env/evm/password
 chmod 400 /env/evm/password
 ```
 
@@ -641,7 +641,7 @@ docker exec -it node0  geth attach /data/geth.ipc
 
 ```shell
 docker-compose logs -f
-docker-compose logs -f node0
+docker-compose logs -f --tail 50 node0
 docker-compose logs --tail=100 node0
 ```
 
@@ -773,7 +773,7 @@ function watchBlocks() {
 docker exec -it <dockerName> /bin/bash
 ```
 
-
+docker exec -it   /bin/bash
 
 #### 查看各个节点区块
 
@@ -848,7 +848,8 @@ docker run -d --name nginx-rpc-proxy -p 80:80  -v /blockchain/eth/nginx/nginx.co
 curl -X POST \
   -H "Content-Type: application/json" \
   --data '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}' \
-  http://localhost:8543
+  https://chain.pijswap.com
+
 ```
 
 ```
@@ -864,7 +865,7 @@ curl --include \
      --header "Upgrade: websocket" \
      --header "Sec-WebSocket-Key: SGVsbG8sIHdvcmxkIQ==" \
      --header "Sec-WebSocket-Version: 13" \
-     http://172.16.238.15:8546
+     http://127.0.0.1:8546
 ```
 
 

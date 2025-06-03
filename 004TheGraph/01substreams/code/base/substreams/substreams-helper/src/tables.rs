@@ -104,7 +104,7 @@ impl Tables {
         for (table, rows) in self.tables.iter_mut() {
             for (pk, row) in rows.pks.iter_mut() {
                 // Map the row.operation into an EntityChange.Operation
-                let mut change = EntityChange::new(table, pk, 0, row.operation);
+                let mut change: EntityChange = EntityChange::new(table, pk, 0, row.operation);
                 for (field, value) in row.columns.iter_mut() {
                     change.fields.push(Field {
                         name: field.clone(),

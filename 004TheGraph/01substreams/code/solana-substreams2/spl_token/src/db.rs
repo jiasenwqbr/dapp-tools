@@ -170,15 +170,15 @@ pub fn transform_block_meta_to_spl_database_changes(
                             initialize_mint_event,
                             changes,
                         ),
-                        crate::pb::spl_token::spl_token_event::Event::InitializeAccount(initialize_account_event) => handle_initialize_account_event(
-                            block_number,
-                            block_time,
-                            signature,
-                            spl_index,
-                            spl_token_event_index,
-                            initialize_account_event,
-                            changes,
-                        ),
+                        // crate::pb::spl_token::spl_token_event::Event::InitializeAccount(initialize_account_event) => handle_initialize_account_event(
+                        //     block_number,
+                        //     block_time,
+                        //     signature,
+                        //     spl_index,
+                        //     spl_token_event_index,
+                        //     initialize_account_event,
+                        //     changes,
+                        // ),
                         _ => {},
                     }
                 }
