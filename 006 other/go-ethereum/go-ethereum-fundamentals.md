@@ -10,6 +10,14 @@ For example, the pages here will help you to understand the underlying architect
 
 Note also that there is a page explaining common log messages that are often queried on the Geth discord and GitHub - this will help users to interpret the messages displayed to the console and know what actions to take.
 
+本节包含 Geth 基础主题的文档。这些页面将帮助您从用户角度理解 Geth 的工作原理及其底层机制。
+
+在这里，您将找到有关如何管理 Geth 节点及其功能的信息。
+
+例如，这些页面将帮助您了解 Geth 节点的底层架构、如何使用命令行选项以不同的配置启动它、如何同步区块链以及如何管理账户。此外，还有一个关于安全实践的页面，可以帮助您保护 Geth 节点免受攻击。
+
+另请注意，还有一个页面解释了 Geth Discord 和 GitHub 上经常查询的常见日志消息——这将帮助用户解读控制台显示的消息并了解应采取的措施。
+
 #### In this section
 
 - [Node architecture](https://geth.ethereum.org/docs/fundamentals/node-architecture): learn about the three components of an Ethereum node and how they fit together
