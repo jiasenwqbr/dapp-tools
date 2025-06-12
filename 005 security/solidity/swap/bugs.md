@@ -27,3 +27,82 @@ function airdrop(...) public nonReentrant onlyRole(OPERATE_ROLE) { ... }
 ### 7.没有暂停功能
 一旦合约发现有误操作或被攻击，无法快速停用空投功能。
 
+## Bridge.sol
+
+### `deposite` 与 `withdraw` 缺少重入保护
+
+虽然合约继承了 `ReentrancyGuardUpgradeable`，但在 `deposite` 和 `withdraw` 函数上并未添加 `nonReentrant` 修饰符。
+
+攻击者可在中间状态进行二次调用，造成资金重复转移或逻辑异常。
+
+### receiver`、`outgoingAddress`、`feeReceiver` 等地址为 `private
+
+关键地址（接收方、出金方、手续费方）被标记为 `private`，且只有合约内部访问。无法在链上验证合约参数是否被篡改。
+
+解决办法：添加getter方法
+
+```solidity
+ function getReceiver() external view returns (address) {
+        return receiver;
+    }
+
+    function getOutgoingAddress() external view returns (address) {
+        return outgoingAddress;
+    }
+
+    function getFeeReceiver() external view returns (address) {
+        return feeReceiver;
+    }
+```
+
+###  签名范围与 “重复使用” 攻击
+
+用户提交的存款与提取签名中，包含了 `order` 字段，用于标识请求顺序；但合约并未记录已使用的 `order`，也不防止同一签名重复提交。
+
+攻击者可抓包后多次调用同一笔签名请求，造成重复存款或重复提取。
+
+```solidity
+mapping(uint256 => bool) private usedOrders;
+
+// 在 parseData / withdraw 前检查
+require(!usedOrders[order], "Bridge: ORDER_USED");
+usedOrders[order] = true;
+
+```
+
+
+
+### 单笔提取金额上限未防范溢出
+
+`require((usdtAmount + feeAmount) <= 1000 * 1e18)` 用于限制最大值，但两个数相加可能溢出触发异常前检查。
+
+在极端情况下，`usdtAmount + feeAmount` 溢出后反而绕过检查。
+
+```solidity
+require(usdtAmount <= 1000 * 1e18, “value error”);
+require(feeAmount <= 1000 * 1e18 - usdtAmount, “value error”);
+```
+
+
+
+### 缺少紧急停止（Pausable）机制
+
+一旦发现异常（如私钥泄露、签名者被攻破），无法快速暂停合约操作。
+
+继承 `PausableUpgradeable`，在 `deposite`/`withdraw` 中加入：
+
+```solidity
+function deposite(...) public whenNotPaused nonReentrant { … }
+function withdraw(...) public onlyRole(OPERATE_ROLE) whenNotPaused nonReentrant { … }
+```
+
+
+
+### `parseData` 与 `withdraw` 重复签名验证逻辑
+
+两个函数都对签名做了几乎相同的验证，只是 `chainId` 字段多与少。重复代码增加维护与出错风险。
+
+抽取通用的签名验证内部函数，统一处理，并在参数中区分 `chainId` 是否参与哈希。
+
+
+
