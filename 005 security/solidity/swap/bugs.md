@@ -128,7 +128,18 @@ bytes memory bytecode = type(PiJPair).creationCode;
 
 
 
+##### 15.未检查create2是否成功
 
+```solidity
+assembly {
+        pair := create2(0, add(bytecode, 32), mload(bytecode), salt)
+    }
+    require(pair != address(0), "PiJ: PAIR_DEPLOY_FAILED");
+```
+
+
+
+require(pair != address(0)) 保证部署成功，这样能避免零地址污染的漏洞。
 
 
 

@@ -92,17 +92,36 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
     //  价格累计：每次跨区块调用才累积 reserve1/reserve0 与 reserve0/reserve1，供 TWAP 使用。
     // update reserves and, on the first call per block, price accumulators
     function _update(uint balance0, uint balance1, uint112 _reserve0, uint112 _reserve1) private {
-        require(balance0 <= uint112(-1) && balance1 <= uint112(-1), 'UniswapV2: OVERFLOW');
+        //确认余额0和余额1小于等于最大的uint112
+        require(
+            balance0 <= uint112(-1) && balance1 <= uint112(-1),
+            "UniswapV2: OVERFLOW"
+        );
+        //区块时间戳,将时间戳转换为uint32
+        //solium-disable-next-line
         uint32 blockTimestamp = uint32(block.timestamp % 2**32);
+        //计算时间流逝
         uint32 timeElapsed = blockTimestamp - blockTimestampLast; // overflow is desired
+        //如果时间流逝>0 并且 储备量0,1不等于0
         if (timeElapsed > 0 && _reserve0 != 0 && _reserve1 != 0) {
             // * never overflows, and + overflow is desired
-            price0CumulativeLast += uint(UQ112x112.encode(_reserve1).uqdiv(_reserve0)) * timeElapsed;
-            price1CumulativeLast += uint(UQ112x112.encode(_reserve0).uqdiv(_reserve1)) * timeElapsed;
+            //价格0最后累计 += 储备量1 * 2**112 / 储备量0 * 时间流逝
+            //solium-disable-next-line
+            price0CumulativeLast +=
+                uint256(UQ112x112.encode(_reserve1).uqdiv(_reserve0)) *
+                timeElapsed;
+            //价格1最后累计 += 储备量0 * 2**112 / 储备量1 * 时间流逝
+            //solium-disable-next-line
+            price1CumulativeLast +=
+                uint256(UQ112x112.encode(_reserve0).uqdiv(_reserve1)) *
+                timeElapsed;
         }
+        //余额0,1放入储备量0,1
         reserve0 = uint112(balance0);
         reserve1 = uint112(balance1);
+        //更新最后时间戳
         blockTimestampLast = blockTimestamp;
+        //触发同步事件
         emit Sync(reserve0, reserve1);
     }
 
@@ -134,25 +153,39 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
     // 更新储备与手续费状态。
     // this low-level function should be called from a contract which performs important safety checks
     function mint(address to) external lock returns (uint liquidity) {
+        // //获取`储备量0`,`储备量1`
         (uint112 _reserve0, uint112 _reserve1,) = getReserves(); // gas savings
+        // 获取当前合约在token0合约内的余额
         uint balance0 = IERC20(token0).balanceOf(address(this));
+        // 获取当前合约在token1合约内的余额
         uint balance1 = IERC20(token1).balanceOf(address(this));
+        // amount0 = 余额0 - 储备0
         uint amount0 = balance0.sub(_reserve0);
+        // amount1 = 余额1 - 储备1
         uint amount1 = balance1.sub(_reserve1);
 
+        // 返回铸造费开关
         bool feeOn = _mintFee(_reserve0, _reserve1);
+        // 获取totalSupply,必须在此处定义，因为totalSupply可以在mintFee中更新
         uint _totalSupply = totalSupply; // gas savings, must be defined here since totalSupply can update in _mintFee
         if (_totalSupply == 0) {
+            // 流动性 = (数量0 * 数量1)的平方根 - 最小流动性1000
             liquidity = Math.sqrt(amount0.mul(amount1)).sub(MINIMUM_LIQUIDITY);
+            // 在总量为0的初始状态,永久锁定最低流动性
            _mint(address(0), MINIMUM_LIQUIDITY); // permanently lock the first MINIMUM_LIQUIDITY tokens
         } else {
+            // 流动性 = 最小值 (amount0 * _totalSupply / _reserve0) 和 (amount1 * _totalSupply / _reserve1)
             liquidity = Math.min(amount0.mul(_totalSupply) / _reserve0, amount1.mul(_totalSupply) / _reserve1);
         }
+        // //确认流动性 > 0
         require(liquidity > 0, 'UniswapV2: INSUFFICIENT_LIQUIDITY_MINTED');
+        //铸造流动性给to地址
         _mint(to, liquidity);
-
+        // 更新储备量
         _update(balance0, balance1, _reserve0, _reserve1);
-        if (feeOn) kLast = uint(reserve0).mul(reserve1); // reserve0 and reserve1 are up-to-date
+       //如果铸造费开关为true, k值 = 储备0 * 储备1
+        if (feeOn) kLast = uint256(reserve0).mul(reserve1); // reserve0 and reserve1 are up-to-date
+        //触发铸造事件
         emit Mint(msg.sender, amount0, amount1);
     }
 
