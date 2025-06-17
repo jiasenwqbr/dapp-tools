@@ -104,13 +104,9 @@ function withdraw(...) public onlyRole(OPERATE_ROLE) whenNotPaused nonReentrant 
 
 抽取通用的签名验证内部函数，统一处理，并在参数中区分 `chainId` 是否参与哈希。
 
+## PiJFactory.sol
 
-
-### PiJFactory.sol
-
-#### PiJFactory
-
-##### 14.INIT_CODE_PAIR_HASH计算重复
+### 14.INIT_CODE_PAIR_HASH计算重复
 
 其中在常量中已经定义了INIT_CODE_PAIR_HASH这个常量，为什么还要在createPair中重复执行相同的代码？
 
@@ -126,9 +122,7 @@ bytes memory bytecode = type(PiJPair).creationCode;
 
 两段代码重复
 
-
-
-##### 15.未检查create2是否成功
+### 15.未检查create2是否成功
 
 ```solidity
 assembly {
@@ -140,6 +134,45 @@ assembly {
 
 
 require(pair != address(0)) 保证部署成功，这样能避免零地址污染的漏洞。
+
+## PiRouter
+
+### 16.是否应该将 internal virtual  改为private？
+
+```solidity
+function _addLiquidity(
+        address tokenA,
+        address tokenB,
+        uint amountADesired,
+        uint amountBDesired,
+        uint amountAMin,
+        uint amountBMin
+    ) internal virtual returns (uint amountA, uint amountB) {...}
+
+```
+
+```solidity
+ function _addLiquidity(
+        address tokenA,
+        address tokenB,
+        uint256 amountADesired,
+        uint256 amountBDesired,
+        uint256 amountAMin,
+        uint256 amountBMin
+    ) private returns (uint256 amountA, uint256 amountB) {...}
+```
+
+| 修饰符     | 作用域                                   | 继承影响                       |
+| :--------- | :--------------------------------------- | :----------------------------- |
+| `internal` | 当前合约 + 继承合约（子合约）可调用      | 子合约可以覆写或直接调用此函数 |
+| `private`  | 仅在当前合约内部可调用，继承合约不可访问 | 子合约无法调用或覆写此函数     |
+
+**如何选择？**
+
+1. **需要子合约扩展或修改逻辑时** → 用 `internal virtual` 。
+2. **完全私有且无需继承的逻辑** → 用 `private` （更安全且显式）。
+
+
 
 
 

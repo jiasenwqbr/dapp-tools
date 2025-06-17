@@ -194,26 +194,43 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
     // LP Token 换回两侧资产，按持仓比例“拉出”资产。
     // this low-level function should be called from a contract which performs important safety checks
     function burn(address to) external lock returns (uint amount0, uint amount1) {
+        //获取`储备量0`,`储备量1`
         (uint112 _reserve0, uint112 _reserve1,) = getReserves(); // gas savings
+        //带入变量
         address _token0 = token0;                                // gas savings
         address _token1 = token1;                                // gas savings
+        //获取当前合约在token0合约内的余额
         uint balance0 = IERC20(_token0).balanceOf(address(this));
+         //获取当前合约在token1合约内的余额
         uint balance1 = IERC20(_token1).balanceOf(address(this));
+         //从当前合约的balanceOf映射中获取当前合约自身的流动性数量
         uint liquidity = balanceOf[address(this)];
 
+        //返回铸造费开关
         bool feeOn = _mintFee(_reserve0, _reserve1);
+        //获取totalSupply,必须在此处定义，因为totalSupply可以在mintFee中更新
         uint _totalSupply = totalSupply; // gas savings, must be defined here since totalSupply can update in _mintFee
+         //amount0 = 流动性数量 * 余额0 / totalSupply   使用余额确保按比例分配
         amount0 = liquidity.mul(balance0) / _totalSupply; // using balances ensures pro-rata distribution
+        //amount1 = 流动性数量 * 余额1 / totalSupply   使用余额确保按比例分配
         amount1 = liquidity.mul(balance1) / _totalSupply; // using balances ensures pro-rata distribution
+        //确认amount0和amount1都大于0
         require(amount0 > 0 && amount1 > 0, 'UniswapV2: INSUFFICIENT_LIQUIDITY_BURNED');
+        //销毁当前合约内的流动性数量
         _burn(address(this), liquidity);
+        //将amount0数量的_token0发送给to地址
         _safeTransfer(_token0, to, amount0);
+        //将amount1数量的_token1发送给to地址
         _safeTransfer(_token1, to, amount1);
+        //更新balance0
         balance0 = IERC20(_token0).balanceOf(address(this));
+        //更新balance1
         balance1 = IERC20(_token1).balanceOf(address(this));
-
+        //更新储备量
         _update(balance0, balance1, _reserve0, _reserve1);
+        //如果铸造费开关为true, k值 = 储备0 * 储备1
         if (feeOn) kLast = uint(reserve0).mul(reserve1); // reserve0 and reserve1 are up-to-date
+        //触发销毁事件
         emit Burn(msg.sender, amount0, amount1, to);
     }
 
