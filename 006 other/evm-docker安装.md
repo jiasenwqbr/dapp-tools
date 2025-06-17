@@ -1280,6 +1280,49 @@ ws.close()
 
 
 
+#### nginx映射rpc端口
+
+```shell
+docker run -p 80:80 --name mynginx -v D://docker//ngnix//html:/www -v D://docker//ngnix/conf/nginx.conf:/etc/nginx/nginx.conf -v D://docker//ngnix//logs:/wwwlogs -d nginx
+```
+
+
+
+```
+worker_processes 1;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include       mime.types;
+    default_type  application/json;
+
+    sendfile        on;
+    keepalive_timeout  65;
+
+    server {
+        listen       80;
+        server_name  172.20.31.153;
+
+        location / {
+            proxy_pass http://192.168.10.132:8543;  # Docker 容器访问宿主机的方式（Mac/Windows）
+            proxy_http_version 1.1;
+
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+
+            proxy_pass_request_headers on;
+            proxy_pass_request_body on;
+        }
+    }
+}
+
+```
+
 
 
 
