@@ -1,0 +1,20 @@
+[package]
+name = "substreams-erc721"
+version = "0.1.0"
+description = "Messari's standardized substream for erc721"
+edition = "2021"
+repository = "https://github.com/messari/substreams/erc721"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+ethabi = "17.0"
+hex-literal = "0.3.4"
+prost = "^0.11.0"
+substreams.workspace = true
+substreams-ethereum.workspace = true
+
+[build-dependencies]
+anyhow = "1"
+substreams-common = { path = "../common" }

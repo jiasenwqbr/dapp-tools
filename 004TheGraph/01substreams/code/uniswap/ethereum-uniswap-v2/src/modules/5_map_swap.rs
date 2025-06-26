@@ -7,7 +7,7 @@ use substreams_ethereum::{
     pb::eth::v2::{self as eth, Log},
     Event
 };
-use crate::{abi::pool::events::Swap, persistence::persistence};
+use crate::{abi::pool::events::{Swap,Sync}, persistence::persistence};
 
 #[derive(Debug)]
 struct SwapV1 {
@@ -29,8 +29,18 @@ struct SwapV1 {
     transaction_public_key:String,
     transaction_max_fee_per_gas:BigInt,
     transaction_max_priority_fee_per_gas:BigInt
-
 }
+#[derive(Debug)]
+struct SyncV1 {
+    id : String,
+    reserve0 : BigInt,
+    reserve1 : BigInt,
+    pair_address:String,
+    transaction_hash:String,
+    block_number: u64,
+    block_time: u64,
+}
+
 #[substreams::handlers::map]
 pub fn map_swap( params: String,block: eth::Block) -> Result<DatabaseChanges, substreams::errors::Error> {
     let block_number = block.number;
@@ -43,8 +53,11 @@ pub fn map_swap( params: String,block: eth::Block) -> Result<DatabaseChanges, su
 
 fn  save_swaps(block_number: u64,block_time: u64,block: &eth::Block,database_changes:&mut DatabaseChanges){
     let mut swaps: Vec<SwapV1> = vec![];
+    let mut syncs: Vec<SyncV1> = vec![];
     for trx in block.transaction_traces.clone() {
         for log in trx.receipt.unwrap().logs {
+            let transaction_hash = &trx.hash;
+            
             if let Some(swap) = extract_swap_event(&log) {
                 // add transation info 
                 let transaction_from = &trx.from;
@@ -57,7 +70,6 @@ fn  save_swaps(block_number: u64,block_time: u64,block: &eth::Block,database_cha
                     None => BigInt::zero(),
                 };
                 let transaction_gas_used = &trx.gas_used;
-                let transaction_hash = &trx.hash;
                 let transaction_hash = Hex::encode(transaction_hash);
                 let transaction_public_key = &trx.public_key;
                 let transaction_public_key = Hex::encode(transaction_public_key);
@@ -98,6 +110,28 @@ fn  save_swaps(block_number: u64,block_time: u64,block: &eth::Block,database_cha
                     transaction_max_priority_fee_per_gas:transaction_max_priority_fee_per_gas.into()
                 });
             }
+
+            // sync 
+            if let Some(sync) = extract_sync_event(&log){
+                let reserve0 = sync.reserve0;
+                let reserve1 = sync.reserve1;
+                let pair_address = Hex::encode(log.address.clone());
+                syncs.push(SyncV1{
+                    id: format!(
+                        "{}_{}_{}",
+                        Hex::encode(log.address.clone()),
+                        Hex::encode(trx.hash.clone()),
+                        log.index
+                    ),
+                    reserve0:reserve0,
+                    reserve1:reserve1,
+                    pair_address:pair_address,
+                    transaction_hash:Hex::encode(transaction_hash),
+                    block_number,
+                    block_time,
+                }); 
+            }
+
         }
     
        
@@ -107,8 +141,13 @@ fn  save_swaps(block_number: u64,block_time: u64,block: &eth::Block,database_cha
     
    
     for swap in swaps {
-        log::info!("sink-sql: {:?}", swap);
+        log::info!("sink-sql-swap: {:?}", swap);
         save_ethereum_block_uniswapv2_swaps(swap, database_changes);
+    }
+
+    for sync in syncs {
+         log::info!("sink-sql-sync: {:?}", sync);
+         save_ethereum_block_uniswapv2_reserves(sync, database_changes);
     }
 }
 
@@ -121,6 +160,15 @@ fn extract_swap_event(log: &Log) -> Option<Swap> {
         None
     }
 }
+
+fn extract_sync_event(log:&Log) -> Option<Sync> {
+    if let Some(event) = Sync::match_and_decode(log) {
+        Some(event)
+    } else {
+        None
+    }
+}
+
 fn save_ethereum_block_uniswapv2_swaps(swap: SwapV1, changes: &mut DatabaseChanges) {
     let mut composite_key: HashMap<String, String> = HashMap::new();
     composite_key.insert("id".to_string(), swap.id);
@@ -150,3 +198,15 @@ fn save_ethereum_block_uniswapv2_swaps(swap: SwapV1, changes: &mut DatabaseChang
         .change("pair_address", (None,swap.pair_address));
 }
 
+fn  save_ethereum_block_uniswapv2_reserves(sync:SyncV1, changes:&mut DatabaseChanges){
+    let mut composite_key: HashMap<String, String> = HashMap::new();
+    composite_key.insert("id".to_string(), sync.id);
+    changes.push_change_composite("ethereum_block_uniswapv2_reserves", composite_key, 1, Operation::Create)
+    .change("reserve0", (None,sync.reserve0))
+    .change("reserve1", (None,sync.reserve1))
+    .change("pair_address", (None,sync.pair_address))
+    .change("transaction_hash", (None,sync.transaction_hash))
+    .change("block_number", (None,sync.block_number))
+    .change("block_time", (None,sync.block_time));
+
+}

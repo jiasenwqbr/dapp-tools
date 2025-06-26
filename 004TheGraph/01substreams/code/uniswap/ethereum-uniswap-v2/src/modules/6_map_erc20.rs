@@ -1,29 +1,25 @@
-
-use ethabi::{Address, Contract, Param, ParamType, Token};
-use substreams::log;
 use std::collections::HashMap;
-use substreams::{prelude::BigInt, Hex};
+
+use substreams::Hex;
 use substreams_database_change::pb::database::{table_change::Operation, DatabaseChanges};
+use substreams_ethereum::{ rpc::RpcBatch};
 use substreams_ethereum::{
-    pb::eth::{ rpc::{RpcCall, RpcCalls}, v2::{self as eth, Log}}, rpc::RpcBatch, Event, Function
+    pb::eth::v2::{self as eth},
 };
-use crate::{abi::{erc20, pool::events::Swap}, persistence::persistence};
+use crate::abi::erc20::functions::{Name,Symbol,Decimals,TotalSupply};
 
 // ERC20 Transfer event signature
 const TRANSFER_EVENT_SIGNATURE: &str = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 
-
 #[substreams::handlers::map]
-pub fn map_erc20( params: String,block: eth::Block) -> Result<DatabaseChanges, substreams::errors::Error> {
+pub fn map_erc20(block: eth::Block) -> Result<DatabaseChanges, substreams::errors::Error> {
     let block_number = block.number;
-    let block_time = block.timestamp_seconds();
     let mut database_changes: DatabaseChanges = Default::default();
-
-    // let mut tokens = vec![];
-
     // Track seen tokens to avoid duplicates
     let mut seen_tokens = std::collections::HashSet::new();
     for transaction in block.transaction_traces {
+         // let mut tokens = vec![];
+        
         for log in transaction.receipt.unwrap().logs{
             if log.topics.get(0).map(|t| t.as_slice()) == Some(Hex::decode(TRANSFER_EVENT_SIGNATURE).unwrap().as_slice()) {
                 let token_address = Hex::encode(&log.address);
@@ -32,68 +28,92 @@ pub fn map_erc20( params: String,block: eth::Block) -> Result<DatabaseChanges, s
                 }
                 seen_tokens.insert(token_address.clone());
 
-                // Create batch RPC calls to get token info
-                let mut batch = RpcBatch::new();
-                
-               
-               
-            }
+                let batch = RpcBatch::new();
+                let responses = batch.add(Name{}, log.address.clone())
+                .add(Symbol{}, log.address.clone())
+                .add(Decimals{}, log.address.clone())
+                .add(TotalSupply{}, log.address.clone())
+                .execute()
+                .unwrap()
+                .responses;
 
+                let mut name = String::new();
+                match substreams_ethereum::rpc::RpcBatch::decode::<_,Name>(&responses[0]) {
+                    Some(decode_name) => {
+                        name = decode_name.to_string();
+                        substreams::log::debug!("decode_name ok: {}", name);
+                    },
+                    None => {
+                        substreams::log::debug!("failed to get name");
+                    },
+                }
+               
+                let mut symbol= String::new();
+                match substreams_ethereum::rpc::RpcBatch::decode::<_,Decimals>(&responses[1]) {
+                    Some(decoded_symbol) => {
+                        symbol = decoded_symbol.to_string();
+                        substreams::log::debug!("decoded_decimals ok: {}", symbol);
+                    }
+                    None => {
+                        substreams::log::debug!("failed to get symbol");
+                    }
+                };
+
+                let mut decimals = u64::default();
+                match substreams_ethereum::rpc::RpcBatch::decode::<_,Decimals>(&responses[2]) {
+                    Some(decoded_decimals) => {
+                        decimals = decoded_decimals.to_u64();
+                        substreams::log::debug!("decoded_decimals ok: {}", decimals);
+                    }
+                    None => {
+                        substreams::log::debug!("failed to get decimals");
+                    }
+                };
+
+                let mut total_supply = String::new();
+                match substreams_ethereum::rpc::RpcBatch::decode::<_,TotalSupply>(&responses[3]) {
+                    Some(decoded_total_supply) => {
+                        total_supply = decoded_total_supply.to_string();
+                        substreams::log::debug!("decoded_total_supply ok: {}", total_supply);
+                    },
+                    None => {
+                         substreams::log::debug!("failed to get total_supply");
+                    },
+                }
+                let transaction_hash = Hex::encode(&transaction.hash);
+
+
+                let id = format!("{}_{}_{}",block_number,transaction_hash,Hex::encode(&log.address));
+
+                save_erc20(
+                    id,
+                    name,
+                    symbol,
+                    decimals,
+                    total_supply,
+                    &mut database_changes
+                );
+            }
         }
     }
-
-
 
     Ok(database_changes)
 }
 
-// Helper function to parse string responses
-fn parse_string_response(response: &serde_json::Value) -> String {
-    if let Some(result) = response.get("result") {
-        if let Some(hex_str) = result.as_str() {
-            if let Ok(bytes) = Hex::decode(hex_str.trim_start_matches("0x")) {
-                // String data starts at byte 64 (32 bytes for offset + 32 bytes for length)
-                if bytes.len() >= 64 {
-                    let len = u32::from_be_bytes(bytes[32..36].try_into().unwrap()) as usize;
-                    if bytes.len() >= 64 + len {
-                        return String::from_utf8_lossy(&bytes[64..64+len]).to_string();
-                    }
-                }
+
+fn save_erc20(
+            id:String,
+            name:String,
+            symbol:String,
+            decimals:u64,
+            total_supply:String,
+            changes:&mut DatabaseChanges
+            ){
+                let mut composite_key: HashMap<String, String> = HashMap::new();
+                composite_key.insert("id".to_string(), id);
+                changes.push_change_composite("ethereum_block_erc20", composite_key, 1, Operation::Create)
+                .change("token_name", (None,name))
+                .change("token_symbol", (None,symbol))
+                .change("token_decimals", (None,decimals))
+                .change("total_supply", (None,total_supply));
             }
-        }
-    }
-    "".to_string()
-}
-
-// Helper function to parse decimals
-fn parse_decimals_response(response: &serde_json::Value) -> u32 {
-    if let Some(result) = response.get("result") {
-        if let Some(hex_str) = result.as_str() {
-            if let Ok(bytes) = Hex::decode(hex_str.trim_start_matches("0x")) {
-                if !bytes.is_empty() {
-                    return bytes[bytes.len() - 1] as u32;
-                }
-            }
-        }
-    }
-    0
-}
-
-// Helper function to parse uint256 responses
-fn parse_uint_response(response: &serde_json::Value) -> String {
-    if let Some(result) = response.get("result") {
-        if let Some(hex_str) = result.as_str() {
-            return hex_str.trim_start_matches("0x").to_string();
-        }
-    }
-    "0".to_string()
-}
-
-struct ERC20Token{
-    address : String,
-    name :String,
-    symbol:String,
-    decimals:u32,
-    total_supply : String
-}
-

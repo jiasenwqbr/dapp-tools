@@ -1,0 +1,66 @@
+specVersion: v0.1.0
+package:
+  name: "erc20_price_substreams"
+  version: v0.1.0
+
+imports:
+  eth: https://github.com/streamingfast/sf-ethereum/releases/download/v0.10.2/ethereum-v0.10.4.spkg
+
+protobuf:
+  files:
+    - erc20.proto
+    - chainlink.proto
+    - erc20_price.proto
+    - uniswap.proto
+  importPaths:
+    - ./proto/v1
+    - ../common/proto
+
+binaries:
+  default:
+    type: wasm/rust-v1
+    file: ../target/wasm32-unknown-unknown/release/erc20_price_substreams.wasm
+
+modules:
+  - name: map_eth_price
+    kind: map
+    initialBlock: 13000000
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+    output:
+      type: proto:messari.erc20_price.v1.Erc20Prices
+
+  - name: store_chainlink_aggregator
+    kind: store
+    initialBlock: 10040530
+    updatePolicy: set_if_not_exists
+    valueType: proto:messari.chainlink.v1.Aggregator
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+
+  - name: store_chainlink_price
+    kind: store
+    initialBlock: 10040530
+    updatePolicy: set
+    valueType: proto:messari.erc20_price.v1.Erc20Price
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+      - store: store_chainlink_aggregator
+  
+  - name: store_pair_created_events
+    kind: store
+    initialBlock: 10040530
+    updatePolicy: set_if_not_exists
+    valueType: proto:messari.uniswap.v1.PairCreatedEvent
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+  
+  - name: store_uniswap_price
+    kind: store
+    initialBlock: 10040530
+    updatePolicy: set
+    valueType: proto:messari.erc20_price.v1.Erc20Price
+    inputs:
+      - source: sf.ethereum.type.v2.Block
+      - store: store_chainlink_price
+      - store: store_pair_created_events
