@@ -175,7 +175,27 @@ create table IF NOT EXISTS ethereum_uniswap_v2.ethereum_block_uniswapv2_pairs(
     updated_at TIMESTAMP WITH TIME ZONE
 );
 
+-- block erc20
+create table IF NOT EXISTS  ethereum_block_erc20(
+    id text primary key,
+    token_name text,
+    token_symbol text,
+    token_decimals bigint,
+    total_supply text,
+     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
 
+-- ethereum_block_uniswapv2_substream_pairs
+create table IF NOT EXISTS ethereum_uniswap_v2.ethereum_block_uniswapv2_substream_pairs(
+     id text primary key,
+     pair_address text,
+     token0_address text,
+     token1_address text,
+     transaction_hash text,
+     block_number bigint,
+     block_time bigint,
+     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
 
 
 

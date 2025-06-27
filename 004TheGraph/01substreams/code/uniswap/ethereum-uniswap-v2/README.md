@@ -1,5 +1,6 @@
 ## start
 
+make
 
 ## doc
 

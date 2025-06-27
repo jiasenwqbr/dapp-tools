@@ -7,7 +7,7 @@ use substreams_ethereum::{
     pb::eth::v2::{self as eth, Log},
     Event
 };
-use crate::{abi::pool::events::{Swap,Sync}, persistence::persistence};
+use crate::{abi::{factory::events::PairCreated, pool::events::{Swap,Sync}}, persistence::persistence};
 
 #[derive(Debug)]
 struct SwapV1 {
@@ -40,6 +40,16 @@ struct SyncV1 {
     block_number: u64,
     block_time: u64,
 }
+#[derive(Debug)]
+struct PairV1 {
+    id : String,
+    pair_address : String,
+    token0_address : String,
+    token1_address : String,
+    transaction_hash:String,
+    block_number: u64,
+    block_time: u64,
+}
 
 #[substreams::handlers::map]
 pub fn map_swap( params: String,block: eth::Block) -> Result<DatabaseChanges, substreams::errors::Error> {
@@ -54,6 +64,7 @@ pub fn map_swap( params: String,block: eth::Block) -> Result<DatabaseChanges, su
 fn  save_swaps(block_number: u64,block_time: u64,block: &eth::Block,database_changes:&mut DatabaseChanges){
     let mut swaps: Vec<SwapV1> = vec![];
     let mut syncs: Vec<SyncV1> = vec![];
+    let mut pairs:Vec<PairV1> = vec![];
     for trx in block.transaction_traces.clone() {
         for log in trx.receipt.unwrap().logs {
             let transaction_hash = &trx.hash;
@@ -132,6 +143,26 @@ fn  save_swaps(block_number: u64,block_time: u64,block: &eth::Block,database_cha
                 }); 
             }
 
+            // paircreated
+            if let Some(pair) = extract_pair_create_event(&log){
+                let pair_address =  Hex::encode(pair.pair);
+                let token0_address = Hex::encode(pair.token0);
+                let token1_address = Hex::encode(pair.token1);
+
+                pairs.push(PairV1 { id: format!(
+                        "{}_{}_{}",
+                        Hex::encode(log.address.clone()),
+                        Hex::encode(trx.hash.clone()),
+                        log.index
+                    ), 
+                    pair_address: pair_address, 
+                    token0_address: token0_address,
+                    token1_address: token1_address, 
+                    transaction_hash: Hex::encode(transaction_hash),
+                    block_number: block_number, 
+                    block_time: block_time });
+            }
+
         }
     
        
@@ -149,6 +180,11 @@ fn  save_swaps(block_number: u64,block_time: u64,block: &eth::Block,database_cha
          log::info!("sink-sql-sync: {:?}", sync);
          save_ethereum_block_uniswapv2_reserves(sync, database_changes);
     }
+
+    for pair in pairs {
+        log::info!("sink-pair-created:{:?}",pair);
+        save_ethereum_block_uniswapv2_pairs(pair,database_changes);
+    }
 }
 
 fn extract_swap_event(log: &Log) -> Option<Swap> {
@@ -163,6 +199,14 @@ fn extract_swap_event(log: &Log) -> Option<Swap> {
 
 fn extract_sync_event(log:&Log) -> Option<Sync> {
     if let Some(event) = Sync::match_and_decode(log) {
+        Some(event)
+    } else {
+        None
+    }
+}
+
+fn extract_pair_create_event(log:&Log) -> Option<PairCreated> {
+    if let Some(event) = PairCreated::match_and_decode(log){
         Some(event)
     } else {
         None
@@ -208,5 +252,18 @@ fn  save_ethereum_block_uniswapv2_reserves(sync:SyncV1, changes:&mut DatabaseCha
     .change("transaction_hash", (None,sync.transaction_hash))
     .change("block_number", (None,sync.block_number))
     .change("block_time", (None,sync.block_time));
+
+}
+
+fn save_ethereum_block_uniswapv2_pairs(pair:PairV1,changes:&mut DatabaseChanges){
+    let mut composite_key: HashMap<String, String> = HashMap::new();
+    composite_key.insert("id".to_string(), pair.id);
+    changes.push_change_composite("ethereum_block_uniswapv2_substream_pairs", composite_key, 1, Operation::Create)
+    .change("pair_address", (None,pair.pair_address))
+    .change("token0_address", (None,pair.token0_address))
+    .change("token1_address", (None,pair.token1_address))
+    .change("transaction_hash", (None,pair.transaction_hash))
+    .change("block_number", (None,pair.block_number))
+    .change("block_time", (None,pair.block_time));
 
 }
