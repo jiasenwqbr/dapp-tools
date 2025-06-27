@@ -57,7 +57,7 @@ pub fn map_swap( params: String,block: eth::Block) -> Result<DatabaseChanges, su
     let block_time = block.timestamp_seconds();
     let mut database_changes: DatabaseChanges = Default::default();
     save_swaps(block_number,block_time,&block,&mut database_changes);
-    persistence::save_ethereum_block(params,block, &mut database_changes);
+    // persistence::save_ethereum_block(params,block, &mut database_changes);
     Ok(database_changes)
 }
 

@@ -128,6 +128,7 @@ create table IF NOT EXISTS ethereum_uniswap_v2.ethereum_block_uniswapv2_reserves
     block_number bigint,
     block_time bigint,
     transaction_hash text,
+    pair_address text,
     reserve0 numeric,
     reserve1 numeric,
      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP

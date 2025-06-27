@@ -76,7 +76,7 @@ fn get_pools(block: &eth::Block, new_pools: &mut Vec<TransactionChanges>, params
                         value: event.pair.clone(),
                         change: ChangeType::Creation.into(),
                     },
-                ],
+                ],  
                 change: i32::from(ChangeType::Creation),
                 protocol_type: Some(ProtocolType {
                     name: params.protocol_type_name.to_string(),

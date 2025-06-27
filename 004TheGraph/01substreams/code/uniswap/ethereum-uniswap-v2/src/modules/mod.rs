@@ -16,3 +16,6 @@ mod map_swaps;
 
 #[path = "6_map_erc20.rs"]
 mod map_erc20;
+
+#[path = "7_map_erc20_test.rs"]
+mod map_erc20_test;
