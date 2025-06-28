@@ -58,6 +58,7 @@ contract UniswapV2Pair is IUniswapV2Pair, UniswapV2ERC20 {
     }
 
     // 安全转账 用低级 call 而不 transfer/approve，兼容各种 ERC20 实现。
+    // 兼容所有可能“不标准”的 ERC20 合约实现，防止调用失败或资金丢失
     function _safeTransfer(address token, address to, uint value) private {
         (bool success, bytes memory data) = token.call(abi.encodeWithSelector(SELECTOR, to, value));
         require(success && (data.length == 0 || abi.decode(data, (bool))), 'UniswapV2: TRANSFER_FAILED');
