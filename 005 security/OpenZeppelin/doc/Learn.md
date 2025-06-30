@@ -613,6 +613,546 @@ We’ll use [Chai](https://www.chaijs.com/) assertions for our unit tests, which
 npm install --save-dev @nomicfoundation/hardhat-toolbox
 ```
 
+We will keep our test files in a `test` directory. Tests are best structured by mirroring the [`contracts` directory](https://docs.openzeppelin.com/learn/developing-smart-contracts#first-contract): for each `.sol` file there, create a corresponding test file.
+
+Time to write our first tests! These will test properties of the `Box` contract [from previous guides](https://docs.openzeppelin.com/learn/developing-smart-contracts#box-contract): a simple contract that lets you `retrieve` a value the owner previously `store` d.
+
+Create a `test` directory in your project root. We will save the test as `test/Box.test.js`. Each test `.js` file commonly has the tests for a single contract, and is named after it.
+
+```javascript
+// test/Box.test.js
+// Load dependencies
+const { expect } = require('chai');
+
+// Start test block
+describe('Box', function () {
+  before(async function () {
+    this.Box = await ethers.getContractFactory('Box');
+  });
+
+  beforeEach(async function () {
+    this.box = await this.Box.deploy();
+    await this.box.waitForDeployment();
+  });
+
+  // Test case
+  it('retrieve returns a value previously stored', async function () {
+    // Store a value
+    await this.box.store(42);
+
+    // Test if the returned value is the same one
+    // Note that we need to use strings to compare the 256 bit integers
+    expect((await this.box.retrieve()).toString()).to.equal('42');
+  });
+});
+```
+
+
+
+```
+
+Many books have been written about how to structure unit tests. Check out the Moloch Testing Guide for a set of principles designed for testing Solidity smart contracts.
+```
+
+We are now ready to run our tests!
+
+Running `npx hardhat test` will execute all tests in the `test` directory, checking that your contracts work the way you meant them to:
+
+```bash
+npx hardhat test
+
+
+  Box
+    ✓ retrieve returns a value previously stored
+
+
+  1 passing (578ms)
+```
+
+’s also a very good idea at this point to set up a Continuous Integration service such as [CircleCI](https://circleci.com/) to make your tests run automatically every time you commit your code to GitHub.
+
+#### Performing complex assertions
+
+Many interesting properties of your contracts may be hard to capture, such as:
+
+- verifying that the contract reverts on errors
+- measuring by how much an account’s Ether balance changed
+- checking that the proper events are emitted
+
+We recommend using [Hardhat Chai Matchers](https://hardhat.org/hardhat-chai-matchers/docs/overview) to help you test all of these properties, and [Hardhat Network Helpers](https://hardhat.org/hardhat-network-helpers/docs/overview) for simulating time passing on the blockchain. These tools will let you write powerful assertions without having to worry about the low-level details of the underlying Ethereum libraries.
+
+### Connecting to public test networks
+
+After you have [written your contracts](https://docs.openzeppelin.com/learn/developing-smart-contracts), and [tried them out locally](https://docs.openzeppelin.com/learn/deploying-and-interacting) and [tested them thoroughly](https://docs.openzeppelin.com/learn/writing-automated-tests), it’s time to move to a persistent public testing environment, where you and your beta users can start interacting with your application.
+
+We will use **public testing networks** (aka *testnets*) for this, which are networks that operate similar to the main Ethereum network, but where Ether has no value and is free to acquire - making them ideal for testing your contracts at no cost.
+
+In this guide, we will use our beloved [`Box` contract](https://docs.openzeppelin.com/learn/developing-smart-contracts#box-contract), and deploy it to a testnet, while learning:
+
+- [What test networks are available](https://docs.openzeppelin.com/learn/connecting-to-public-test-networks#testnet-list)
+- [How to set up your project for working on a testnet](https://docs.openzeppelin.com/learn/connecting-to-public-test-networks#connecting-project-to-network)
+- [How to deploy and interact with your testnet contract instances](https://docs.openzeppelin.com/learn/connecting-to-public-test-networks#working-on-testnet)
+
+Remember that deploying to a public test network is a necessary step when developing an Ethereum project. They provide a safe environment for testing that closely mimics the main network - you don’t want to take out your project for a test drive in a network where mistakes will cost you and your users money!
+
+#### Available testnets
+
+There are a number of test networks available for you to choose, each with their own characteristics. The recommended network for testing decentralized applications and smart contracts is Sepolia. (id=11155111)
+
+|      | Each network is identified by a numeric ID. Local networks usually have a large random value, while id=1 is reserved for the main Ethereum network. |
+| ---- | ------------------------------------------------------------ |
+|      |                                                              |
+
+#### Connecting a project to a public network
+
+While you can spin up your own [Ethereum nodes](https://ethereum.org/en/developers/docs/nodes-and-clients/run-a-node/) connected to a testnet, the easiest way to access a testnet is via a public node service such as [Alchemy](https://alchemy.com/) or [Infura](https://infura.io/). Alchemy and Infura provide access to public nodes for all testnets and the main network, via both free and paid plans.
+
+|      | We say a node is *public* when it can be accessed by the general public, and manages no accounts. This means that it can reply to queries and relay signed transactions, but cannot sign transactions on its own. |
+| ---- | ------------------------------------------------------------ |
+|      |                                                              |
+
+In this guide we will use Alchemy, though you can use [Infura](https://infura.io/), or another public node provider of your choice.
+
+Head over to [Alchemy](https://dashboard.alchemyapi.io/signup?referral=53fcee38-b894-4d5f-bd65-885d241f8d29) (includes referral code), sign up, and jot down your assigned API key - we will use it later to connect to the network.
+
+#### Creating a new account
+
+To send transactions in a testnet, you will need a new Ethereum account. There are many ways to do this: here we will use the `mnemonics` package, which will output a fresh mnemonic (a set of 12 words) we will use to derive our accounts:
+
+``` bash
+npx mnemonics
+drama film snack motion ...
+```
+
+Make sure to keep your mnemonic secure. Do not commit secrets to version control. Even if it is just for testing purposes, there are still malicious users out there who will wreak havoc on your testnet deployment for fun!
+
+#### Configuring the network
+
+Since we are using public nodes, we will need to sign all our transactions locally. We will configure the network with our mnemonic and an Alchemy endpoint.
+
+```
+This part assumes you have already set up a project. If you haven’t, head over to the guide on Setting up a Solidity project.
+```
+
+We need to update our configuration file with a new network connection to the testnet. Here we will use Sepolia, but you can use whichever you want:
+
+```
+// hardhat.config.js
++ const { alchemyApiKey, mnemonic } = require('./secrets.json');
+...
+  module.exports = {
++    networks: {
++     sepolia: {
++       url: `https://eth-sepolia.g.alchemy.com/v2/${alchemyApiKey}`,
++       accounts: { mnemonic: mnemonic },
++     },
++   },
+...
+};
+```
+
+Note in the first line that we are loading the project id and mnemonic from a `secrets.json` file, which should look like the following, but using your own values. Make sure to `.gitignore` it to ensure you don’t commit secrets to version control!
+
+```json
+{
+  "mnemonic": "drama film snack motion ...",
+  "alchemyApiKey": "JPV2..."
+}
+```
+
+```
+
+Instead of a secrets.json file, you can use whatever secret-management solution you like for your project. A popular and simple option is to use dotenv for injecting secrets as environment variables.
+```
+
+We can now test out that this configuration is working by listing the accounts we have available for the Sepolia network. Remember that yours will be different, as they depend on the mnemonic you used.
+
+```bash
+$ npx hardhat console --network sepolia
+Welcome to Node.js v20.17.0.
+Type ".help" for more information.
+> accounts = (await ethers.getSigners()).map(signer => signer.address)
+[
+  '0x6B1c3A2f2160a7Cb2ebc7Fc861b8dB71476C30E7',
+  '0xC1310ade58A75E6d4fCb8238f9559188Ea3808f9',
+...
+]
+```
+
+We can also test the connection to the node, by querying our account balance.
+
+```bash
+> (await ethers.provider.getBalance(accounts[0])).toString()
+'0'
+```
+
+Empty! This points to our next task: getting testnet funds so that we can send transactions.
+
+#### Funding the testnet account
+
+Most public testnets have a faucet: a site that will provide you with a small amount of test Ether for free. If you are on Sepolia, head to [Alchemy’s free Sepolia faucet](https://www.alchemy.com/faucets/ethereum-sepolia), [Infura’s free Sepolia faucet](https://www.infura.io/faucet), or [Google’s free Sepolia faucet](https://cloud.google.com/application/web3/faucet/ethereum/sepolia) to get free testETH.
+
+Armed with a funded account, let’s deploy our contracts to the testnet!
+
+#### Working on a testnet
+
+With a project configured to work on a public testnet, we can now finally [deploy our `Box` contract](https://docs.openzeppelin.com/learn/deploying-and-interacting#deploying-a-smart-contract). The command here is exactly the same as if you were on your [local development network](https://docs.openzeppelin.com/learn/deploying-and-interacting#local-blockchain), though it will take a few seconds to run as new blocks are mined.
+
+```bash
+npx hardhat run --network sepolia scripts/deploy.js
+Deploying Box...
+Box deployed to: 0x1b99CCaCea0e4046db618770dEF72180F8138641
+```
+
+That’s it! Your `Box` contract instance will be forever stored in the testnet, and publicly accessible to anyone.
+
+You can see your contract on a block explorer such as [Etherscan](https://etherscan.io/). Remember to access the explorer on the testnet where you deployed your contract, such as [sepolia.etherscan.io](https://sepolia.etherscan.io/) for Sepolia.
+
+You can also interact with your instance as you regularly would, either using the [console](https://docs.openzeppelin.com/learn/deploying-and-interacting#interacting-from-the-console), or [programmatically](https://docs.openzeppelin.com/learn/deploying-and-interacting#interacting-programatically).
+
+```bash
+npx hardhat console --network sepolia
+Welcome to Node.js v20.17.0.
+Type ".help" for more information.
+> const Box = await ethers.getContractFactory('Box');
+undefined
+> const box = await Box.attach('0x1b99CCaCea0e4046db618770dEF72180F8138641');
+undefined
+> await box.store(42);
+{
+  hash: '0x330e331d30ee83f96552d82b7fdfa6156f9f97d549a612eeef7283d18b31d107',
+...
+> (await box.retrieve()).toString()
+'42'
+```
+
+Keep in mind that every transaction will cost some gas, so you will eventually need to top up your account with more funds.
+
+### Upgrading smart contracts
+
+Smart contracts deployed using [OpenZeppelin Upgrades Plugins](https://docs.openzeppelin.com/upgrades-plugins/) can be **upgraded** to modify their code, while preserving their address, state, and balance. This allows you to iteratively add new features to your project, or fix any bugs you may find [in production](https://docs.openzeppelin.com/learn/preparing-for-mainnet).
+
+Throughout this guide, we will learn:
+
+- [Why upgrades are important](https://docs.openzeppelin.com/learn/upgrading-smart-contracts#whats-in-an-upgrade)
+- [Upgrade our Box using the Upgrades Plugins](https://docs.openzeppelin.com/learn/upgrading-smart-contracts#upgrading-a-contract-via-plugins)
+- [Learn how upgrades work under the hood](https://docs.openzeppelin.com/learn/upgrading-smart-contracts#how-upgrades-work)
+- [Learn how to write upgradeable contracts](https://docs.openzeppelin.com/learn/upgrading-smart-contracts#limitations-of-contract-upgrades)
+
+#### What’s in an upgrade
+
+Smart contracts in Ethereum are immutable by default. Once you create them there is no way to alter them, effectively acting as an unbreakable contract among participants.
+
+以太坊中的智能合约默认是不可变的。一旦创建，就无法更改，相当于参与者之间不可破坏的合约。
+
+However, for some scenarios, it is desirable to be able to modify them. Think of a traditional contract between two parties: if they both agreed to change it, they would be able to do so. On Ethereum, they may desire to alter a smart contract to fix a bug they found (which might even lead to a hacker stealing their funds!), to add additional features, or simply to change the rules enforced by it.然而，在某些情况下，能够修改合约是可取的。想象一下双方之间的传统合约：如果他们双方都同意修改合约，他们就可以这么做。在以太坊上，他们可能希望修改智能合约来修复他们发现的漏洞（这甚至可能导致黑客窃取他们的资金！）、添加额外的功能，或者仅仅改变合约强制执行的规则。
+
+Here’s what you’d need to do to fix a bug in a contract you cannot upgrade:
+
+要修复无法升级的合约中的错误，您需要执行以下操作：
+
+1. Deploy a new version of the contract
+2. Manually migrate all state from the old one contract to the new one (which can be very expensive in terms of gas fees!)
+3. Update all contracts that interacted with the old contract to use the address of the new one
+4. Reach out to all your users and convince them to start using the new deployment (and handle both contracts being used simultaneously, as users are slow to migrate)
+
+1. 部署新版本的合约
+2. 手动将所有状态从旧合约迁移到新合约（这可能会产生非常昂贵的 Gas 费用！）
+3. 更新所有与旧合约交互的合约，使其使用新合约的地址
+4. 联系所有用户，说服他们开始使用新部署（并处理两个合约同时使用的情况，因为用户迁移速度较慢）
+
+To avoid going through this mess, we have built contract upgrades directly into our plugins. This allows us to **change the contract code, while preserving the state, balance, and address**. Let’s see it in action.
+
+为了避免这种麻烦，我们在插件中直接内置了合约升级功能。这样我们就可以**更改合约代码，同时保留状态、余额和地址**。让我们来看看具体操作。
+
+#### Upgrading using the Upgrades Plugins
+
+Whenever you deploy a new contract using `deployProxy` in the [OpenZeppelin Upgrades Plugins](https://docs.openzeppelin.com/upgrades-plugins/), that contract instance can be **upgraded** later. By default, only the address that originally deployed the contract has the rights to upgrade it.
+
+`deployProxy` will create the following transactions:
+
+1. Deploy the implementation contract (our `Box` contract)
+2. Deploy the proxy contract and run any initializer function.
+   - The proxy deployment automatically deploys a `ProxyAdmin` contract (the admin for our proxy) in the scenario below.
+
+Let’s see how it works, by deploying an upgradeable version of our `Box` contract, using the same setup as when [we deployed earlier](https://docs.openzeppelin.com/learn/deploying-and-interacting#deploying-a-smart-contract):
+
+```solidity
+// contracts/Box.sol
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract Box {
+    uint256 private _value;
+
+    // Emitted when the stored value changes
+    event ValueChanged(uint256 value);
+
+    // Stores a new value in the contract
+    function store(uint256 value) public {
+        _value = value;
+        emit ValueChanged(value);
+    }
+
+    // Reads the last stored value
+    function retrieve() public view returns (uint256) {
+        return _value;
+    }
+}
+```
+
+We first need to install the Upgrades Plugin.
+
+Install the [Hardhat Upgrades](https://docs.openzeppelin.com/upgrades-plugins/hardhat-upgrades) plugin.
+
+```bash
+npm install --save-dev @openzeppelin/hardhat-upgrades
+```
+
+We then need to configure Hardhat to use our `@openzeppelin/hardhat-upgrades` plugin. To do this add the plugin in your `hardhat.config.js` file as follows.
+
+然后，我们需要配置 Hardhat 以使用我们的 @openzeppelin/hardhat-upgrades 插件。具体操作如下：在 hardhat.config.js 文件中添加该插件。
+
+In order to upgrade a contract like `Box` we need to first deploy it as an upgradeable contract, which is a different deployment procedure than we’ve seen so far. We will initialize our Box contract by calling `store` with the value 42.
+
+With Hardhat, we use [scripts](https://hardhat.org/hardhat-runner/docs/advanced/scripts#writing-scripts-with-hardhat) to deploy upgradeable contracts.
+
+We will create a script to deploy our upgradeable Box contract using [`deployProxy`](https://docs.openzeppelin.com/upgrades-plugins/api-hardhat-upgrades#deploy-proxy). We will save this file as `scripts/deploy_upgradeable_box.js`.
+
+```solidity
+// scripts/deploy_upgradeable_box.js
+const { ethers, upgrades } = require('hardhat');
+
+async function main () {
+  const Box = await ethers.getContractFactory('Box');
+  console.log('Deploying Box...');
+  const box = await upgrades.deployProxy(Box, [42], { initializer: 'store' });
+  await box.waitForDeployment();
+  console.log('Box deployed to:', await box.getAddress());
+}
+
+main();
+```
+
+We can then deploy our upgradeable contract.
+
+Using the `run` command, we can deploy the `Box` contract to the `development` network.
+
+```bash
+npx hardhat run --network localhost scripts/deploy_upgradeable_box.js
+Deploying Box...
+Box deployed to: 0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0
+```
+
+We can then interact with our `Box` contract to `retrieve` the value that we stored during initialization.
+
+We will use the [Hardhat console](https://hardhat.org/guides/hardhat-console.html) to interact with our upgraded `Box` contract.
+
+We need to specify the address of our proxy contract from when we deployed our `Box` contract.
+
+```bash
+$ npx hardhat console --network localhost
+Welcome to Node.js v20.17.0.
+Type ".help" for more information.
+> const Box = await ethers.getContractFactory('Box');
+undefined
+> const box = await Box.attach('0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0');
+undefined
+> (await box.retrieve()).toString();
+'42'
+```
+
+For the sake of the example, let’s say we want to add a new feature: a function that increments the `value` stored in a new version of `Box`.
+
+```solidity
+// contracts/BoxV2.sol
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+contract BoxV2 {
+    // ... code from Box.sol
+
+    // Increments the stored value by 1
+    function increment() public {
+        _value = _value + 1;
+        emit ValueChanged(_value);
+    }
+}
+```
+
+After creating the Solidity file, we can now upgrade the instance we had deployed earlier using the `upgradeProxy` function.
+
+`upgradeProxy` will create the following transactions:
+
+1. Deploy the implementation contract (our `BoxV2` contract)
+2. Call the `ProxyAdmin` to update the proxy contract to use the new implementation.
+
+We will create a script to upgrade our `Box` contract to use `BoxV2` using [`upgradeProxy`](https://docs.openzeppelin.com/upgrades-plugins/api-hardhat-upgrades#upgrade-proxy). We will save this file as `scripts/upgrade_box.js`. We need to specify the address of our proxy contract from when we deployed our `Box` contract.
+
+创建 Solidity 文件后，我们现在可以使用 UpgradeProxy 函数升级之前部署的实例。
+
+UpgradeProxy 将创建以下交易：
+
+部署实现合约（我们的 BoxV2 合约）
+
+调用 ProxyAdmin 函数更新代理合约以使用新的实现。
+
+我们将创建一个脚本，使用 UpgradeProxy 升级 Box 合约以使用 BoxV2。我们将此文件保存为 scripts/upgrade_box.js。我们需要指定部署 Box 合约时代理合约的地址。
+
+```javascript
+// scripts/upgrade_box.js
+const { ethers, upgrades } = require('hardhat');
+
+async function main () {
+  const BoxV2 = await ethers.getContractFactory('BoxV2');
+  console.log('Upgrading Box...');
+  await upgrades.upgradeProxy('0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0', BoxV2);
+  console.log('Box upgraded');
+}
+
+main();
+```
+
+We can then deploy our upgradeable contract.
+
+Using the `run` command, we can upgrade the `Box` contract on the `development` network.
+
+```bash
+npx hardhat run --network localhost scripts/upgrade_box.js
+Compiled 1 Solidity file successfully (evm target: paris).
+Upgrading Box...
+Box upgraded
+```
+
+Done! Our `Box` instance has been upgraded to the latest version of the code, **while keeping its state and the same address as before**. We didn’t need to deploy a new one at a new address, nor manually copy the `value` from the old `Box` to the new one.
+
+Let’s try it out by invoking the new `increment` function, and checking the `value` afterwards:
+
+We need to specify the address of our proxy contract from when we deployed our `Box` contract.
+
+```bash
+npx hardhat console --network localhost
+Welcome to Node.js v20.17.0.
+Type ".help" for more information.
+> const BoxV2 = await ethers.getContractFactory('BoxV2');
+undefined
+> const box = await BoxV2.attach('0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0');
+undefined
+> await box.increment();
+...
+> (await box.retrieve()).toString();
+'43'
+```
+
+That’s it! Notice how the `value` of the `Box` was preserved throughout the upgrade, as well as its address. And this process is the same regardless of whether you are working on a local blockchain, a testnet, or the main network.
+
+Let’s see how the [OpenZeppelin Upgrades Plugins](https://docs.openzeppelin.com/upgrades-plugins/) accomplish this.
+
+#### How upgrades work
+
+*This section will be more theory-heavy than others: feel free to skip over it and return later if you are curious.*
+
+When you create a new upgradeable contract instance, the [OpenZeppelin Upgrades Plugins](https://docs.openzeppelin.com/upgrades-plugins/) actually deploys three contracts:
+
+1. The contract you have written, which is known as the *implementation contract* containing the *logic*.
+2. A *proxy* to the *implementation contract*, which is the contract that you actually interact with.
+3. A *ProxyAdmin* to be the admin of the *proxy*.
+
+当你创建一个新的可升级合约实例时，[OpenZeppelin 升级插件](https://docs.openzeppelin.com/upgrades-plugins/) 实际上会部署三个合约：
+
+1. 你编写的合约，即包含*逻辑*的*实现合约*。
+2. 一个指向*实现合约*的*代理*，也就是你实际与之交互的合约。
+3. 一个*ProxyAdmin*，作为*代理*的管理员。
+
+Here, the *proxy* is a simple contract that just *delegates* all calls to an implementation contract. A *delegate call* is similar to a regular call, except that all code is executed in the context of the caller, not of the callee. Because of this, a `transfer` in the implementation contract’s code will actually transfer the proxy’s balance, and any reads or writes to the contract storage will read or write from the proxy’s own storage.
+
+这里，*代理*是一个简单的合约，它只是将所有调用*委托*给一个实现合约。*委托调用*类似于常规调用，不同之处在于所有代码都在调用方上下文中执行，而不是在被调用方上下文中执行。因此，实现合约代码中的“转账”实际上会转移代理的余额，而对合约存储的任何读写操作都将从代理自身的存储中进行读写。
+
+This allows us to **decouple** a contract’s state and code: the proxy holds the state, while the implementation contract provides the code. And it also allows us to **change** the code by just having the proxy delegate to a different implementation contract.
+
+这使我们能够**解耦**合约的状态和代码：代理保存状态，而实现合约提供代码。并且，它还允许我们只需将代理委托给不同的实现合约即可**更改**代码。
+
+An upgrade then involves the following steps:
+
+1. Deploy the new implementation contract.
+2. Send a transaction to the proxy that updates its implementation address to the new one.
+
+升级包含以下步骤：
+
+1. 部署新的实现合约。
+2. 向代理发送交易，将其实现地址更新为新的地址。
+
+```note
+You can have multiple proxies using the same implementation contract, so you can save gas using this pattern if you plan to deploy multiple copies of the same contract.
+```
+
+Any user of the smart contract always interacts with the proxy, **which never changes its address**. This allows you to roll out an upgrade or fix a bug without requesting your users to change anything on their end - they just keep interacting with the same address as always.
+
+```
+
+If you want to learn more about how OpenZeppelin proxies work, check out Proxies.
+
+```
+
+#### Limitations of contract upgrades 
+
+可升级合约的限制
+
+While any smart contract can be made upgradeable, some restrictions of the Solidity language need to be worked around. These come up when writing both the initial version of contract and the version we’ll upgrade it to.
+
+虽然任何智能合约都可以升级，但需要解决 Solidity 语言的一些限制。这些限制在编写合约的初始版本和升级到的版本时都会出现。
+
+##### Initialization
+
+Upgradeable contracts cannot have a `constructor`. To help you run initialization code, [**OpenZeppelin Contracts**](https://docs.openzeppelin.com/contracts/5.x/) provides the [`Initializable`](https://docs.openzeppelin.com/contracts/5.x/api/proxy#Initializable) base contract that allows you to tag a method as [`initializer`](https://docs.openzeppelin.com/contracts/5.x/api/proxy#Initializable-initializer--), ensuring it can be run only once.
+
+As an example, let’s write a new version of the `Box` contract with an initializer, storing the address of an `admin` who will be the only one allowed to change its contents.
+
+```solidity
+// contracts/AdminBox.sol
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+
+contract AdminBox is Initializable {
+    uint256 private _value;
+    address private _admin;
+
+    // Emitted when the stored value changes
+    event ValueChanged(uint256 value);
+
+    function initialize(address admin) public initializer {
+        _admin = admin;
+    }
+
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() initializer {}
+
+    // Stores a new value in the contract
+    function store(uint256 value) public {
+        require(msg.sender == _admin, "AdminBox: not admin");
+        _value = value;
+        emit ValueChanged(value);
+    }
+
+    // Reads the last stored value
+    function retrieve() public view returns (uint256) {
+        return _value;
+    }
+}
+```
+
+
+
+
+
+
+
+
+
+
+
 
 
 
