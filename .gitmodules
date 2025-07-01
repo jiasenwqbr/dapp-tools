@@ -28,3 +28,9 @@
 [submodule "002basic/022-uniswapv2-p4/lib/solmate"]
 	path = 002basic/022-uniswapv2-p4/lib/solmate
 	url = https://github.com/rari-capital/solmate
+[submodule "005 security/OpenZeppelin/contract-foundry/lib/forge-std"]
+	path = 005 security/OpenZeppelin/contract-foundry/lib/forge-std
+	url = https://github.com/foundry-rs/forge-std
+[submodule "005 security/OpenZeppelin/contract-foundry/lib/openzeppelin-contracts"]
+	path = 005 security/OpenZeppelin/contract-foundry/lib/openzeppelin-contracts
+	url = https://github.com/OpenZeppelin/openzeppelin-contracts
