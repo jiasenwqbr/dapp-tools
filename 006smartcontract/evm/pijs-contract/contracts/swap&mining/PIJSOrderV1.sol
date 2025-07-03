@@ -452,10 +452,10 @@ contract PIJSOrderV1 is
         bytes32 signHash = keccak256(
             abi.encodePacked(
                 "\x19\x01",
-                BEBACK_TYPEHASH,
+                DOMAIN_SEPARATOR,
                 keccak256(
                     abi.encode(
-                        PERMIT_TYPEHASH,
+                        BEBACK_TYPEHASH,
                         orderId
                     )
                 )

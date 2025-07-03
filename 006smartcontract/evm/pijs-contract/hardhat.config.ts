@@ -13,11 +13,11 @@ const config: HardhatUserConfig = {
     ganache: {
       url: "http://127.0.0.1:7545",
       chainId: 1337,
-      accounts: ['0x7ff1783cc0df9b17e6e6178793d673d7f0106e63278020ad199e64977123b987'
-        ,'0xef82edea88b8d23e652c607145fa564da2baec70ae3d91041ca1ebc007709b32'
-        ,'0xdee0d35e86d72447ee55c1cf28a954aea9347d2c837bf8f1f7e5fbc2c6cb91c3'
-        ,'0x18e36fb0981056be4e33f0dab323466c52e729e728e79ddea9712d43b4e2a32c'
-        ,'0xdbebd2c321e215dccac2d0f1f4997ad09031c9e572b871de4ce0e396445b07b4'],
+      accounts: ['0x67e46235d56575ab55fdcaafd40c82833476f00bc5270dca0504193b30a53632'
+        ,'0x60a0db20bc511b00071db794d6bf3ea0261e4ea88688e7841372f854377bfe8a'
+        ,'0x81c71dface80de03b7f659bc6cb3211afe4c2abe78362d847e57b79b8bfe61c8'
+        ,'0x4cff6db8f0a190277cfbe41f112ca1c30aef43f4bea4a191db820ac17bab9caf'
+        ,'0xa53210b0dc3f83a9d586da8347650830c1beb41fd5a1e977bd816713d60ba3be'],
     },
   },
   solidity: {

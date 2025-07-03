@@ -1,6 +1,7 @@
 import { expect } from "chai";
 import { ethers, upgrades } from "hardhat";
 import { PIJSOrderV1 } from "../typechain-types";
+import { network } from "hardhat";
 describe("PIJSOrderV1", () => {
   let orderContract: PIJSOrderV1;
   let owner: any;
@@ -458,13 +459,248 @@ describe("PIJSOrderV1", () => {
           { name: "newEndTimestamp", type: "uint256" },
         ],
       };
-    })
+      const domain = {
+        name: "PIJSOrder",
+        version: "1",
+        chainId: (await ethers.provider.getNetwork()).chainId,
+        verifyingContract: orderContract.address,
+      };
+      const signature = await owner._signTypedData(domain, types, fakeOrder);
+      const data = ethers.utils.defaultAbiCoder.encode(
+        [
+          "uint256",
+          "uint256",
+          "bytes",
+        ],
+        [
+          fakeOrder.orderId,
+          fakeOrder.newEndTimestamp,
+          signature,
+        ]
+      );
+      await expect(
+        orderContract.connect(user1).reNewOrder(data, {})
+      ).to.emit(orderContract, "ReNewOrder");
+
+    });
+
+    it("if no order exist",async () => {
+       const fakeOrder = {
+        orderId: 1234,
+        newEndTimestamp: Math.floor(Date.now() / 1000) + 9600,
+      };
+      const types = {
+        Permit: [
+          { name: "orderId", type: "uint256" },
+          { name: "newEndTimestamp", type: "uint256" },
+        ],
+      };
+      const domain = {
+        name: "PIJSOrder",
+        version: "1",
+        chainId: (await ethers.provider.getNetwork()).chainId,
+        verifyingContract: orderContract.address,
+      };
+      const signature = await owner._signTypedData(domain, types, fakeOrder);
+      const data = ethers.utils.defaultAbiCoder.encode(
+        [
+          "uint256",
+          "uint256",
+          "bytes",
+        ],
+        [
+          fakeOrder.orderId,
+          fakeOrder.newEndTimestamp,
+          signature,
+        ]
+      );
+
+      try {
+        await orderContract.connect(user1).reNewOrder(data, {});
+        expect.fail("Expected reNewOrder to revert but it succeeded");
+      } catch (err: any) {
+        // console.log(err);
+        // 捕获 Hardhat 的 revert 错误信息
+        expect(err.message).to.include("PIJSOrder: no order exist");
+      }
+
+    });
+    it("newEndTimestamp is less than the endTimestamp",async () => {
+       const fakeOrder = {
+        orderId: 123,
+        newEndTimestamp: Math.floor(Date.now() / 1000),
+      };
+      const types = {
+        Permit: [
+          { name: "orderId", type: "uint256" },
+          { name: "newEndTimestamp", type: "uint256" },
+        ],
+      };
+      const domain = {
+        name: "PIJSOrder",
+        version: "1",
+        chainId: (await ethers.provider.getNetwork()).chainId,
+        verifyingContract: orderContract.address,
+      };
+      const signature = await owner._signTypedData(domain, types, fakeOrder);
+      const data = ethers.utils.defaultAbiCoder.encode(
+        [
+          "uint256",
+          "uint256",
+          "bytes",
+        ],
+        [
+          fakeOrder.orderId,
+          fakeOrder.newEndTimestamp,
+          signature,
+        ]
+      );
+
+      try {
+        await orderContract.connect(user1).reNewOrder(data, {});
+        expect.fail("Expected reNewOrder to revert but it succeeded");
+      } catch (err: any) {
+        // console.log(err);
+        // 捕获 Hardhat 的 revert 错误信息
+        expect(err.message).to.include("PIJSOrder: newEndTimestamp is invalid");
+      }
+    });
 
 
   });
 
 
+  describe("betBackOrder",async () => {
+    beforeEach(async ()=> {
+       const fakeOrder = {
+        productId: 1,
+        orderId: 1234,
+        userId: 1,
+        purchaseNum: 1,
+        payNum: ethers.utils.parseEther("0.5"),
+        endTimestamp: Math.floor(Date.now() / 1000) + 10,
+        startTimestamp: Math.floor(Date.now() / 1000),
+        userPurchaseLimit: 5,
+        productPurchaseLimit: 10,
+        phase: 1,
+        renewable: 1,
+        anchorCoinNum: 100,
+        anchorCoin: ethers.utils.formatBytes32String("USDT"),
+      };
+      const types = {
+        Permit: [
+          { name: "productId", type: "uint256" },
+          { name: "orderId", type: "uint256" },
+          { name: "userId", type: "uint256" },
+          { name: "phase", type: "uint256" },
+          { name: "purchaseNum", type: "uint256" },
+          { name: "payNum", type: "uint256" },
+          { name: "anchorCoinNum", type: "uint256" },
+          { name: "anchorCoin", type: "bytes32" },
+        ],
+      };
+      const domain = {
+        name: "PIJSOrder",
+        version: "1",
+        chainId: (await ethers.provider.getNetwork()).chainId,
+        verifyingContract: orderContract.address,
+      };
+      const signature = await owner._signTypedData(domain, types, fakeOrder);
+      const data = ethers.utils.defaultAbiCoder.encode(
+        [
+          "uint256",
+          "uint256",
+          "uint256",
+          "uint256",
+          "uint256",
+          "uint256",
+          "uint256",
+          "uint256",
+          "uint256",
+          "uint256",
+          "uint256",
+          "uint256",
+          "bytes32",
+          "bytes",
+        ],
+        [
+          fakeOrder.productId,
+          fakeOrder.orderId,
+          fakeOrder.userId,
+          fakeOrder.purchaseNum,
+          fakeOrder.payNum,
+          fakeOrder.endTimestamp,
+          fakeOrder.startTimestamp,
+          fakeOrder.userPurchaseLimit,
+          fakeOrder.productPurchaseLimit,
+          fakeOrder.phase,
+          fakeOrder.renewable,
+          fakeOrder.anchorCoinNum,
+          fakeOrder.anchorCoin,
+          signature,
+        ]
+      );
+      await  orderContract.connect(user1).makeOrder(data, {
+          value: fakeOrder.payNum,
+           gasLimit: 2_000_000,
+      });
+      
+      console.log("betBackOrder - before each,the balance of the contract is : ",await orderContract.balance());
+    });
+
+    it("betBackOrder,wait 30 second",async () => {
+
+      // 向前增加 30 秒
+      //await network.provider.send("evm_increaseTime", [30]);
+      // 马上挖一个新区块，让时间生效
+      //await network.provider.send("evm_mine");
+     //  await new Promise(resolve => setTimeout(resolve, 30_000)); // 等待 30 秒
+      console.log("Start at", new Date().toISOString());
+      await sleep(20_000);
+      console.log("End at", new Date().toISOString());
+
+      const fakeOrder = {
+        orderId: 1234,
+      };
+      const types = {
+        Permit: [
+          { name: "orderId", type: "uint256" },
+        ],
+      };
+      const domain = {
+        name: "PIJSOrder",
+        version: "1",
+        chainId: (await ethers.provider.getNetwork()).chainId,
+        verifyingContract: orderContract.address,
+      };
+      const signature = await owner._signTypedData(domain, types, fakeOrder);
+      const data = ethers.utils.defaultAbiCoder.encode(
+        [
+          "uint256",
+          "bytes",
+        ],
+        [
+          fakeOrder.orderId,
+          signature,
+        ]
+      );
+
+      await expect(
+        orderContract.connect(user1).betBackOrder(data, {
+           gasLimit: 2_000_000,
+        })
+      ).to.emit(orderContract, "BetBackOrder");
+       console.log("betBackOrder - after : ",await orderContract.balance());
+
+    });
+  });
+
+
 });
+
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 function getFakeSignature(): string {
   return "0x" + "0".repeat(130); // 假签名
