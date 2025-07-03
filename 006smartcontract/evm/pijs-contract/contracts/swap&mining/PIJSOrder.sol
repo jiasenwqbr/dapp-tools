@@ -41,7 +41,8 @@ contract PIJSOrder is
     Initializable,
     AccessControlEnumerableUpgradeable,
     ReentrancyGuardUpgradeable,
-    UUPSUpgradeable
+    UUPSUpgradeable,
+    EIP712Verifier
 {
     using SafeMath for uint;
     // MANAGE_ROLE：主要用于升级合约、切换开关等敏感操作
@@ -116,7 +117,7 @@ contract PIJSOrder is
         assembly {
             chainId := chainid()
         }
-        DOMAIN_SEPARATOR = EIP712Verifier.getDomainSeparator("PIJSOrder", "1", block.chainid, address(this));
+        DOMAIN_SEPARATOR = getDomainSeparator("PIJSOrder", "1", block.chainid, address(this));
     }
     receive() external payable {}
     function balance(address token) public view returns (uint256) {

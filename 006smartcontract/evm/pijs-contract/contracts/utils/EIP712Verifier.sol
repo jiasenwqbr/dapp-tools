@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.9;
 
-library EIP712Verifier {
+abstract contract  EIP712Verifier {
     function getDomainSeparator(
         string memory name,
         string memory version,
@@ -49,7 +49,7 @@ library EIP712Verifier {
     function hashString(string memory s) internal pure returns (bytes32) {
         return keccak256(bytes(s));
     }
-    
+
     function bytes32ToString(bytes32 _bytes32) public pure returns (string memory) {
     uint8 i = 0;
     while (i < 32 && _bytes32[i] != 0) {

@@ -39,7 +39,8 @@ contract PIJSOrderV1 is
     Initializable,
     AccessControlEnumerableUpgradeable,
     ReentrancyGuardUpgradeable,
-    UUPSUpgradeable
+    UUPSUpgradeable,
+    EIP712Verifier
 {
     using SafeMath for uint;
     // MANAGE_ROLE：主要用于升级合约、切换开关等敏感操作
@@ -68,9 +69,23 @@ contract PIJSOrderV1 is
     bytes32 private constant PERMIT_TYPEHASH =
         keccak256(
             abi.encodePacked(
-                "Permit(uint256 productId,uint256 orderId,uint256 userId,uint256 phase, uint256 purchaseNum, uint256 payNum,uint256 anchorCoinNum,bytes32 anchorCoin)"
+                "Permit(uint256 productId,uint256 orderId,uint256 userId,uint256 phase,uint256 purchaseNum,uint256 payNum,uint256 anchorCoinNum,bytes32 anchorCoin)"
             )
         );
+    
+    bytes32 private constant RENEW_TYPEHASH =
+        keccak256(
+            abi.encodePacked(
+                "Permit(uint256 orderId,uint256 newEndTimestamp)"
+            )
+        );
+    bytes32 private constant BEBACK_TYPEHASH =
+        keccak256(
+            abi.encodePacked(
+                "Permit(uint256 orderId)"
+            )
+        );
+    
     event MakeOrder(
         address caller,
         uint256 productId,
@@ -109,7 +124,7 @@ contract PIJSOrderV1 is
         assembly {
             chainId := chainid()
         }
-        DOMAIN_SEPARATOR = EIP712Verifier.getDomainSeparator(
+        DOMAIN_SEPARATOR = getDomainSeparator(
             "PIJSOrder",
             "1",
             block.chainid,
@@ -119,11 +134,8 @@ contract PIJSOrderV1 is
 
     receive() external payable {}
 
-    function balance(address token) public view returns (uint256) {
-        if (token == address(0)) {
-            return address(this).balance;
-        }
-        return IERC20Upgradeable(token).balanceOf(address(this));
+    function balance() public view returns (uint256) {
+        return address(this).balance;
     }
 
     function setFuncSwith(bool _funcSwitch) public onlyRole(MANAGE_ROLE) {
@@ -246,9 +258,29 @@ contract PIJSOrderV1 is
     }
 
     function reNewOrder(
-        uint256 orderId,
-        uint256 newEndTimestamp
+        bytes memory data
     ) public nonReentrant {
+         (
+            uint256 orderId,
+            uint256 newEndTimestamp,
+            bytes memory signature
+        ) = abi.decode(
+                data,
+                (
+                    uint256,
+                    uint256,
+                     bytes
+                )
+            );
+        require(
+            verifyRenew(
+                signature,
+                orderId,
+                newEndTimestamp
+            ),
+            "ERROR:INVALID_REQUEST"
+        );
+
         // has order
         bool _hasOrder = hasOrder(msg.sender, orderId);
         require(_hasOrder, "PIJSOrder: no order exist");
@@ -280,7 +312,25 @@ contract PIJSOrderV1 is
         emit ReNewOrder(msg.sender, orderId, newEndTimestamp);
     }
 
-    function betBackOrder(uint256 orderId) public nonReentrant {
+    function betBackOrder( bytes memory data) public nonReentrant {
+        (
+            uint256 orderId,
+            bytes memory signature
+        ) = abi.decode(
+                data,
+                (
+                    uint256,
+                     bytes
+                )
+            );
+         require(
+            verifyBetBack(
+                signature,
+                orderId
+            ),
+            "ERROR:INVALID_REQUEST"
+        );
+
         // has order
         bool _hasOrder = hasOrder(msg.sender, orderId);
         require(_hasOrder, "PIJSOrder: no order exist");
@@ -312,7 +362,7 @@ contract PIJSOrderV1 is
     }
 
     function verify(
-        bytes memory sig,
+        bytes memory signature,
         uint256 productId,
         uint256 orderId,
         uint256 userId,
@@ -322,23 +372,97 @@ contract PIJSOrderV1 is
         uint256 anchorCoinNum,
         bytes32 anchorCoin
     ) internal view returns (bool) {
-        bytes32[] memory values = new bytes32[](8);
-        values[0] = bytes32(productId);
-        values[1] = bytes32(orderId);
-        values[2] = bytes32(userId);
-        values[3] = bytes32(phase);
-        values[4] = bytes32(purchaseNum);
-        values[5] = bytes32(payNum);
-        values[6] = bytes32(anchorCoinNum);
-        values[7] = anchorCoin;
-        return
-            EIP712Verifier.verifySignature(
+        // bytes32[] memory values = new bytes32[](8);
+        // values[0] = bytes32(productId);
+        // values[1] = bytes32(orderId);
+        // values[2] = bytes32(userId);
+        // values[3] = bytes32(phase);
+        // values[4] = bytes32(purchaseNum);
+        // values[5] = bytes32(payNum);
+        // values[6] = bytes32(anchorCoinNum);
+        // values[7] = bytes32(anchorCoin);
+        // return
+        //     EIP712Verifier.verifySignature(
+        //         DOMAIN_SEPARATOR,
+        //         PERMIT_TYPEHASH,
+        //         values,
+        //         sig,
+        //         signer
+        //     );
+        (uint8 v, bytes32 r, bytes32 s) = splitSignature(signature);
+        bytes32 signHash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
                 DOMAIN_SEPARATOR,
-                PERMIT_TYPEHASH,
-                values,
-                sig,
-                signer
-            );
+                keccak256(
+                    abi.encode(
+                        PERMIT_TYPEHASH,
+                        productId,
+                        orderId,
+                        userId,
+                        phase,
+                        purchaseNum,
+                        payNum,
+                        anchorCoinNum,
+                        anchorCoin
+                    )
+                )
+            )
+        );
+        
+        return   signer == ecrecover(signHash, v, r, s);
+
+    }
+
+    function verifyRenew( bytes memory signature,uint256 orderId,uint256 newEndTimestamp) internal view returns (bool) {
+        // bytes32[] memory values = new bytes32[](2);
+        // values[0] = bytes32(orderId);
+        // values[1] = bytes32(newEndTimestamp);
+        (uint8 v, bytes32 r, bytes32 s) = splitSignature(signature);
+        bytes32 signHash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                DOMAIN_SEPARATOR,
+                keccak256(
+                    abi.encode(
+                        RENEW_TYPEHASH,
+                        orderId,
+                        newEndTimestamp
+                    )
+                )
+            )
+        );
+        
+        return   signer == ecrecover(signHash, v, r, s);
+    }
+
+    function verifyBetBack( bytes memory signature,uint256 orderId) internal view returns (bool) {
+        // bytes32[] memory values = new bytes32[](1);
+        // values[0] = bytes32(orderId);
+        // return
+        //     EIP712Verifier.verifySignature(
+        //         DOMAIN_SEPARATOR,
+        //         BEBACK_TYPEHASH,
+        //         values,
+        //         sig,
+        //         signer
+        //     );
+
+        (uint8 v, bytes32 r, bytes32 s) = splitSignature(signature);
+        bytes32 signHash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                BEBACK_TYPEHASH,
+                keccak256(
+                    abi.encode(
+                        PERMIT_TYPEHASH,
+                        orderId
+                    )
+                )
+            )
+        );
+        
+        return   signer == ecrecover(signHash, v, r, s);
     }
 
     // search
