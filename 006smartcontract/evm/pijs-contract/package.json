@@ -21,5 +21,8 @@
     "@uniswap/v3-periphery": "^1.4.4",
     "ethers": "^5.0.0",
     "hardhat": "^2.14.0"
+  },
+  "dependencies": {
+    "dotenv": "^17.0.1"
   }
 }
