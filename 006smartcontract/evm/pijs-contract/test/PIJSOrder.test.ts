@@ -9,7 +9,7 @@ describe("PIJSOrderV1", () => {
   let user2: any;
   let user3: any;
   beforeEach(async () => {
-    [owner, user3 ,user1, user2] = await ethers.getSigners();
+    [ç, user3 ,user1, user2] = await ethers.getSigners();
 
     const PIJSOrderFactory = await ethers.getContractFactory("PIJSOrderV1");
     orderContract = (await upgrades.deployProxy(PIJSOrderFactory, [owner.address], {

@@ -6,9 +6,9 @@ async function main() {
     // const args = [singer.address];
     const args = ["0xd4f0f0c79a35f217e5de4bff0752ba63cbc013e9"];
     // const PIJSRewardDistribute_C = await upgrades.deployProxy(PIJSRewardDistribute,args,{ kind:'uups'});
-    const PIJSRewardDistribute_C = await upgrades.upgradeProxy('0xE203657fA5596fB264ACCFb38981Ae83b98BC1a9', PIJSRewardDistribute, { kind: 'uups' });
+    const PIJSRewardDistribute_C = await upgrades.upgradeProxy('0xcaEA3388aA91AE0a6EA6a1A0BE7B9F797E41F3F0', PIJSRewardDistribute, { kind: 'uups' });
     await PIJSRewardDistribute_C.deployed();
-    console.log("PIJSRewardDistribute contract address:",PIJSRewardDistribute_C.address);
+    console.log("pijs oder contract address:",PIJSRewardDistribute_C.address);
 
     
 
@@ -26,5 +26,5 @@ main().catch((error) => {
 
 /***
  * 
- npx hardhat run ./scripts/pijs_testnet/deploy_PIJSRewardDistribute_testnet.ts --network pijstestnet
+ npx hardhat run ./scripts/mainnet/deploy_PIJSRewardDistribute_mainnet.ts --network mainnet
  */

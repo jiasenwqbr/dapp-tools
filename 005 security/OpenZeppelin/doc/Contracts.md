@@ -208,3 +208,389 @@ The most common and basic form of access control is the concept of *ownership*: 
 
 OpenZeppelin Contracts provides [`Ownable`](https://docs.openzeppelin.com/contracts/5.x/api/access#Ownable) for implementing ownership in your contracts.
 
+```solidity
+// SPDX-License-Identifier: MIT
+
+pragma solidity ^0.8.20;
+
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+
+contract MyContract is Ownable {
+    constructor(address initialOwner) Ownable(initialOwner) {}
+
+    function normalThing() public {
+        // anyone can call this normalThing()
+    }
+
+    function specialThing() public onlyOwner {
+        // only the owner can call specialThing()!
+    }
+}
+```
+
+At deployment, the [`owner`](https://docs.openzeppelin.com/contracts/5.x/api/access#Ownable-owner--) of an `Ownable` contract is set to the provided `initialOwner` parameter.
+
+Ownable also lets you:
+
+- [`transferOwnership`](https://docs.openzeppelin.com/contracts/5.x/api/access#Ownable-transferOwnership-address-) from the owner account to a new one, and
+- [`renounceOwnership`](https://docs.openzeppelin.com/contracts/5.x/api/access#Ownable-renounceOwnership--) for the owner to relinquish this administrative privilege, a common pattern after an initial stage with centralized administration is over.
+
+```
+
+Removing the owner altogether will mean that administrative tasks that are protected by onlyOwner will no longer be callable!
+```
+
+wnable is a simple and effective way to implement access control, but you should be mindful of the dangers associated with transferring the ownership to an incorrect account that can’t interact with this contract anymore. An alternative to this problem is using [`Ownable2Step`](https://docs.openzeppelin.com/contracts/5.x/api/access#Ownable2Step); a variant of Ownable that requires the new owner to explicitly accept the ownership transfer by calling [`acceptOwnership`](https://docs.openzeppelin.com/contracts/5.x/api/access#Ownable2Step-acceptOwnership--).
+
+Note that **a contract can also be the owner of another one**! This opens the door to using, for example, a [Gnosis Safe](https://safe.global/), an [Aragon DAO](https://aragon.org/), or a totally custom contract that *you* create.
+
+In this way, you can use *composability* to add additional layers of access control complexity to your contracts. Instead of having a single regular Ethereum account (Externally Owned Account, or EOA) as the owner, you could use a 2-of-3 multisig run by your project leads, for example. Prominent projects in the space, such as [MakerDAO](https://makerdao.com/), use systems similar to this one.
+
+#### Role-Based Access Control
+
+While the simplicity of *ownership* can be useful for simple systems or quick prototyping, different levels of authorization are often needed. You may want for an account to have permission to ban users from a system, but not create new tokens. [*Role-Based Access Control (RBAC)*](https://en.wikipedia.org/wiki/Role-based_access_control) offers flexibility in this regard.
+
+In essence, we will be defining multiple *roles*, each allowed to perform different sets of actions. An account may have, for example, 'moderator', 'minter' or 'admin' roles, which you will then check for instead of simply using `onlyOwner`. This check can be enforced through the `onlyRole` modifier. Separately, you will be able to define rules for how accounts can be granted a role, have it revoked, and more.
+
+Most software uses access control systems that are role-based: some users are regular users, some may be supervisors or managers, and a few will often have administrative privileges.
+
+##### Using `AccessControl`
+
+OpenZeppelin Contracts provides [`AccessControl`](https://docs.openzeppelin.com/contracts/5.x/api/access#AccessControl) for implementing role-based access control. Its usage is straightforward: for each role that you want to define, you will create a new *role identifier* that is used to grant, revoke, and check if an account has that role.
+
+Here’s a simple example of using `AccessControl` in an [ERC-20 token](https://docs.openzeppelin.com/contracts/5.x/erc20) to define a 'minter' role, which allows accounts that have it create new tokens:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+contract AccessControlERC20MintBase is ERC20, AccessControl {
+    // Create a new role identifier for the minter role
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+
+    error CallerNotMinter(address caller);
+
+    constructor(address minter) ERC20("MyToken", "TKN") {
+        // Grant the minter role to a specified account
+        _grantRole(MINTER_ROLE, minter);
+    }
+
+    function mint(address to, uint256 amount) public {
+        // Check that the calling account has the minter role
+        if (!hasRole(MINTER_ROLE, msg.sender)) {
+            revert CallerNotMinter(msg.sender);
+        }
+        _mint(to, amount);
+    }
+}
+```
+
+```note
+Make sure you fully understand how AccessControl works before using it on your system, or copy-pasting the examples from this guide.
+```
+
+While clear and explicit, this isn’t anything we wouldn’t have been able to achieve with `Ownable`. Indeed, where `AccessControl` shines is in scenarios where granular permissions are required, which can be implemented by defining *multiple* roles.
+
+Let’s augment our ERC-20 token example by also defining a 'burner' role, which lets accounts destroy tokens, and by using the `onlyRole` modifier:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+contract AccessControlERC20Mint is ERC20, AccessControl {
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
+
+    constructor(address minter, address burner) ERC20("MyToken", "TKN") {
+        _grantRole(MINTER_ROLE, minter);
+        _grantRole(BURNER_ROLE, burner);
+    }
+
+    function mint(address to, uint256 amount) public onlyRole(MINTER_ROLE) {
+        _mint(to, amount);
+    }
+
+    function burn(address from, uint256 amount) public onlyRole(BURNER_ROLE) {
+        _burn(from, amount);
+    }
+}
+```
+
+So clean! By splitting concerns this way, more granular levels of permission may be implemented than were possible with the simpler *ownership* approach to access control. Limiting what each component of a system is able to do is known as the [principle of least privilege](https://en.wikipedia.org/wiki/Principle_of_least_privilege), and is a good security practice. Note that each account may still have more than one role, if so desired.
+
+##### Granting and Revoking Roles
+
+The ERC-20 token example above uses `_grantRole`, an `internal` function that is useful when programmatically assigning roles (such as during construction). But what if we later want to grant the 'minter' role to additional accounts?
+
+By default, **accounts with a role cannot grant it or revoke it from other accounts**: all having a role does is making the `hasRole` check pass. To grant and revoke roles dynamically, you will need help from the *role’s admin*.
+
+Every role has an associated admin role, which grants permission to call the `grantRole` and `revokeRole` functions. A role can be granted or revoked by using these if the calling account has the corresponding admin role. Multiple roles may have the same admin role to make management easier. A role’s admin can even be the same role itself, which would cause accounts with that role to be able to also grant and revoke it.
+
+This mechanism can be used to create complex permissioning structures resembling organizational charts, but it also provides an easy way to manage simpler applications. `AccessControl` includes a special role, called `DEFAULT_ADMIN_ROLE`, which acts as the **default admin role for all roles**. An account with this role will be able to manage any other role, unless `_setRoleAdmin` is used to select a new admin role.
+
+Since it is the admin for all roles by default, and in fact it is also its own admin, this role carries significant risk. To mitigate this risk we provide [`AccessControlDefaultAdminRules`](https://docs.openzeppelin.com/contracts/5.x/api/access#AccessControlDefaultAdminRules), a recommended extension of `AccessControl` that adds a number of enforced security measures for this role: the admin is restricted to a single account, with a 2-step transfer procedure with a delay in between steps.
+
+Let’s take a look at the ERC-20 token example, this time taking advantage of the default admin role:
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+contract AccessControlERC20MintMissing is ERC20, AccessControl {
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+    bytes32 public constant BURNER_ROLE = keccak256("BURNER_ROLE");
+
+    constructor() ERC20("MyToken", "TKN") {
+        // Grant the contract deployer the default admin role: it will be able
+        // to grant and revoke any roles
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+    }
+
+    function mint(address to, uint256 amount) public onlyRole(MINTER_ROLE) {
+        _mint(to, amount);
+    }
+
+    function burn(address from, uint256 amount) public onlyRole(BURNER_ROLE) {
+        _burn(from, amount);
+    }
+}
+```
+
+
+
+Note that, unlike the previous examples, no accounts are granted the 'minter' or 'burner' roles. However, because those roles' admin role is the default admin role, and *that* role was granted to `msg.sender`, that same account can call `grantRole` to give minting or burning permission, and `revokeRole` to remove it.
+
+Dynamic role allocation is often a desirable property, for example in systems where trust in a participant may vary over time. It can also be used to support use cases such as [KYC](https://en.wikipedia.org/wiki/Know_your_customer), where the list of role-bearers may not be known up-front, or may be prohibitively expensive to include in a single transaction.
+
+##### Querying Privileged Accounts
+
+Because accounts might [grant and revoke roles](https://docs.openzeppelin.com/contracts/5.x/access-control#granting-and-revoking) dynamically, it is not always possible to determine which accounts hold a particular role. This is important as it allows proving certain properties about a system, such as that an administrative account is a multisig or a DAO, or that a certain role has been removed from all users, effectively disabling any associated functionality.
+
+Under the hood, `AccessControl` uses `EnumerableSet`, a more powerful variant of Solidity’s `mapping` type, which allows for key enumeration. `getRoleMemberCount` can be used to retrieve the number of accounts that have a particular role, and `getRoleMember` can then be called to get the address of each of these accounts.
+
+```solidity
+const minterCount = await myToken.getRoleMemberCount(MINTER_ROLE);
+
+const members = [];
+for (let i = 0; i < minterCount; ++i) {
+    members.push(await myToken.getRoleMember(MINTER_ROLE, i));
+}
+```
+
+##### Delayed operation
+
+Access control is essential to prevent unauthorized access to critical functions. These functions may be used to mint tokens, freeze transfers or perform an upgrade that completely changes the smart contract logic. While [`Ownable`](https://docs.openzeppelin.com/contracts/5.x/api/access#Ownable) and [`AccessControl`](https://docs.openzeppelin.com/contracts/5.x/api/access#AccessControl) can prevent unauthorized access, they do not address the issue of a misbehaving administrator attacking their own system to the prejudice of their users.
+
+This is the issue the [`TimelockController`](https://docs.openzeppelin.com/contracts/5.x/api/governance#TimelockController) is addressing.
+
+The [`TimelockController`](https://docs.openzeppelin.com/contracts/5.x/api/governance#TimelockController) is a proxy that is governed by proposers and executors. When set as the owner/admin/controller of a smart contract, it ensures that whichever maintenance operation is ordered by the proposers is subject to a delay. This delay protects the users of the smart contract by giving them time to review the maintenance operation and exit the system if they consider it is in their best interest to do so.
+
+##### Using `TimelockController`
+
+By default, the address that deployed the [`TimelockController`](https://docs.openzeppelin.com/contracts/5.x/api/governance#TimelockController) gets administration privileges over the timelock. This role grants the right to assign proposers, executors, and other administrators.
+
+The first step in configuring the [`TimelockController`](https://docs.openzeppelin.com/contracts/5.x/api/governance#TimelockController) is to assign at least one proposer and one executor. These can be assigned during construction or later by anyone with the administrator role. These roles are not exclusive, meaning an account can have both roles.
+
+Roles are managed using the [`AccessControl`](https://docs.openzeppelin.com/contracts/5.x/api/access#AccessControl) interface and the `bytes32` values for each role are accessible through the `ADMIN_ROLE`, `PROPOSER_ROLE` and `EXECUTOR_ROLE` constants.
+
+There is an additional feature built on top of `AccessControl`: giving the executor role to `address(0)` opens access to anyone to execute a proposal once the timelock has expired. This feature, while useful, should be used with caution.
+
+At this point, with both a proposer and an executor assigned, the timelock can perform operations.
+
+An optional next step is for the deployer to renounce its administrative privileges and leave the timelock self-administered. If the deployer decides to do so, all further maintenance, including assigning new proposers/schedulers or changing the timelock duration will have to follow the timelock workflow. This links the governance of the timelock to the governance of contracts attached to the timelock, and enforce a delay on timelock maintenance operations.
+
+#### Access Management
+
+For a system of contracts, better integrated role management can be achieved with an [`AccessManager`](https://docs.openzeppelin.com/contracts/5.x/api/access#AccessManager) instance. Instead of managing each contract’s permission separately, AccessManager stores all the permissions in a single contract, making your protocol easier to audit and maintain.
+
+Although [`AccessControl`](https://docs.openzeppelin.com/contracts/5.x/api/access#AccessControl) offers a more dynamic solution for adding permissions to your contracts than Ownable, decentralized protocols tend to become more complex after integrating new contract instances and requires you to keep track of permissions separately in each contract. This increases the complexity of permissions management and monitoring across the system.
+
+对于合约系统，使用 [`AccessManager`](https://docs.openzeppelin.com/contracts/5.x/api/access#AccessManager) 实例可以实现更好的集成角色管理。AccessManager 无需单独管理每个合约的权限，而是将所有权限存储在单个合约中，从而使您的协议更易于审计和维护。
+
+虽然 [`AccessControl`](https://docs.openzeppelin.com/contracts/5.x/api/access#AccessControl) 提供了比 Ownable 更动态的合约权限添加解决方案，但去中心化协议在集成新的合约实例后往往会变得更加复杂，并且需要您在每个合约中分别跟踪权限。这增加了整个系统的权限管理和监控的复杂性。
+
+![Access Control multiple](images/access-control-multiple.svg)
+
+Protocols managing permissions in production systems often require more integrated alternatives to fragmented permissions through multiple `AccessControl` instances.
+
+生产系统中管理权限的协议通常需要通过多个“AccessControl”实例来提供更集成的替代方案来替代分散的权限。
+
+The AccessManager is designed around the concept of role and target functions:
+
+- Roles are granted to accounts (addresses) following a many-to-many approach for flexibility. This means that each user can have one or multiple roles and multiple users can have the same role.
+- Access to a restricted target function is limited to one role. A target function is defined by one [function selector](https://docs.soliditylang.org/en/v0.8.20/abi-spec.html#function-selector) on one contract (called target).
+
+For a call to be authorized, the caller must bear the role that is assigned to the current target function (contract address + function selector).
+
+![AccessManager functions](images/access-manager-functions.svg)
+
+##### Using `AccessManager`
+
+OpenZeppelin Contracts provides [`AccessManager`](https://docs.openzeppelin.com/contracts/5.x/api/access#AccessManager) for managing roles across any number of contracts. The `AccessManager` itself is a contract that can be deployed and used out of the box. It sets an initial admin in the constructor who will be allowed to perform management operations.
+
+In order to restrict access to some functions of your contract, you should inherit from the [`AccessManaged`](https://docs.openzeppelin.com/contracts/5.x/api/access#AccessManaged) contract provided along with the manager. This provides the `restricted` modifier that can be used to protect any externally facing function. Note that you will have to specify the address of the AccessManager instance ([`initialAuthority`](https://docs.openzeppelin.com/contracts/5.x/api/access#AccessManaged-constructor-address-)) in the constructor so the `restricted` modifier knows which manager to use for checking permissions.
+
+Here’s a simple example of an [ERC-20 token](https://docs.openzeppelin.com/contracts/5.x/tokens#ERC20) that defines a `mint` function that is restricted by an [`AccessManager`](https://docs.openzeppelin.com/contracts/5.x/api/access#AccessManager):
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import {AccessManaged} from "@openzeppelin/contracts/access/manager/AccessManaged.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+contract AccessManagedERC20Mint is ERC20, AccessManaged {
+    constructor(address manager) ERC20("MyToken", "TKN") AccessManaged(manager) {}
+
+    // Minting is restricted according to the manager rules for this function.
+    // The function is identified by its selector: 0x40c10f19.
+    // Calculated with bytes4(keccak256('mint(address,uint256)'))
+    function mint(address to, uint256 amount) public restricted {
+        _mint(to, amount);
+    }
+}
+```
+
+### Tokens
+
+Ah, the "token": blockchain’s most powerful and most misunderstood tool.
+
+A token is a *representation of something in the blockchain*. This something can be money, time, services, shares in a company, a virtual pet, anything. By representing things as tokens, we can allow smart contracts to interact with them, exchange them, create or destroy them.
+
+- But First, Coffee a Primer on Token Contracts
+
+Much of the confusion surrounding tokens comes from two concepts getting mixed up: *token contracts* and the actual *tokens*.
+
+A *token contract* is simply an Ethereum smart contract. "Sending tokens" actually means "calling a method on a smart contract that someone wrote and deployed". At the end of the day, a token contract is not much more than a mapping of addresses to balances, plus some methods to add and subtract from those balances.
+
+It is these balances that represent the *tokens* themselves. Someone "has tokens" when their balance in the token contract is non-zero. That’s it! These balances could be considered money, experience points in a game, deeds of ownership, or voting rights, and each of these tokens would be stored in different token contracts.
+
+- Different Kinds of Tokens
+
+Note that there’s a big difference between having two voting rights and two deeds of ownership: each vote is equal to all others, but houses usually are not! This is called [fungibility](https://en.wikipedia.org/wiki/Fungibility). *Fungible goods* are equivalent and interchangeable, like Ether, fiat currencies, and voting rights. *Non-fungible* goods are unique and distinct, like deeds of ownership, or collectibles.
+
+In a nutshell, when dealing with non-fungibles (like your house) you care about *which ones* you have, while in fungible assets (like your bank account statement) what matters is *how much* you have.
+
+- Standards
+
+Even though the concept of a token is simple, they have a variety of complexities in the implementation. Because everything in Ethereum is just a smart contract, and there are no rules about what smart contracts have to do, the community has developed a variety of **standards** (called EIPs or ERCs) for documenting how a contract can interoperate with other contracts.
+
+You’ve probably heard of the ERC-20 or ERC-721 token standards, and that’s why you’re here. Head to our specialized guides to learn more about these:
+
+- [ERC-20](https://docs.openzeppelin.com/contracts/5.x/erc20): the most widespread token standard for fungible assets, albeit somewhat limited by its simplicity.
+- [ERC-721](https://docs.openzeppelin.com/contracts/5.x/erc721): the de-facto solution for non-fungible tokens, often used for collectibles and games.
+- [ERC-1155](https://docs.openzeppelin.com/contracts/5.x/erc1155): a novel standard for multi-tokens, allowing for a single contract to represent multiple fungible and non-fungible tokens, along with batched operations for increased gas efficiency.
+
+#### ERC-20
+
+An ERC-20 token contract keeps track of [*fungible* tokens](https://docs.openzeppelin.com/contracts/5.x/tokens#different-kinds-of-tokens): any one token is exactly equal to any other token; no tokens have special rights or behavior associated with them. This makes ERC-20 tokens useful for things like a **medium of exchange currency**, **voting rights**, **staking**, and more.
+
+OpenZeppelin Contracts provides many ERC20-related contracts. On the [`API reference`](https://docs.openzeppelin.com/contracts/5.x/api/token/ERC20) you’ll find detailed information on their properties and usage.
+
+##### Constructing an ERC-20 Token Contract
+
+Using Contracts, we can easily create our own ERC-20 token contract, which will be used to track *Gold* (GLD), an internal currency in a hypothetical game.
+
+Here’s what our GLD token might look like.
+
+```solidity
+// contracts/GLDToken.sol
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+contract GLDToken is ERC20 {
+    constructor(uint256 initialSupply) ERC20("Gold", "GLD") {
+        _mint(msg.sender, initialSupply);
+    }
+}
+```
+
+Our contracts are often used via [inheritance](https://solidity.readthedocs.io/en/latest/contracts.html#inheritance), and here we’re reusing [`ERC20`](https://docs.openzeppelin.com/contracts/5.x/api/token/ERC20#erc20) for both the basic standard implementation and the [`name`](https://docs.openzeppelin.com/contracts/5.x/api/token/ERC20#ERC20-name--), [`symbol`](https://docs.openzeppelin.com/contracts/5.x/api/token/ERC20#ERC20-symbol--), and [`decimals`](https://docs.openzeppelin.com/contracts/5.x/api/token/ERC20#ERC20-decimals--) optional extensions. Additionally, we’re creating an `initialSupply` of tokens, which will be assigned to the address that deploys the contract.
+
+That’s it! Once deployed, we will be able to query the deployer’s balance:
+
+```typescript
+> GLDToken.balanceOf(deployerAddress)
+1000000000000000000000
+```
+
+We can also [transfer](https://docs.openzeppelin.com/contracts/5.x/api/token/ERC20#IERC20-transfer-address-uint256-) these tokens to other accounts:
+
+```typescript
+> GLDToken.transfer(otherAddress, 300000000000000000000)
+> GLDToken.balanceOf(otherAddress)
+300000000000000000000
+> GLDToken.balanceOf(deployerAddress)
+700000000000000000000
+```
+
+##### A Note on `decimals`
+
+Often, you’ll want to be able to divide your tokens into arbitrary amounts: say, if you own `5 GLD`, you may want to send `1.5 GLD` to a friend, and keep `3.5 GLD` to yourself. Unfortunately, Solidity and the EVM do not support this behavior: only integer (whole) numbers can be used, which poses an issue. You may send `1` or `2` tokens, but not `1.5`.
+
+To work around this, [`ERC20`](https://docs.openzeppelin.com/contracts/5.x/api/token/ERC20#ERC20) provides a [`decimals`](https://docs.openzeppelin.com/contracts/5.x/api/token/ERC20#ERC20-decimals--) field, which is used to specify how many decimal places a token has. To be able to transfer `1.5 GLD`, `decimals` must be at least `1`, since that number has a single decimal place.
+
+How can this be achieved? It’s actually very simple: a token contract can use larger integer values, so that a balance of `50` will represent `5 GLD`, a transfer of `15` will correspond to `1.5 GLD` being sent, and so on.
+
+It is important to understand that `decimals` is *only used for display purposes*. All arithmetic inside the contract is still performed on integers, and it is the different user interfaces (wallets, exchanges, etc.) that must adjust the displayed values according to `decimals`. The total token supply and balance of each account are not specified in `GLD`: you need to divide by `10 ** decimals` to get the actual `GLD` amount.
+
+You’ll probably want to use a `decimals` value of `18`, just like Ether and most ERC-20 token contracts in use, unless you have a very special reason not to. When minting tokens or transferring them around, you will be actually sending the number `num GLD * (10 ** decimals)`.
+
+```
+
+By default, ERC20 uses a value of 18 for decimals. To use a different value, you will need to override the decimals() function in your contract.
+```
+
+```solidity
+function decimals() public view virtual override returns (uint8) {
+  return 16;
+}
+```
+
+So if you want to send `5` tokens using a token contract with 18 decimals, the method to call will actually be:
+
+```solidity
+transfer(recipient, 5 * (10 ** 18));
+```
+
+
+
+#### ERC-721
+
+We’ve discussed how you can make a *fungible* token using [ERC-20](https://docs.openzeppelin.com/contracts/5.x/erc20), but what if not all tokens are alike? This comes up in situations like **real estate**, **voting rights**, or **collectibles**, where some items are valued more than others, due to their usefulness, rarity, etc. ERC-721 is a standard for representing ownership of [*non-fungible* tokens](https://docs.openzeppelin.com/contracts/5.x/tokens#different-kinds-of-tokens), that is, where each token is unique.
+
+ERC-721 is a more complex standard than ERC-20, with multiple optional extensions, and is split across a number of contracts. The OpenZeppelin Contracts provide flexibility regarding how these are combined, along with custom useful extensions. Check out the [API Reference](https://docs.openzeppelin.com/contracts/5.x/api/token/ERC721) to learn more about these.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

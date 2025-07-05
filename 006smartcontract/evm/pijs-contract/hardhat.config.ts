@@ -7,6 +7,7 @@ dotenv.config();
 const PRIVATE_KEY = process.env.PRIVATE_KEY || "";
 const GANACHE_PRIVATE_KEYS = process.env.GANACHE_PRIVATE_KEYS?.split(",") || [];
 const PIJS_TEST_NET_KEYS = process.env.PIJS_TEST_NET_KEYS?.split(",") || []
+const PIJS_NET_KEYS = process.env.PIJS_NET_KEYS?.split(",") || []
 
 const config: HardhatUserConfig = {
   networks: {
@@ -25,6 +26,11 @@ const config: HardhatUserConfig = {
     pijstestnet: {
       url: "https://testchain.pijswap.xyz",
       chainId: 20250521,
+      accounts:PIJS_TEST_NET_KEYS,
+    },
+    pijs: {
+      url: "http://chain.pijswap.xyz",
+      chainId: 31419,
       accounts:PIJS_TEST_NET_KEYS,
     },
   },

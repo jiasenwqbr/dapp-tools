@@ -69,7 +69,7 @@ contract PIJSOrderV1 is
     bytes32 private constant PERMIT_TYPEHASH =
         keccak256(
             abi.encodePacked(
-                "Permit(uint256 productId,uint256 orderId,uint256 userId,uint256 phase,uint256 purchaseNum,uint256 payNum,uint256 anchorCoinNum,bytes32 anchorCoin)"
+                "Permit(uint256 productId,uint256 orderId,uint256 userId,uint256 phase,uint256 purchaseNum,uint256 payNum,uint256 anchorCoinNum,string anchorCoin)"
             )
         );
     
@@ -99,9 +99,8 @@ contract PIJSOrderV1 is
         uint256 productPurchaseLimit,
         uint256 phase,
         uint256 renewable,
-        uint256 anchorCoinNum,
-        string anchorCoin
-    );
+        uint256 anchorCoinNum
+        );
     event ReNewOrder(address caller, uint256 orderId, uint256 renewTime);
 
     event BetBackOrder(address caller, uint256 orderId, uint256 amount);
@@ -157,7 +156,7 @@ contract PIJSOrderV1 is
             uint256 phase,
             uint256 renewable,
             uint256 anchorCoinNum,
-            bytes32 anchorCoin,
+            string memory anchorCoin,
             bytes memory signature
         ) = abi.decode(
                 data,
@@ -174,7 +173,7 @@ contract PIJSOrderV1 is
                     uint256,
                     uint256,
                     uint256,
-                    bytes32,
+                    string,
                     bytes
                 )
             );
@@ -224,7 +223,7 @@ contract PIJSOrderV1 is
             phase: phase,
             renewable: renewable,
             anchorCoinNum: anchorCoinNum,
-            anchorCoin: EIP712Verifier.bytes32ToString(anchorCoin),
+            anchorCoin: anchorCoin,
             status: 0,
             renewTime: 0
         });
@@ -252,9 +251,7 @@ contract PIJSOrderV1 is
             productPurchaseLimit,
             phase,
             renewable,
-            anchorCoinNum,
-            EIP712Verifier.bytes32ToString(anchorCoin)
-        );
+            anchorCoinNum);
     }
 
     function reNewOrder(
@@ -370,25 +367,8 @@ contract PIJSOrderV1 is
         uint256 purchaseNum,
         uint256 payNum,
         uint256 anchorCoinNum,
-        bytes32 anchorCoin
+        string memory anchorCoin
     ) internal view returns (bool) {
-        // bytes32[] memory values = new bytes32[](8);
-        // values[0] = bytes32(productId);
-        // values[1] = bytes32(orderId);
-        // values[2] = bytes32(userId);
-        // values[3] = bytes32(phase);
-        // values[4] = bytes32(purchaseNum);
-        // values[5] = bytes32(payNum);
-        // values[6] = bytes32(anchorCoinNum);
-        // values[7] = bytes32(anchorCoin);
-        // return
-        //     EIP712Verifier.verifySignature(
-        //         DOMAIN_SEPARATOR,
-        //         PERMIT_TYPEHASH,
-        //         values,
-        //         sig,
-        //         signer
-        //     );
         (uint8 v, bytes32 r, bytes32 s) = splitSignature(signature);
         bytes32 signHash = keccak256(
             abi.encodePacked(
@@ -437,17 +417,6 @@ contract PIJSOrderV1 is
     }
 
     function verifyBetBack( bytes memory signature,uint256 orderId) internal view returns (bool) {
-        // bytes32[] memory values = new bytes32[](1);
-        // values[0] = bytes32(orderId);
-        // return
-        //     EIP712Verifier.verifySignature(
-        //         DOMAIN_SEPARATOR,
-        //         BEBACK_TYPEHASH,
-        //         values,
-        //         sig,
-        //         signer
-        //     );
-
         (uint8 v, bytes32 r, bytes32 s) = splitSignature(signature);
         bytes32 signHash = keccak256(
             abi.encodePacked(

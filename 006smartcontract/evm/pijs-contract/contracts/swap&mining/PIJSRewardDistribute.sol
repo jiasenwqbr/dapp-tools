@@ -29,7 +29,7 @@ contract PIJSRewardDistribute is
     bytes32 private constant PERMIT_TYPEHASH =
         keccak256(
             abi.encodePacked(
-                "Permit(address user,address token,uint256 order,uint256 amount,uint256 nonce,uint256 deadline,uint256 typeNum)"
+                "Permit(address user,address token,uint256 accountId,uint256 amount,uint256 nonce,uint256 deadline,uint256 typeNum)"
             )
         );
 
@@ -42,7 +42,7 @@ contract PIJSRewardDistribute is
         address indexed token,
         uint256 amount,
         uint256 timestamp,
-        uint256 order,
+        uint256 accountId,
         uint256 typeNum
     );
 
@@ -151,7 +151,7 @@ contract PIJSRewardDistribute is
         (
             address user,
             address token,
-            uint256 order,
+            uint256 accountId,
             uint256 amount,
             uint256 nonce,
             uint256 deadline,
@@ -183,7 +183,7 @@ contract PIJSRewardDistribute is
                         PERMIT_TYPEHASH,
                         user,
                         token,
-                        order,
+                        accountId,
                         amount,
                         nonce,
                         deadline,
@@ -204,7 +204,7 @@ contract PIJSRewardDistribute is
         } else {
             payable(user).transfer(amount);
         }
-        emit WithdrawReward(msg.sender, token, amount, typeNum, order, typeNum);
+        emit WithdrawReward(msg.sender, token, amount, typeNum, accountId, typeNum);
     }
 
     function splitSignature(
