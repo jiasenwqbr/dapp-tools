@@ -27,4 +27,7 @@ main().catch((error) => {
 /***
  * 
  npx hardhat run ./scripts/pijs_testnet/deploy_PIJSRewardDistribute_testnet.ts --network pijstestnet
+ 0xd4f0f0c79a35f217e5de4bff0752ba63cbc013e9
+ 0xd4f0f0c79a35f217e5de4bff0752ba63cbc013e9
+
  */

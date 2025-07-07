@@ -284,19 +284,19 @@ contract PIJSOrderV1 is
         Order memory order = userOrders[msg.sender][orderId];
         require(order.status == 0, "PIJSOrder: order is invalid");
         require(order.renewable == 1, "PIJSOrder: order is not renewable");
-        if (order.renewTime > 0) {
-            require(
-                newEndTimestamp > block.timestamp &&
-                    newEndTimestamp > order.renewTime,
-                "PIJSOrder: newEndTimestamp is invalid"
-            );
-        } else {
-            require(
-                newEndTimestamp > block.timestamp &&
-                    newEndTimestamp > order.endTimestamp,
-                "PIJSOrder: newEndTimestamp is invalid"
-            );
-        }
+        // if (order.renewTime > 0) {
+        //     require(
+        //         newEndTimestamp > block.timestamp &&
+        //             newEndTimestamp > order.renewTime,
+        //         "PIJSOrder: newEndTimestamp is invalid"
+        //     );
+        // } else {
+        //     require(
+        //         newEndTimestamp > block.timestamp &&
+        //             newEndTimestamp > order.endTimestamp,
+        //         "PIJSOrder: newEndTimestamp is invalid"
+        //     );
+        // }
         userOrders[msg.sender][orderId].renewTime = newEndTimestamp;
         userRenewOrders[msg.sender].push(
             RenewOrder({
@@ -333,17 +333,17 @@ contract PIJSOrderV1 is
         require(_hasOrder, "PIJSOrder: no order exist");
         Order memory order = userOrders[msg.sender][orderId];
         require(order.status == 0, "PIJSOrder: order is invalid");
-        if (order.renewTime > 0) {
-            require(
-                order.renewTime <= block.timestamp,
-                "PIJSOrder: newEndTimestamp is invalid"
-            );
-        } else {
-            require(
-                order.endTimestamp <= block.timestamp,
-                "PIJSOrder: newEndTimestamp is invalid"
-            );
-        }
+        // if (order.renewTime > 0) {
+        //     require(
+        //         order.renewTime <= block.timestamp,
+        //         "PIJSOrder: newEndTimestamp is invalid"
+        //     );
+        // } else {
+        //     require(
+        //         order.endTimestamp <= block.timestamp,
+        //         "PIJSOrder: newEndTimestamp is invalid"
+        //     );
+        // }
         userOrders[msg.sender][orderId].status = 1;
         payable(msg.sender).transfer(order.payNum);
 
@@ -488,4 +488,5 @@ contract PIJSOrderV1 is
         (bool success, ) = to.call{value: amount}("");
         require(success, "Withdraw: ETH transfer failed");
     }
+    
 }
