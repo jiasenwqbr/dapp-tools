@@ -35,6 +35,18 @@ struct RenewOrder {
     uint256 blockTime;
 }
 
+struct Param {
+    bytes signature;
+    uint256 productId;
+    uint256 orderId;
+    uint256 userId;
+    uint256 phase;
+    uint256 purchaseNum;
+    uint256 payNum;
+    uint256 anchorCoinNum;
+    string anchorCoin;
+}
+
 contract PIJSOrderV1 is
     Initializable,
     AccessControlEnumerableUpgradeable,
@@ -184,15 +196,18 @@ contract PIJSOrderV1 is
         // verify(bytes memory sig,uint256 productId,uint256 orderId,uint256 userId,uint256 phase, uint256 purchaseNum, uint256 payNum,uint256 anchorCoinNum,string memory anchorCoin)
         require(
             verify(
-                signature,
-                productId,
-                orderId,
-                userId,
-                phase,
-                purchaseNum,
-                payNum,
-                anchorCoinNum,
-                anchorCoin
+                Param ({
+                    signature:signature,
+                    productId: productId,
+                    orderId:orderId,
+                    userId: userId,
+                    phase:phase,
+                    purchaseNum:purchaseNum,
+                    payNum:payNum,
+                    anchorCoinNum: anchorCoinNum,
+                    anchorCoin: anchorCoin
+                })
+                
             ),
             "ERROR:INVALID_REQUEST"
         );
@@ -366,18 +381,8 @@ contract PIJSOrderV1 is
         return order.orderId != 0; // 注意：假设 0 是无效的订单号
     }
 
-    function verify(
-        bytes memory signature,
-        uint256 productId,
-        uint256 orderId,
-        uint256 userId,
-        uint256 phase,
-        uint256 purchaseNum,
-        uint256 payNum,
-        uint256 anchorCoinNum,
-        string memory anchorCoin
-    ) internal view returns (bool) {
-        (uint8 v, bytes32 r, bytes32 s) = splitSignature(signature);
+    function verify(Param memory param) internal view returns (bool) {
+        (uint8 v, bytes32 r, bytes32 s) = splitSignature(param.signature);
         bytes32 signHash = keccak256(
             abi.encodePacked(
                 "\x19\x01",
@@ -385,14 +390,14 @@ contract PIJSOrderV1 is
                 keccak256(
                     abi.encode(
                         PERMIT_TYPEHASH,
-                        productId,
-                        orderId,
-                        userId,
-                        phase,
-                        purchaseNum,
-                        payNum,
-                        anchorCoinNum,
-                        anchorCoin
+                        param.productId,
+                        param.orderId,
+                        param.userId,
+                        param.phase,
+                        param.purchaseNum,
+                        param.payNum,
+                        param.anchorCoinNum,
+                        param.anchorCoin
                     )
                 )
             )
@@ -496,5 +501,4 @@ contract PIJSOrderV1 is
         (bool success, ) = to.call{value: amount}("");
         require(success, "Withdraw: ETH transfer failed");
     }
-    
 }

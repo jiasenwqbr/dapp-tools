@@ -574,6 +574,114 @@ ERC-721 is a more complex standard than ERC-20, with multiple optional extension
 
 
 
+### Governance
+
+#### How to set up on-chain governance
+
+In this guide we will learn how OpenZeppelin’s Governor contract works, how to set it up, and how to use it to create proposals, vote for them, and execute them, using tools provided by Ethers.js and Tally.
+
+在本指南中，我们将了解 OpenZeppelin 的 Governor 合约如何运作、如何设置它以及如何使用它来创建提案、对其进行投票和执行提案，使用 Ethers.js 和 Tally 提供的工具。
+
+|      | Find detailed contract documentation at [Governance API](https://docs.openzeppelin.com/contracts/5.x/api/governance). |
+| ---- | ------------------------------------------------------------ |
+|      |                                                              |
+
+
+
+#### Introduction
+
+Decentralized protocols are in constant evolution from the moment they are publicly released. Often, the initial team retains control of this evolution in the first stages, but eventually delegates it to a community of stakeholders. The process by which this community makes decisions is called on-chain governance, and it has become a central component of decentralized protocols, fueling varied decisions such as parameter tweaking, smart contract upgrades, integrations with other protocols, treasury management, grants, etc.
+
+去中心化协议自公开发布之日起便处于不断发展演变之中。通常，初始团队在最初阶段掌控着这一演变的控制权，但最终会将其委托给利益相关者社区。这个社区的决策过程被称为链上治理，它已成为去中心化协议的核心组成部分，推动着各种决策，例如参数调整、智能合约升级、与其他协议的集成、资金管理、拨款等等。
+
+This governance protocol is generally implemented in a special-purpose contract called “Governor”. The GovernorAlpha and GovernorBravo contracts designed by Compound have been very successful and popular so far, with the downside that projects with different requirements have had to fork the code to customize it for their needs, which can pose a high risk of introducing security issues. For OpenZeppelin Contracts, we set out to build a modular system of Governor contracts so that forking is not needed, and different requirements can be accommodated by writing small modules using Solidity inheritance. You will find the most common requirements out of the box in OpenZeppelin Contracts, but writing additional ones is simple, and we will be adding new features as requested by the community in future releases. Additionally, the design of OpenZeppelin Governor requires minimal use of storage and results in more gas efficient operation.
+
+该治理协议通常由名为“Governor”的专用合约实现。Compound 设计的 GovernorAlpha 和 GovernorBravo 合约迄今为止非常成功且广受欢迎，但其缺点是，具有不同需求的项目必须分叉代码来根据自身需求进行定制，这可能会带来很高的安全问题风险。对于 OpenZeppelin 合约，我们着手构建一个模块化的 Governor 合约系统，这样就无需分叉，只需使用 Solidity 继承编写小型模块即可满足不同的需求。OpenZeppelin 合约中已包含最常见的开箱即用需求，但编写其他需求也很简单，我们将根据社区的需求在未来版本中添加新功能。此外，OpenZeppelin Governor 的设计最大限度地减少了存储空间的使用，从而提高了 Gas 的利用效率。
+
+#### Compatibility
+
+OpenZeppelin’s Governor system was designed with a concern for compatibility with existing systems that were based on Compound’s GovernorAlpha and GovernorBravo. Because of this, you will find that many modules are presented in two variants, one of which is built for compatibility with those systems.
+
+OpenZeppelin 的 Governor 系统在设计时就考虑到了与基于 Compound 的 GovernorAlpha 和 GovernorBravo 的现有系统的兼容性。因此，您会发现许多模块都以两种变体呈现，其中一种变体专为与这些系统兼容而构建。
+
+##### ERC20Votes & ERC20VotesComp
+
+The ERC-20 extension to keep track of votes and vote delegation is one such case. The shorter one is the more generic version because it can support token supplies greater than 2^96, while the “Comp” variant is limited in that regard, but exactly fits the interface of the COMP token that is used by GovernorAlpha and Bravo. Both contract variants share the same events, so they are fully compatible when looking at events only.
+
+用于跟踪投票和投票委托的 ERC-20 扩展就是一个例子。较短的版本是更通用的版本，因为它可以支持大于 2^96 的代币供应量，而“Comp”版本在这方面有所限制，但它恰好符合 GovernorAlpha 和 Bravo 使用的 COMP 代币的接口。这两个合约版本共享相同的事件，因此仅从事件来看，它们是完全兼容的。
+
+##### Governor & GovernorStorage
+
+An OpenZeppelin Governor contract is not interface-compatible with Compound’s GovernorAlpha or Bravo. Even though events are fully compatible, proposal lifecycle functions (creation, execution, etc.) have different signatures that are meant to optimize storage use. Other functions from GovernorAlpha and Bravo are likewise not available. It’s possible to opt in some Bravo-like behavior by inheriting from the GovernorStorage module. This module provides proposal enumerability and alternate versions of the `queue`, `execute` and `cancel` function that only take the proposal id. This module reduces the calldata needed by some operations in exchange for an increased storage footprint. This might be a good trade-off for some L2 chains. It also provides primitives for indexer-free frontends.
+
+Note that even with the use of this module, one important difference with Compound’s GovernorBravo is the way that `proposalId`s are calculated. Governor uses the hash of the proposal parameters with the purpose of keeping its data off-chain by event indexing, while the original Bravo implementation uses sequential `proposalId`s.
+
+OpenZeppelin Governor 合约与 Compound 的 GovernorAlpha 或 Bravo 接口不兼容。尽管事件完全兼容，但提案生命周期函数（创建、执行等）的签名有所不同，旨在优化存储使用。GovernorAlpha 和 Bravo 的其他函数同样不可用。可以通过继承 GovernorStorage 模块来选择一些类似 Bravo 的行为。该模块提供提案枚举功能，以及仅接受提案 ID 的队列、执行和取消函数的替代版本。该模块减少了某些操作所需的调用数据，但增加了存储空间。对于某些 L2 链来说，这可能是一个不错的权衡。它还为无索引前端提供了原语。
+
+请注意，即使使用此模块，它与 Compound 的 GovernorBravo 的一个重要区别在于 `proposalId` 的计算方式。Governor 使用提案参数的哈希值，目的是通过事件索引将其数据保持在链下，而原始的 Bravo 实现使用顺序 `proposalId`。
+
+##### GovernorTimelockControl & GovernorTimelockCompound
+
+When using a timelock with your Governor contract, you can use either OpenZeppelin’s TimelockController or Compound’s Timelock. Based on the choice of timelock, you should choose the corresponding Governor module: GovernorTimelockControl or GovernorTimelockCompound respectively. This allows you to migrate an existing GovernorAlpha instance to an OpenZeppelin-based Governor without changing the timelock in use.
+
+##### Tally
+
+[Tally](https://www.tally.xyz/) is a full-fledged application for user owned on-chain governance. It comprises a voting dashboard, proposal creation wizard, real time research and analysis, and educational content.
+
+For all of these options, the Governor will be compatible with Tally: users will be able to create proposals, see voting periods and delays following [IERC6372](https://docs.openzeppelin.com/contracts/5.x/api/interfaces#IERC6372), visualize voting power and advocates, navigate proposals, and cast votes. For proposal creation in particular, projects can also use [Defender Transaction Proposals](https://docs.openzeppelin.com/defender/module/actions#transaction-proposals-reference) as an alternative interface.
+
+In the rest of this guide, we will focus on a fresh deploy of the vanilla OpenZeppelin Governor features without concern for compatibility with GovernorAlpha or Bravo.
+
+[Tally](https://www.tally.xyz/) 是一款功能齐全、用户自主掌控的链上治理应用程序。它包含投票仪表盘、提案创建向导、实时研究分析以及教育内容。
+
+所有这些功能，Governor 都将与 Tally 兼容：用户将能够创建提案、查看 [IERC6372](https://docs.openzeppelin.com/contracts/5.x/api/interfaces#IERC6372) 之后的投票周期和延迟情况、可视化投票权和支持者、浏览提案并进行投票。尤其是在创建提案方面，项目还可以使用 [Defender 交易提案](https://docs.openzeppelin.com/defender/module/actions#transaction-proposals-reference) 作为替代界面。
+
+在本指南的其余部分，我们将重点介绍如何全新部署原生 OpenZeppelin Governor 功能，而无需考虑与 GovernorAlpha 或 Bravo 的兼容性。
+
+##### Setup
+
+###### Token
+
+The voting power of each account in our governance setup will be determined by an ERC-20 token. The token has to implement the ERC20Votes extension. This extension will keep track of historical balances so that voting power is retrieved from past snapshots rather than current balance, which is an important protection that prevents double voting.
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
+import {ERC20Votes} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
+import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
+
+contract MyToken is ERC20, ERC20Permit, ERC20Votes {
+    constructor() ERC20("MyToken", "MTK") ERC20Permit("MyToken") {}
+
+    // The functions below are overrides required by Solidity.
+
+    function _update(address from, address to, uint256 amount) internal override(ERC20, ERC20Votes) {
+        super._update(from, to, amount);
+    }
+
+    function nonces(address owner) public view virtual override(ERC20Permit, Nonces) returns (uint256) {
+        return super.nonces(owner);
+    }
+}
+```
+
+If your project already has a live token that does not include ERC20Votes and is not upgradeable, you can wrap it in a governance token by using ERC20Wrapper. This will allow token holders to participate in governance by wrapping their tokens 1-to-1.
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
