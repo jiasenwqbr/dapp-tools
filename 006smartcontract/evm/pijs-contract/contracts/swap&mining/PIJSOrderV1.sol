@@ -153,6 +153,8 @@ contract PIJSOrderV1 is
             uint256 startTimestamp,
             uint256 userPurchaseLimit,
             uint256 productPurchaseLimit,
+            uint256 userProductPurchaseLimit,
+            uint256 isAddPurchaseSum,
             uint256 phase,
             uint256 renewable,
             uint256 anchorCoinNum,
@@ -161,6 +163,8 @@ contract PIJSOrderV1 is
         ) = abi.decode(
                 data,
                 (
+                    uint256,
+                    uint256,
                     uint256,
                     uint256,
                     uint256,
@@ -208,6 +212,15 @@ contract PIJSOrderV1 is
                 userPurchaseLimit,
             "PIJSOrder: The order quantity exceeds the limit"
         );
+
+        // userProductPurchaseLimit
+        (uint256 productCount) = getUserProductPurchaseNum(msg.sender,productId);
+        require(
+            productCount.add(purchaseNum)  <=
+                userProductPurchaseLimit,
+            "PIJSOrder: The order quantity exceeds the user product purchase limit"
+        );
+
         require(userOrders[msg.sender][orderId].orderId == 0, "PIJSOrder: ORDER_EXISTS");
         // 更新订单
         userOrders[msg.sender][orderId] = Order({
@@ -229,14 +242,16 @@ contract PIJSOrderV1 is
         });
        
         userOrderIds[msg.sender].push(orderId);
-        // 更新 orderSumByProductByPhase
-        orderSumByProductByPhase[phase][productId] = orderSumByProductByPhase[
-            phase
-        ][productId].add(purchaseNum);
-        // 更新 orderSumByUserByPhase
-        orderSumByUserByPhase[phase][msg.sender] = orderSumByUserByPhase[phase][
-            msg.sender
-        ].add(purchaseNum);
+        if (isAddPurchaseSum==1){
+            // 更新 orderSumByProductByPhase
+            orderSumByProductByPhase[phase][productId] = orderSumByProductByPhase[
+                phase
+            ][productId].add(purchaseNum);
+            // 更新 orderSumByUserByPhase
+            orderSumByUserByPhase[phase][msg.sender] = orderSumByUserByPhase[phase][
+                msg.sender
+            ].add(purchaseNum);
+        }
         // event
         emit MakeOrder(
             msg.sender,
@@ -252,6 +267,19 @@ contract PIJSOrderV1 is
             phase,
             renewable,
             anchorCoinNum);
+    }
+
+
+    function getUserProductPurchaseNum(address userAddress,uint256 productId) internal view returns(uint256 productCount){
+        
+        uint256[] storage userOrderIds_  = userOrderIds[userAddress];
+            for (uint256 i = 0; i < userOrderIds_.length; i++) {
+                Order storage order = userOrders[userAddress][userOrderIds_[i]];
+                if (order.productId == productId) {
+                    productCount += order.purchaseNum;
+                }
+            }
+        
     }
 
     function reNewOrder(

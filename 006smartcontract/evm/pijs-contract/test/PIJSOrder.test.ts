@@ -9,7 +9,7 @@ describe("PIJSOrderV1", () => {
   let user2: any;
   let user3: any;
   beforeEach(async () => {
-    [ç, user3 ,user1, user2] = await ethers.getSigners();
+    [owner, user3 ,user1, user2] = await ethers.getSigners();
 
     const PIJSOrderFactory = await ethers.getContractFactory("PIJSOrderV1");
     orderContract = (await upgrades.deployProxy(PIJSOrderFactory, [owner.address], {
@@ -230,6 +230,9 @@ describe("PIJSOrderV1", () => {
       }
     });
 
+
+
+
     // purchaseNum<= userPurchaseLimit
     it("should fail if  purchaseNum > userPurchaseLimit", async () => {
       const fakeOrder = {
@@ -284,6 +287,8 @@ describe("PIJSOrderV1", () => {
       }
 
     });
+
+
 
     it("Test the balance of the contract",async ()=> {
       const fakeOrder = {
