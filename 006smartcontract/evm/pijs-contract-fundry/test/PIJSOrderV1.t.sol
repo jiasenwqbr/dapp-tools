@@ -2,10 +2,11 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import "../src/swap&mining/PIJSOrderV1.sol";
+import "../src/swap&mining/PIJSOrderV1Debug.sol";
+import "forge-std/console.sol";
 
 contract PIJSOrderV1Test is Test {
-    PIJSOrderV1 public orderContract;
+    PIJSOrderV1Debug public orderContract;
 
     address deployer = address(0xcdec065c7Eee6daAbd052AaA42D9aAc5838228aF);
     address user = address(0x79D72302236aBeF700C5E4b753BB4441d703F077);
@@ -13,10 +14,10 @@ contract PIJSOrderV1Test is Test {
 
     function setUp() public {
         vm.startPrank(deployer);
-        orderContract = new PIJSOrderV1();
+        orderContract = new PIJSOrderV1Debug();
         orderContract.initialize(deployer);
         orderContract.grantRole(orderContract.OPERATE_ROLE(), deployer);
-        vm.deal(deployer, 100 ether); // 给 user 100 ETH
+        // vm.deal(deployer, 100 ether); // 给 user 100 ETH
         vm.stopPrank();
     }
 
@@ -45,8 +46,10 @@ contract PIJSOrderV1Test is Test {
         uint256 payNum = 1 ether;
         uint256 endTimestamp = block.timestamp + 1 days;
         uint256 startTimestamp = block.timestamp;
-        uint256 userLimit = 10;
+        uint256 userPurchaseLimit = 10;
         uint256 productLimit = 10;
+        uint256 userProductPurchaseLimit = 10;
+        uint256 isAddPurchaseSum = 1;
         uint256 phase = 1;
         uint256 renewable = 1;
         uint256 anchorCoinNum = 100;
@@ -63,12 +66,15 @@ contract PIJSOrderV1Test is Test {
                 purchaseNum,
                 payNum,
                 anchorCoinNum,
-                keccak256(bytes(anchorCoin))
+                anchorCoin
+                // keccak256(bytes(anchorCoin))
             )
         );
         bytes32 domainSeparator = orderContract.DOMAIN_SEPARATOR();
+       // console.logBytes32(domainSeparator);
         bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(uint256(uint160(signer)), digest);
+        vm.prank(deployer);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(0x67e46235d56575ab55fdcaafd40c82833476f00bc5270dca0504193b30a53632, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
 
         // ABI encode参数
@@ -80,8 +86,10 @@ contract PIJSOrderV1Test is Test {
             payNum,
             endTimestamp,
             startTimestamp,
-            userLimit,
+            userPurchaseLimit,
             productLimit,
+            userProductPurchaseLimit,
+            isAddPurchaseSum,
             phase,
             renewable,
             anchorCoinNum,
@@ -90,31 +98,8 @@ contract PIJSOrderV1Test is Test {
         );
 
         // 发起 makeOrder 调用
-        vm.prank(deployer);
+        // vm.prank(deployer);
         orderContract.makeOrder{value: payNum}(data);
-
-
-        /**
-         * 
-         struct Order {
-            uint256 productId; // 购买的产品ID
-            uint256 orderId; // 订单号
-            uint256 userId; // 用户ID
-            uint256 purchaseNum; //购买的份数
-            uint256 payNum; // 支付的PIJS
-            uint256 endTimestamp; // 订单到期时间
-            uint256 startTimestamp; // 订单开始时间(可以由区块决定)
-            uint256 userPurchaseLimit; // 指定phase 指定productId 指定用户的购买限制
-            uint256 productPurchaseLimit; // 指定phase 指定productId 指定用户的购买限制
-            uint256 phase; // 活动期
-            uint256 renewable; // 是否允许续期
-            uint256 anchorCoinNum; // 锚定货币数量
-            string anchorCoin; // 锚定货币
-            uint256 status; // 0 -staking; 1- unstaking  状态
-            uint256 renewTime; // 续期时间
-        }
-         */
-
         // 验证订单是否已创建
         (uint256 productId_,
             uint256 orderId_,
@@ -133,7 +118,7 @@ contract PIJSOrderV1Test is Test {
             uint256 renewTime_) = orderContract.userOrders(deployer, orderId);
         assertEq(userId_, userId);
         assertEq(endTimestamp, endTimestamp);
-        assertEq(userPurchaseLimit_, userLimit);
+        assertEq(userPurchaseLimit_, userPurchaseLimit);
         assertEq(phase_, phase);
 
 
