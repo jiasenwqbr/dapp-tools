@@ -39,7 +39,7 @@ describe("PIJSOrderV1", () => {
                //  anchorCoin: ethers.utils.hexlify(ethers.utils.toUtf8Bytes("USDT"))
                 // anchorCoin:ethers.utils.keccak256(ethers.utils.toUtf8Bytes("USDT"))
                 anchorCoin: "USDT",
-                // anchorCoin:ethers.utils.toUtf8String(ethers.utils.toUtf8Bytes("USDT"))
+                // anchorCoin:ethers.utils.solidityPack(["string"], ["USDT"])
             };
           
             const types = {
@@ -74,12 +74,13 @@ describe("PIJSOrderV1", () => {
                 anchorCoin: fakeOrder.anchorCoin,
                 // anchorCoin: ethers.utils.hexlify(ethers.utils.toUtf8Bytes("USDT"))
                 //  anchorCoin: ethers.utils.toUtf8Bytes("USDT")
+                //  anchorCoin: ethers.utils.solidityPack(["string"], [fakeOrder.anchorCoin])
             }
 
             const signature = await owner._signTypedData(domain, types, signOrder);
 
             console.log(signature);
-             console.log("anchorCoin:",ethers.utils.toUtf8String(ethers.utils.toUtf8Bytes(fakeOrder.anchorCoin)));
+            console.log("anchorCoin:",ethers.utils.toUtf8String(ethers.utils.toUtf8Bytes(fakeOrder.anchorCoin)));
             const params = {
                 ...fakeOrder,
                 signature: signature,
@@ -147,9 +148,11 @@ function encodeOrder(params: any): string {
                 // ethers.utils.keccak256(ethers.utils.toUtf8Bytes(params.anchorCoin)),
                 // ethers.utils.hexlify(ethers.utils.toUtf8Bytes(params.anchorCoin)),
                 // params.anchorCoin,
-                 ethers.utils.hexlify(ethers.utils.toUtf8Bytes("USDT")),
+                // ethers.utils.hexlify(ethers.utils.toUtf8Bytes("USDT")),
                 // ethers.utils.keccak256(ethers.utils.toUtf8Bytes(params.anchorCoin)),
                 // ethers.utils.keccak256(ethers.utils.toUtf8Bytes(params.anchorCoin)),
+                // ethers.utils.solidityPack(["string"], ["USDT"]),
+                ethers.utils.defaultAbiCoder.encode(["string"], ["USDT"]),
                 params.signature,
             ]
         );

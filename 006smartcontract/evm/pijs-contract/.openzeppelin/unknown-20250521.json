@@ -255,6 +255,11 @@
       "address": "0xE203657fA5596fB264ACCFb38981Ae83b98BC1a9",
       "txHash": "0x174693ada081c370a2bec8d2648914e4a9758e8f08da1642818afa662e790d48",
       "kind": "uups"
+    },
+    {
+      "address": "0x41Fa8d95cAf846a0f5fdf758219B7B399968db38",
+      "txHash": "0xaa57bc619b3a18a082e91c0131df428a6e542c64ec0fb8233507eba72baa0e9f",
+      "kind": "uups"
     }
   ],
   "impls": {
