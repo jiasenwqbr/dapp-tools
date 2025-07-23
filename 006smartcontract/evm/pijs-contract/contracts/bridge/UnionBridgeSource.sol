@@ -35,7 +35,7 @@ contract UnionBridgeSource is
     );
     bytes32 private constant WITHDRAW_PERMIT_TYPEHASH =keccak256(
         abi.encodePacked(
-            "Permit(address caller,address feeReceiver,uint256 feeAmount,address userAddr,uint256 userAmount,uint256 orderId,uint256 chainId)"
+            "Permit(address caller,address feeReceiver,uint256 amount,address userAddr,uint256 orderId,uint256 chainId)"
         )
     );
     bytes32 private constant PERMIT_DEPOSIT_ERC20_TYPEHASH = keccak256(
@@ -45,7 +45,7 @@ contract UnionBridgeSource is
     );
     bytes32 private constant WITHDRAWERC20_PERMIT_TYPEHASH = keccak256(
         abi.encodePacked(
-            "Permit(address caller,address tokenAddr,address feeReceiver,uint256 feeAmount,address userAddr,uint256 userAmount,uint256 orderId,uint256 chainId)"
+            "Permit(address caller,address tokenAddr,address feeReceiver,uint256 amount,address userAddr,uint256 orderId,uint256 chainId)"
         )
     );
 
@@ -53,10 +53,11 @@ contract UnionBridgeSource is
     address public signer;
     // receiver：deposite() 时实际收币的地址。
     address private receiver;
-    // outgoingAddress：withdraw() 时从哪划出资金。 提现代币来源地址
-    address private outgoingAddress;
     // feeReceiver：存款产生的手续费去向。 手续费接收地址
     address private feeReceiver;
+
+    uint256 public constant FEE_DENOMINATOR = 10000; // 精度：10000表示万分比
+    uint256 public feePercent;      // 万分比手续费，例如 30 表示 0.3%
 
     // event
     event DepositeUNI(address caller,uint256 amount, address receiver, uint256 order, uint256 chainId);
@@ -64,6 +65,8 @@ contract UnionBridgeSource is
     event DepositeERC20(address caller,address tokenAddr,address receiver,uint256 amount,uint256 orderId,uint256 chainId);
     event WithdrawERC20(address caller,address tokenAddr,address feeReceiver,uint256 feeAmount,address userAddr,uint256 userAmount,uint256 orderId,uint256 chainId);
 
+    event FeeUpdated(uint256 newFee);
+    event FeeReceiverUpdated(address newReceiver);
 
     constructor() {
         _disableInitializers();
@@ -75,10 +78,10 @@ contract UnionBridgeSource is
 
     function initialize(
         address _receiver,
-        address _outgoingAddress,
         address _feeReceiver,
         address _signer,
-        address _operator
+        address _operator,
+        uint256 _feePercent
     ) public initializer {
         __AccessControlEnumerable_init();
         __ReentrancyGuard_init();
@@ -89,10 +92,9 @@ contract UnionBridgeSource is
         _grantRole(OPERATE_ROLE, _operator);
 
         receiver = _receiver;
-        outgoingAddress = _outgoingAddress;
         feeReceiver = _feeReceiver;
         signer = _signer;
-
+        feePercent = _feePercent;
         uint256 chainId;
         assembly {
             chainId := chainid()
@@ -124,26 +126,28 @@ contract UnionBridgeSource is
     function setReceiver(address _receiver) public onlyRole(MANAGE_ROLE) {
         receiver = _receiver;
     }
-     function setOutGoingAddress(
-        address _outGoingAddress
-    ) public onlyRole(MANAGE_ROLE) {
-        outgoingAddress = _outGoingAddress;
+
+    function setFeeReceiver(address _receiver) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        feeReceiver = _receiver;
+        emit FeeReceiverUpdated(_receiver);
+    }
+    function setFeePercent(uint256 _feePercent) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_feePercent <= 1000, "Fee too high"); // 最多 10%
+        feePercent = _feePercent;
+        emit FeeUpdated(_feePercent);
     }
 
-    function setFeeReceiver(address _feeReceiver) public onlyRole(MANAGE_ROLE) {
-        feeReceiver = _feeReceiver;
-    }
 /////////////////////////////////////////// depositeUNI /////////////////////////
     struct DepositeData {
         address receiver;
-        uint256 amoount;
+        uint256 amount;
         uint256 orderId;
         uint256 chainId;
     }
     function depositeUNI(bytes calldata data) external nonReentrant payable {
         require(msg.value > 0, "No ETH sent");
         DepositeData memory depositeData = parseDepositeData(data);
-        emit DepositeUNI(msg.sender,depositeData.amoount,depositeData.receiver,depositeData.orderId,depositeData.chainId);
+        emit DepositeUNI(msg.sender,depositeData.amount,depositeData.receiver,depositeData.orderId,depositeData.chainId);
 
     }
 
@@ -192,7 +196,7 @@ contract UnionBridgeSource is
         return
             DepositeData({
                 receiver:_receiver,
-                amoount:amount,
+                amount:amount,
                 orderId:orderId,
                 chainId:chainId
             });
@@ -215,30 +219,31 @@ contract UnionBridgeSource is
 /////////////////////////////////////////// withdrawUNI /////////////////////////
     struct WithDrawData {
         address feeReceiver;
-        uint256 feeAmount;
+        uint256 amount;
         address userAddr;
-        uint256 userAmount;
         uint256 orderId;
         uint256 chainId;
     }
     function withdrawUNI(bytes calldata data) public nonReentrant onlyRole(OPERATE_ROLE) {
         WithDrawData memory withDrawData = parseWithDrawData(data);
-        require(withDrawData.feeAmount > 0,"UnionBridgeSource:No ETH withdraw");
-        require(withDrawData.feeAmount <= address(this).balance,"UnionBridgeSource:");
-         (bool sentFee, ) = payable(withDrawData.feeReceiver).call{value: withDrawData.feeAmount}("");
+        require(withDrawData.amount > 0,"UnionBridgeSource:No ETH withdraw");
+        require(withDrawData.amount <= address(this).balance,"UnionBridgeSource:");
+
+        uint256 feeAmount = (withDrawData.amount * feePercent) / FEE_DENOMINATOR;
+        uint256 userAmount = withDrawData.amount - feeAmount;
+         (bool sentFee, ) = payable(withDrawData.feeReceiver).call{value: feeAmount}("");
         require(sentFee, "ETH transfer failed");
-        (bool sendUserValue,) = payable(withDrawData.userAddr).call{value: withDrawData.userAmount}("");
+        (bool sendUserValue,) = payable(withDrawData.userAddr).call{value: userAmount}("");
         require(sendUserValue, "ETH transfer failed");
-        emit WithDrawUNI(msg.sender,withDrawData.feeReceiver,withDrawData.feeAmount,withDrawData.userAddr,withDrawData.userAmount,withDrawData.orderId,withDrawData.chainId);
+        emit WithDrawUNI(msg.sender,withDrawData.feeReceiver,feeAmount,withDrawData.userAddr,userAmount,withDrawData.orderId,withDrawData.chainId);
     }
 
     function parseWithDrawData(bytes calldata data) internal view returns (WithDrawData memory) {
         (
             address callerAddr,
             address _feeReceiver,
-            uint256 feeAmount,
+            uint256 amount,
             address userAddr,
-            uint256 userAmount,
             uint256 orderId,
             uint256 chainId,
             bytes memory signature
@@ -249,7 +254,6 @@ contract UnionBridgeSource is
                 address,
                 uint256,
                 address,
-                uint256,
                 uint256,
                 uint256,
                 bytes
@@ -267,9 +271,8 @@ contract UnionBridgeSource is
                         WITHDRAW_PERMIT_TYPEHASH,
                         callerAddr,
                         _feeReceiver,
-                        feeAmount,
+                        amount,
                         userAddr,
-                        userAmount,
                         orderId,
                         chainId
                     )
@@ -282,9 +285,8 @@ contract UnionBridgeSource is
         );
         return WithDrawData({
             feeReceiver:_feeReceiver,
-            feeAmount:feeAmount,
+            amount:amount,
             userAddr:userAddr,
-            userAmount:userAmount,
             orderId:orderId,
             chainId:chainId
         });
@@ -297,12 +299,14 @@ contract UnionBridgeSource is
         uint256 orderId;
         uint256 chainId;
     }
-    function depositeERC20(bytes calldata data) external  payable {
-        require(msg.value > 0, "No ETH sent");
+    function depositeERC20(bytes calldata data) external{
         DepositeERC20Data memory depositeERC20Data = parseDepositeERC20Data(data);
-        require(msg.value == depositeERC20Data.amount,"UnionBridgeSource:invalid amount");
-        IERC20(depositeERC20Data.tokenAddr).safeTransfer(address(this), msg.value);
-        // emit
+        require(depositeERC20Data.amount > 0, "UnionBridgeSource:No token sent");
+        IERC20(depositeERC20Data.tokenAddr).safeTransferFrom(
+            msg.sender,
+            address(this),
+            depositeERC20Data.amount
+        );
         emit DepositeERC20(msg.sender,depositeERC20Data.tokenAddr,depositeERC20Data.receiver,depositeERC20Data.amount,depositeERC20Data.orderId,depositeERC20Data.chainId);
     }
 
@@ -364,20 +368,20 @@ contract UnionBridgeSource is
     struct WithDrawERC20Data {
         address tokenAddr;
         address feeReceiver;
-        uint256 feeAmount;
+        uint256 amount;
         address userAddr;
-        uint256 userAmount;
         uint256 orderId;
         uint256 chainId;
     } 
     function withdrawERC20(bytes calldata data) public nonReentrant onlyRole(OPERATE_ROLE) {
         WithDrawERC20Data memory withDrawERC20Data = parseWithDrawERC20Data(data);
-        require(withDrawERC20Data.feeAmount > 0,"UnionBridgeSource:No ETH withdraw");
-        require(withDrawERC20Data.feeAmount <= address(this).balance,"UnionBridgeSource:");
-        IERC20(withDrawERC20Data.tokenAddr).safeTransfer(withDrawERC20Data.feeReceiver, withDrawERC20Data.feeAmount);
-        IERC20(withDrawERC20Data.tokenAddr).safeTransfer(withDrawERC20Data.userAddr, withDrawERC20Data.userAmount);
-        emit WithdrawERC20(msg.sender,withDrawERC20Data.tokenAddr,withDrawERC20Data.feeReceiver,withDrawERC20Data.feeAmount,withDrawERC20Data.userAddr,withDrawERC20Data.userAmount,withDrawERC20Data.orderId,withDrawERC20Data.chainId);
-
+        require(withDrawERC20Data.amount > 0,"UnionBridgeSource:No ETH withdraw");
+        require(withDrawERC20Data.amount <= IERC20(withDrawERC20Data.tokenAddr).balanceOf(address(this)), "UnionBridgeSource:Insufficient token balance");
+        uint256 feeAmount = (withDrawERC20Data.amount * feePercent) / FEE_DENOMINATOR;
+        uint256 userAmount = withDrawERC20Data.amount - feeAmount;
+        IERC20(withDrawERC20Data.tokenAddr).safeTransfer(withDrawERC20Data.feeReceiver, feeAmount);
+        IERC20(withDrawERC20Data.tokenAddr).safeTransfer(withDrawERC20Data.userAddr, userAmount);
+        emit WithdrawERC20(msg.sender,withDrawERC20Data.tokenAddr,withDrawERC20Data.feeReceiver,feeAmount,withDrawERC20Data.userAddr,userAmount,withDrawERC20Data.orderId,withDrawERC20Data.chainId);
     }
 
     function parseWithDrawERC20Data(bytes calldata data) internal view returns (WithDrawERC20Data memory) {
@@ -385,9 +389,8 @@ contract UnionBridgeSource is
             address callerAddr,
             address tokenAddr,
             address _feeReceiver,
-            uint256 feeAmount,
+            uint256 amount,
             address userAddr,
-            uint256 userAmount,
             uint256 orderId,
             uint256 chainId,
             bytes memory signature
@@ -398,7 +401,6 @@ contract UnionBridgeSource is
                 address,
                 uint256,
                 address,
-                uint256,
                 uint256,
                 uint256,
                 bytes
@@ -417,9 +419,8 @@ contract UnionBridgeSource is
                         callerAddr,
                         tokenAddr,
                         _feeReceiver,
-                        feeAmount,
+                        amount,
                         userAddr,
-                        userAmount,
                         orderId,
                         chainId
                     )
@@ -433,9 +434,8 @@ contract UnionBridgeSource is
         return WithDrawERC20Data({
             tokenAddr:tokenAddr,
             feeReceiver:_feeReceiver,
-            feeAmount:feeAmount,
+            amount:amount,
             userAddr:userAddr,
-            userAmount:userAmount,
             orderId:orderId,
             chainId:chainId
         });
