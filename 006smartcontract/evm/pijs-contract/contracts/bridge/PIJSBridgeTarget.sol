@@ -111,7 +111,7 @@ contract PIJSBridgeTarget is
     }
 
     /// @notice 由 OPERATOR 在收到原链锁定后调用，给用户 mint
-    function mintToken(bytes calldata data) external whenNotPaused onlyRole(OPERATE_ROLE) {
+    function mintToken(bytes calldata data) external whenNotPaused nonReentrant onlyRole(OPERATE_ROLE) {
         
         MintUACData memory mintUACData = parseMintTokenData(data);
         
@@ -202,7 +202,7 @@ contract PIJSBridgeTarget is
     }
 
     /// @notice 用户 burn 表示要跨回原链
-    function tokenBurned(bytes calldata data) external whenNotPaused {
+    function tokenBurned(bytes calldata data) external whenNotPaused nonReentrant {
         BurnTokenData memory burnTokenData = parseBurnTokenData(data);
 
         _burn(msg.sender, burnTokenData.amount);
@@ -255,8 +255,6 @@ contract PIJSBridgeTarget is
             orderId:orderId,
             chainId:chainId
         });
-
-
     }
 
     function pause() public onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -266,9 +264,4 @@ contract PIJSBridgeTarget is
     function unpause() public onlyRole(DEFAULT_ADMIN_ROLE) {
         _unpause();
     }
-
-
-
-
-
 }
