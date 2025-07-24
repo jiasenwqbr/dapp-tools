@@ -27,7 +27,7 @@ contract UnionBridgeSource is
     bytes32 public constant OPERATE_ROLE = keccak256("OPERATE_ROLE");
     // EIP‑712 签名域（domain）哈希，用于防重放攻击。
     bytes32 public DOMAIN_SEPARATOR;
-    // PERMIT_DEPOSIT_TYPEHASH、WITHDRAW_PERMIT_TYPEHASH：分别定义存款和提取请求的签名结构
+    
     bytes32 private constant PERMIT_DEPOSIT_TYPEHASH =keccak256(
         abi.encodePacked(
             "Permit(address userAddr,address receiver,uint256 amount,uint256 orderId,uint256 chainId)"
@@ -68,9 +68,6 @@ contract UnionBridgeSource is
     event FeeUpdated(uint256 newFee);
     event FeeReceiverUpdated(address newReceiver);
 
-    constructor() {
-        _disableInitializers();
-    }
 
     function _authorizeUpgrade(
         address newImplementation
@@ -112,6 +109,8 @@ contract UnionBridgeSource is
         );
     }
 
+    
+
     function balance(address token) public view returns (uint256) {
         if (token == address(0)) {
             return address(this).balance;
@@ -136,6 +135,8 @@ contract UnionBridgeSource is
         feePercent = _feePercent;
         emit FeeUpdated(_feePercent);
     }
+
+
 
 /////////////////////////////////////////// depositeUNI /////////////////////////
     struct DepositeData {

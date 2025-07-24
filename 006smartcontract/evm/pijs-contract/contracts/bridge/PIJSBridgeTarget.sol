@@ -102,7 +102,7 @@ contract PIJSBridgeTarget is
     }
 
     //////////////////////////////////   mintUAC
-    struct MintUACData {
+    struct MintTokenData {
         address caller;
         address to;
         uint256 amount;
@@ -113,19 +113,19 @@ contract PIJSBridgeTarget is
     /// @notice 由 OPERATOR 在收到原链锁定后调用，给用户 mint
     function mintToken(bytes calldata data) external whenNotPaused nonReentrant onlyRole(OPERATE_ROLE) {
         
-        MintUACData memory mintUACData = parseMintTokenData(data);
+        MintTokenData memory mintTokenData = parseMintTokenData(data);
         
-        uint256 feeAmount = (mintUACData.amount * feePercent) / FEE_DENOMINATOR;
-        uint256 userAmount = mintUACData.amount - feeAmount;
+        uint256 feeAmount = (mintTokenData.amount * feePercent) / FEE_DENOMINATOR;
+        uint256 userAmount = mintTokenData.amount - feeAmount;
 
-        require(mintUACData.to != address(0), "Invalid address");
-        _mint(mintUACData.to, userAmount);
+        require(mintTokenData.to != address(0), "Invalid address");
+        _mint(mintTokenData.to, userAmount);
         _mint(feeReceiver, feeAmount); // 收手续费
 
-        emit MintToken(mintUACData.caller,mintUACData.to, userAmount, feeAmount, mintUACData.orderId);
+        emit MintToken(mintTokenData.caller,mintTokenData.to, userAmount, feeAmount, mintTokenData.orderId);
     }
 
-    function parseMintTokenData(bytes calldata data) internal view returns (MintUACData memory) {
+    function parseMintTokenData(bytes calldata data) internal view returns (MintTokenData memory) {
         (
             address caller,
             address to,
@@ -167,7 +167,7 @@ contract PIJSBridgeTarget is
             signer == ecrecover(signHash, v, r, s),
             "UnionBridgeSource: INVALID_REQUEST"
         );
-        return MintUACData({
+        return MintTokenData({
             caller:caller,
             to:to,
             amount:amount,
