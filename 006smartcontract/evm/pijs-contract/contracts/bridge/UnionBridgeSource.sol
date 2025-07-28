@@ -35,7 +35,7 @@ contract UnionBridgeSource is
     );
     bytes32 private constant WITHDRAW_PERMIT_TYPEHASH =keccak256(
         abi.encodePacked(
-            "Permit(address caller,address feeReceiver,uint256 amount,address userAddr,uint256 orderId,uint256 chainId)"
+            "Permit(address caller,uint256 amount,address userAddr,uint256 orderId,uint256 chainId)"
         )
     );
     bytes32 private constant PERMIT_DEPOSIT_ERC20_TYPEHASH = keccak256(
@@ -45,7 +45,7 @@ contract UnionBridgeSource is
     );
     bytes32 private constant WITHDRAWERC20_PERMIT_TYPEHASH = keccak256(
         abi.encodePacked(
-            "Permit(address caller,address tokenAddr,address feeReceiver,uint256 amount,address userAddr,uint256 orderId,uint256 chainId)"
+            "Permit(address caller,address tokenAddr,uint256 amount,address userAddr,uint256 orderId,uint256 chainId)"
         )
     );
 
@@ -219,7 +219,6 @@ contract UnionBridgeSource is
     }
 /////////////////////////////////////////// withdrawUNI /////////////////////////
     struct WithDrawData {
-        address feeReceiver;
         uint256 amount;
         address userAddr;
         uint256 orderId;
@@ -232,17 +231,16 @@ contract UnionBridgeSource is
 
         uint256 feeAmount = (withDrawData.amount * feePercent) / FEE_DENOMINATOR;
         uint256 userAmount = withDrawData.amount - feeAmount;
-         (bool sentFee, ) = payable(withDrawData.feeReceiver).call{value: feeAmount}("");
+         (bool sentFee, ) = payable(feeReceiver).call{value: feeAmount}("");
         require(sentFee, "ETH transfer failed");
         (bool sendUserValue,) = payable(withDrawData.userAddr).call{value: userAmount}("");
         require(sendUserValue, "ETH transfer failed");
-        emit WithDrawUNI(msg.sender,withDrawData.feeReceiver,feeAmount,withDrawData.userAddr,userAmount,withDrawData.orderId,withDrawData.chainId);
+        emit WithDrawUNI(msg.sender,feeReceiver,feeAmount,withDrawData.userAddr,userAmount,withDrawData.orderId,withDrawData.chainId);
     }
 
     function parseWithDrawData(bytes calldata data) internal view returns (WithDrawData memory) {
         (
             address callerAddr,
-            address _feeReceiver,
             uint256 amount,
             address userAddr,
             uint256 orderId,
@@ -252,7 +250,6 @@ contract UnionBridgeSource is
             data,
             (
                 address,
-                address,
                 uint256,
                 address,
                 uint256,
@@ -261,7 +258,6 @@ contract UnionBridgeSource is
             )
         );
         require(callerAddr == msg.sender, "UnionBridgeSource: INVALID_USER");
-        require(_feeReceiver == feeReceiver, "UnionBridgeSource: INVALID_FEE_RECEIVER");
         (uint8 v, bytes32 r, bytes32 s) = splitSignature(signature);
          bytes32 signHash = keccak256(
             abi.encodePacked(
@@ -271,7 +267,6 @@ contract UnionBridgeSource is
                     abi.encode(
                         WITHDRAW_PERMIT_TYPEHASH,
                         callerAddr,
-                        _feeReceiver,
                         amount,
                         userAddr,
                         orderId,
@@ -285,7 +280,6 @@ contract UnionBridgeSource is
             "UnionBridgeSource: INVALID_REQUEST"
         );
         return WithDrawData({
-            feeReceiver:_feeReceiver,
             amount:amount,
             userAddr:userAddr,
             orderId:orderId,
@@ -368,7 +362,6 @@ contract UnionBridgeSource is
     /////////////////////////////////////////// withdrawERC20 /////////////////////////
     struct WithDrawERC20Data {
         address tokenAddr;
-        address feeReceiver;
         uint256 amount;
         address userAddr;
         uint256 orderId;
@@ -380,16 +373,15 @@ contract UnionBridgeSource is
         require(withDrawERC20Data.amount <= IERC20(withDrawERC20Data.tokenAddr).balanceOf(address(this)), "UnionBridgeSource:Insufficient token balance");
         uint256 feeAmount = (withDrawERC20Data.amount * feePercent) / FEE_DENOMINATOR;
         uint256 userAmount = withDrawERC20Data.amount - feeAmount;
-        IERC20(withDrawERC20Data.tokenAddr).safeTransfer(withDrawERC20Data.feeReceiver, feeAmount);
+        IERC20(withDrawERC20Data.tokenAddr).safeTransfer(feeReceiver, feeAmount);
         IERC20(withDrawERC20Data.tokenAddr).safeTransfer(withDrawERC20Data.userAddr, userAmount);
-        emit WithdrawERC20(msg.sender,withDrawERC20Data.tokenAddr,withDrawERC20Data.feeReceiver,feeAmount,withDrawERC20Data.userAddr,userAmount,withDrawERC20Data.orderId,withDrawERC20Data.chainId);
+        emit WithdrawERC20(msg.sender,withDrawERC20Data.tokenAddr,feeReceiver,feeAmount,withDrawERC20Data.userAddr,userAmount,withDrawERC20Data.orderId,withDrawERC20Data.chainId);
     }
 
     function parseWithDrawERC20Data(bytes calldata data) internal view returns (WithDrawERC20Data memory) {
         (
-            address callerAddr,
+            address caller,
             address tokenAddr,
-            address _feeReceiver,
             uint256 amount,
             address userAddr,
             uint256 orderId,
@@ -399,7 +391,6 @@ contract UnionBridgeSource is
             data,(
                 address,
                 address,
-                address,
                 uint256,
                 address,
                 uint256,
@@ -407,8 +398,7 @@ contract UnionBridgeSource is
                 bytes
             )
         );
-        require(callerAddr == msg.sender, "UnionBridgeSource: INVALID_USER");
-        require(_feeReceiver == feeReceiver, "UnionBridgeSource: INVALID_FEE_RECEIVER");
+        require(caller == msg.sender, "UnionBridgeSource: INVALID_USER");
         (uint8 v, bytes32 r, bytes32 s) = splitSignature(signature);
          bytes32 signHash = keccak256(
             abi.encodePacked(
@@ -417,9 +407,8 @@ contract UnionBridgeSource is
                 keccak256(
                     abi.encode(
                         WITHDRAWERC20_PERMIT_TYPEHASH,
-                        callerAddr,
+                        caller,
                         tokenAddr,
-                        _feeReceiver,
                         amount,
                         userAddr,
                         orderId,
@@ -434,7 +423,6 @@ contract UnionBridgeSource is
         );
         return WithDrawERC20Data({
             tokenAddr:tokenAddr,
-            feeReceiver:_feeReceiver,
             amount:amount,
             userAddr:userAddr,
             orderId:orderId,

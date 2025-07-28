@@ -524,5 +524,298 @@ contract PIJSOrderV1 is
         (bool success, ) = to.call{value: amount}("");
         require(success, "Withdraw: ETH transfer failed");
     }
+
+
+
+    ///////////////////////////////////////////////////////////////////////////////////////// V2
+    // make order v2
+    struct OrderV2 {
+        uint256 productId; // 购买的产品ID
+        uint256 orderId; // 订单号
+        uint256 userId; // 用户ID
+        uint256 purchaseNum; //购买的份数
+        uint256 payNum; // 支付的PIJS
+        uint256 startTimestamp; // 订单开始时间(可以由区块决定)
+        uint256 endTimestamp; // 订单到期时间
+        uint256 v2RoundId; // 轮次ID
+        uint256 roundProductLimit; // 单个轮次单个用户的限购
+        uint256 renewable; // 是否可续期
+        uint256 payValue; // 支付的PIJS的价值
+        uint256 status; // 0 -staking; 1- unstaking  状态
+        uint256 renewTime; // 续期时间
+    }
+    mapping(address => mapping(uint256 => OrderV2)) public userOrdersV2;
+      // v2RoundId -> user -> orderCount
+    mapping(uint256 => mapping(address => uint256)) public orderSumByUserByv2Round;
+    bytes32 private constant PERMIT_MAKEORDER_V2_TYPEHASH =
+        keccak256(
+            abi.encodePacked(
+                "Permit(uint256 productId,uint256 orderId,uint256 userId,uint256 purchaseNum,uint256 payNum,uint256 startTimestamp,uint256 endTimestamp,uint256 v2RoundId,uint256 roundProductLimit,uint256 renewable,uint256 payValue)"
+            )
+        );
+    event MakeOrderV2(
+        address caller,
+        uint256 productId,
+        uint256 orderId,
+        uint256 userId,
+        uint256 purchaseNum,
+        uint256 payNum,
+        uint256 startTimestamp,
+        uint256 endTimestamp,
+        uint256 v2RoundId,
+        uint256 roundProductLimit,
+        uint256 renewable,
+        uint256 payValue,
+        uint256 relationId
+    );
+    struct MakeOrderDataV2 {
+        uint256 productId; 
+        uint256 orderId; 
+        uint256 userId; 
+        uint256 purchaseNum; 
+        uint256 payNum; 
+        uint256 startTimestamp; 
+        uint256 endTimestamp; 
+        uint256 v2RoundId; 
+        uint256 roundProductLimit; 
+        uint256 renewable; 
+        uint256 payValue; 
+        uint256 relationId;
+        bytes  signature;
+
+    }
+    function makeOrderV2(bytes memory data) public payable nonReentrant {
+        MakeOrderDataV2 memory mkV2 = parseMakeOrderDataV2(data);
+        // user v2RoundId limit
+        require(orderSumByUserByv2Round[mkV2.v2RoundId][msg.sender].add(mkV2.purchaseNum) <= mkV2.roundProductLimit,"PIJSOrder: The order quantity exceeds the limit of the round");
+        require(userOrdersV2[msg.sender][mkV2.orderId].orderId == 0, "PIJSOrder: ORDER_EXISTS");
+        // update userOrdersV2
+        userOrdersV2[msg.sender][mkV2.orderId] = OrderV2({
+            productId: mkV2.productId,
+            orderId: mkV2.orderId,
+            userId: mkV2.userId,
+            purchaseNum: mkV2.purchaseNum,
+            payNum: mkV2.payNum,
+            startTimestamp: mkV2.startTimestamp,
+            endTimestamp: mkV2.endTimestamp,
+            v2RoundId: mkV2.v2RoundId,
+            roundProductLimit: mkV2.roundProductLimit,
+            renewable: mkV2.renewable,
+            payValue: mkV2.payValue,
+            status:0,
+            renewTime:0
+        });
+        // update orderSumByUserByv2Round
+        orderSumByUserByv2Round[mkV2.v2RoundId][msg.sender] = orderSumByUserByv2Round[mkV2.v2RoundId][msg.sender].add(mkV2.purchaseNum);
+
+        // event
+        emit MakeOrderV2(
+            msg.sender,
+            mkV2.productId,
+            mkV2.orderId,
+            mkV2.userId,
+            mkV2.purchaseNum,
+            mkV2.payNum,
+            mkV2.startTimestamp,
+            mkV2.endTimestamp,
+            mkV2.v2RoundId,
+            mkV2.roundProductLimit,
+            mkV2.renewable,
+            mkV2.payValue,
+            mkV2.relationId
+        );
+    }
+
+    function parseMakeOrderDataV2(bytes memory data) internal returns(MakeOrderDataV2 memory){
+        (
+            uint256 productId,
+            uint256 orderId,
+            uint256 userId,
+            uint256 purchaseNum, 
+            uint256 payNum,
+            uint256 startTimestamp, 
+            uint256 endTimestamp,
+            uint256 v2RoundId,
+            uint256 roundProductLimit,
+            uint256 renewable,
+            uint256 payValue,
+            uint256 relationId,
+            bytes memory signature
+        ) = abi.decode(
+            data,
+            (
+                uint256,
+                uint256,
+                uint256,
+                uint256, 
+                uint256,
+                uint256, 
+                uint256,
+                uint256,
+                uint256,
+                uint256,
+                uint256,
+                uint256,
+                bytes
+            )
+        );
+         // validite para
+        require(msg.value >= payNum, "PIJSOrder: invalid payNum");
+        require(endTimestamp > block.timestamp, "PIJSOrder: order invalid");
+        MakeOrderDataV2 memory order = MakeOrderDataV2({
+            productId: productId,
+            orderId: orderId,
+            userId: userId,
+            purchaseNum: purchaseNum, 
+            payNum: payNum,
+            startTimestamp: startTimestamp, 
+            endTimestamp: endTimestamp,
+            v2RoundId: v2RoundId,
+            roundProductLimit: roundProductLimit,
+            renewable: renewable,
+            payValue: payValue,
+            relationId:relationId,
+            signature:signature
+        });
+        require(verfyMakeOrderV2(order),"ERROR:INVALID_REQUEST");
+
+
+        return MakeOrderDataV2({
+            productId: productId,
+            orderId: orderId,
+            userId: userId,
+            purchaseNum: purchaseNum, 
+            payNum: payNum,
+            startTimestamp: startTimestamp, 
+            endTimestamp: endTimestamp,
+            v2RoundId: v2RoundId,
+            roundProductLimit: roundProductLimit,
+            renewable: renewable,
+            payValue: payValue,
+            relationId:relationId,
+            signature:signature
+        });
+
+    }
+ 
+    function verfyMakeOrderV2(MakeOrderDataV2 memory orderV2) internal view returns (bool) {
+         (uint8 v, bytes32 r, bytes32 s) = splitSignature(orderV2.signature);
+          bytes32 signHash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                DOMAIN_SEPARATOR,
+                keccak256(
+                    abi.encode(
+                        PERMIT_MAKEORDER_V2_TYPEHASH,
+                        orderV2.productId,
+                        orderV2.orderId,
+                        orderV2.userId,
+                        orderV2.purchaseNum, 
+                        orderV2.payNum,
+                        orderV2.startTimestamp, 
+                        orderV2.endTimestamp,
+                        orderV2.v2RoundId,
+                        orderV2.roundProductLimit,
+                        orderV2.renewable,
+                        orderV2.payValue
+                    )
+                )
+            )
+        );
+        return   signer == ecrecover(signHash, v, r, s);
+    }
+    // renew order
+    struct RenewOrderV2Data {
+        uint256 orderId;
+        uint256 newEndTimestamp;
+        bytes  signature;
+    }
+    event ReNewOrderV2(address caller, uint256 orderId, uint256 newEndTimestamp);
+    mapping(address => RenewOrder[]) public userRenewOrdersV2;
+    function reNewOrdeV2( bytes memory data ) public nonReentrant {
+        RenewOrderV2Data memory reNewV2Data = parseRenewOrderV2Data(data);  
+        OrderV2 memory order = userOrdersV2[msg.sender][reNewV2Data.orderId];
+        require(order.orderId != 0,"PIJSOrder: no order exist");
+        require(order.status == 0, "PIJSOrder: order is invalid");
+        require(order.renewable == 1, "PIJSOrder: order is not renewable");
+        userOrdersV2[msg.sender][reNewV2Data.orderId ].renewTime = reNewV2Data.newEndTimestamp;
+        userRenewOrdersV2[msg.sender].push(
+            RenewOrder({
+                orderId: reNewV2Data.orderId,
+                renewTime: reNewV2Data.newEndTimestamp,
+                blockTime: block.timestamp
+            })
+        );
+
+        emit ReNewOrderV2(msg.sender, order.orderId, reNewV2Data.newEndTimestamp);
+
+    }
+
+    function parseRenewOrderV2Data(bytes memory data) internal view returns(RenewOrderV2Data memory){
+        (
+            uint256 orderId,
+            uint256 newEndTimestamp,
+            bytes memory signature
+        ) = abi.decode(
+                data,
+                (
+                    uint256,
+                    uint256,
+                     bytes
+                )
+            );
+        require(
+            verifyRenew(
+                signature,
+                orderId,
+                newEndTimestamp
+            ),
+            "ERROR:INVALID_REQUEST"
+        );
+        return RenewOrderV2Data({
+            orderId:orderId,
+            newEndTimestamp:newEndTimestamp,
+            signature:signature
+        });
+    }
+
+    // betBackOrder
+    event BetBackOrderV2(address caller, uint256 orderId, uint256 amount);
+    function betBackOrderV2( bytes memory data) public nonReentrant {
+        (
+            uint256 orderId,
+            bytes memory signature
+        ) = abi.decode(
+                data,
+                (
+                    uint256,
+                     bytes
+                )
+            );
+         require(
+            verifyBetBack(
+                signature,
+                orderId
+            ),
+            "ERROR:INVALID_REQUEST"
+        );
+        OrderV2 memory order = userOrdersV2[msg.sender][orderId];
+        require(order.orderId != 0,"PIJSOrder: no order exist");
+        require(order.status == 0, "PIJSOrder: order is invalid");
+        userOrders[msg.sender][orderId].status = 1;
+        require(order.payNum>0);
+        // payable(msg.sender).transfer(order.payNum);
+        (bool success, ) = payable(msg.sender).call{value: order.payNum}("");
+        require(success, "Transfer failed");
+
+        emit BetBackOrderV2(msg.sender, orderId, order.payNum);
+
+    }
+
+
+
+
+
+
     
 }
