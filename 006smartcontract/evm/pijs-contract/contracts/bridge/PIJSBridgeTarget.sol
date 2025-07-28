@@ -64,6 +64,7 @@ contract PIJSBridgeTarget is
         __AccessControl_init();
         __Pausable_init();
         __UUPSUpgradeable_init();
+        __ReentrancyGuard_init(); 
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(OPERATE_ROLE, operator);
@@ -204,7 +205,8 @@ contract PIJSBridgeTarget is
     /// @notice 用户 burn 表示要跨回原链
     function tokenBurned(bytes calldata data) external whenNotPaused nonReentrant {
         BurnTokenData memory burnTokenData = parseBurnTokenData(data);
-
+        require(burnTokenData.amount>0,"PIJSBridgeTarget:amount should not be zero");
+        require(burnTokenData.amount<=balanceOf(burnTokenData.caller),"PIJSBridgeTarget:amount should less than the balance");
         _burn(msg.sender, burnTokenData.amount);
         emit TokenBurned(msg.sender, burnTokenData.amount, burnTokenData.orderId);
     }
