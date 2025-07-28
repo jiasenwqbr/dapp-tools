@@ -92,15 +92,20 @@ contract PIJSBridgeTarget is
 
     /// @notice 管理员设置手续费
     function setFeePercent(uint256 _feePercent) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_feePercent <= 1000, "Fee too high"); // 最多 10%
+        require(_feePercent <= 1500, "Fee too high"); // 最多 15%
         feePercent = _feePercent;
         emit FeeUpdated(_feePercent);
     }
 
     function setFeeReceiver(address _receiver) external onlyRole(DEFAULT_ADMIN_ROLE) {
         feeReceiver = _receiver;
-        emit FeeReceiverUpdated(_receiver);
+        emit FeeReceiverUpdated(_receiver); 
     }
+    function setSigner(address _signer) public onlyRole(MANAGE_ROLE) {
+        signer = _signer;
+    }
+
+
 
     //////////////////////////////////   mintUAC
     struct MintTokenData {

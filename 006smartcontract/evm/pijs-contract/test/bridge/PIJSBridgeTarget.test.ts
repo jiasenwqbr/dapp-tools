@@ -280,11 +280,63 @@ describe("PIJSBridgeTarget", () => {
 
       });
 
+      it("burn token if the burned amount is zero ,it shoud be error.",async ()=> {
+             const params = {
+                caller : user.address,
+                amount : ethers.utils.parseEther("0"),
+                orderId:1,
+                chainId:(await ethers.provider.getNetwork()).chainId
+            };
+
+            const types = {
+                Permit:[
+                        { name: "caller", type: "address" },
+                        { name: "amount", type: "uint256" },
+                        { name: "orderId", type: "uint256" },
+                        { name: "chainId", type: "uint256" },
+                    ],
+            };
+            const domain = {
+                name: "PIJSBridgeTarget",
+                version: "1",
+                chainId: (await ethers.provider.getNetwork()).chainId,
+                verifyingContract: pIJSBridgeTargetContract.address,
+            };
+
+            const signature = await owner._signTypedData(domain, types, params);
+            const data = ethers.utils.defaultAbiCoder.encode(
+                [
+                    "address",
+                    "uint256",
+                    "uint256", 
+                    "uint256",
+                    "bytes"
+                ],[
+                    params.caller,
+                    params.amount,
+                    params.orderId,
+                    params.chainId,
+                    signature
+                ]
+            );
+
+            const userBalanceBeforeBurn = await pIJSBridgeTargetContract.balanceOf(user.address);
+            console.log("userBalanceBeforeBurn:",userBalanceBeforeBurn);
+            try {
+                await pIJSBridgeTargetContract.connect(user).tokenBurned(data,{
+                 gasLimit: 1_000_000,
+            });
+            } catch (error) {
+                console.log(error)
+            }
+            const userBalanceAfterBurn = await pIJSBridgeTargetContract.balanceOf(user.address);
+            console.log("userBalanceAfterBurn:",userBalanceAfterBurn);
+         });
+
+      });
 
 
 
-
-});
 
 
 
@@ -292,5 +344,6 @@ describe("PIJSBridgeTarget", () => {
  * 
  
 npx hardhat test ./test/bridge/PIJSBridgeTarget.test.ts --network ganache
- * 
+ 
+* 
  */

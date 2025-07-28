@@ -131,7 +131,7 @@ contract UnionBridgeSource is
         emit FeeReceiverUpdated(_receiver);
     }
     function setFeePercent(uint256 _feePercent) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(_feePercent <= 1000, "Fee too high"); // 最多 10%
+        require(_feePercent <= 1500, "Fee too high"); // 最多 15%
         feePercent = _feePercent;
         emit FeeUpdated(_feePercent);
     }
