@@ -19,5 +19,5 @@ main().catch((error) => {
 
 /***
  * 
- npx hardhat run ./scripts/ganche/deploy_UnionBridgeSource_ganche.ts --network ganache
+ npx hardhat run ./scripts/mainnet/bridge/deploy_UnionBridgeSource_mainnet.ts --network pijs
  */

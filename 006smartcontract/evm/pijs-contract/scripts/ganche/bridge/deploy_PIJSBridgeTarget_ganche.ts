@@ -28,5 +28,5 @@ main().catch((error) => {
 
 /***
  * 
- npx hardhat run ./scripts/ganche/deploy_PIJSBridgeTarget_ganche.ts --network ganache
+ npx hardhat run ./scripts/ganche/bridge/deploy_PIJSBridgeTarget_ganche.ts --network ganache
  */
