@@ -28,5 +28,7 @@ main().catch((error) => {
 
 /***
  * 
+ * 
  npx hardhat run ./scripts/mainnet/bridge/deploy_PIJSBridgeTarget_mainnet.ts --network pijs
+ 
  */
