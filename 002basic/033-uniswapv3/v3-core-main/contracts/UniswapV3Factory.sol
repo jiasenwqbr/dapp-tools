@@ -36,6 +36,8 @@ contract UniswapV3Factory is IUniswapV3Factory, UniswapV3PoolDeployer, NoDelegat
     /// @inheritdoc IUniswapV3Factory
     mapping(address => mapping(address => mapping(uint24 => address))) public override getPool;
 
+    // 设置合约拥有者
+    // 初始化三个默认手续费档位：0.05%、0.3%、1%，对应的 tickSpacing 分别为 10、60、200。
     constructor() {
         owner = msg.sender;
         emit OwnerChanged(address(0), msg.sender);
@@ -48,6 +50,20 @@ contract UniswapV3Factory is IUniswapV3Factory, UniswapV3PoolDeployer, NoDelegat
         emit FeeAmountEnabled(10000, 200);
     }
 
+/**
+ * createPool — 创建池子
+ * @param tokenA 
+ * @param tokenB 
+ * @param fee 
+    执行流程：
+        1.检查 tokenA != tokenB
+        2.对地址排序，确保 (token0, token1) 顺序一致（排序可防止重复部署）
+        3.查 feeAmountTickSpacing[fee] 是否已注册
+        4.确保池不存在：getPool[token0][token1][fee] == address(0)
+        5.调用 deploy(...) 来部署 UniswapV3Pool 合约
+        6.记录双向映射（节省地址比较 gas）
+        7.触发事件 PoolCreated
+ */
     /// @inheritdoc IUniswapV3Factory
     function createPool(
         address tokenA,
