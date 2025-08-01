@@ -97,6 +97,10 @@ contract UACERC20 is
             )
         );
     }
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
 
     /// @notice 管理员设置手续费
     function setFeePercent(uint256 _feePercent) external onlyRole(DEFAULT_ADMIN_ROLE) {

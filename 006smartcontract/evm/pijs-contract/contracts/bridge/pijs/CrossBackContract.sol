@@ -68,6 +68,11 @@ contract CrossBackContract is AccessControlUpgradeable, OwnableUpgradeable, Reen
             )
         );
     }
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
 
     /// @notice 用户 burn 表示要跨回原链
     function tokenBurned(bytes calldata data) external whenNotPaused nonReentrant {

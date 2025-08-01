@@ -82,6 +82,10 @@ contract StakingUAC is
                 )
             );
     }
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
 
     function _authorizeUpgrade(
         address newImplementation
@@ -102,7 +106,8 @@ contract StakingUAC is
         Order memory order = parseOrder(data);
         require(userOrders[msg.sender][order.orderId].orderId == 0, "PIJSOrder: ORDER_EXISTS");
         // 判断balanceSource : "crosschain"（使用跨链余额）或 "direct"（直接从钱包扣款）
-        
+
+
 
 
     }

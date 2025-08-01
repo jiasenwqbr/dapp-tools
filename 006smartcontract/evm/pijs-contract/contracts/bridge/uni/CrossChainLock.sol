@@ -163,6 +163,10 @@ contract CrossChainLock is
         }
         return feeAmountTick[fee_type];
     }
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
 /////////////////////////////////////////// depositeUNI /////////////////////////
     struct DepositeData {
         address receiver;

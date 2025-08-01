@@ -27,6 +27,11 @@ contract WithdrawContract is AccessControlUpgradeable, OwnableUpgradeable, Reent
         address newImplementation
     ) internal virtual override onlyRole(MANAGE_ROLE) {}
 
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
+
     function initialize(address uacToken_, address operator_,address _signer,address admin) public initializer {
         require(uacToken_ != address(0), "UAC token address is zero");
         require(operator_ != address(0), "Operator is zero");

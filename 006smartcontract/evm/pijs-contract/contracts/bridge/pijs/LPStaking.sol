@@ -46,6 +46,10 @@ contract LPStaking is
         // PIJSStakeTypeNumber[60 minutes] = 1000;
         // PIJSStakeTypeNumber[90 minutes] = 1000;
     }
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor() {
+        _disableInitializers();
+    }
 
     function _authorizeUpgrade(
         address newImplementation
