@@ -38,11 +38,6 @@ contract UACERC20 is
         )
     );
 
-
-    bytes32 private constant PERMIT_BURN_TYPEHASH = keccak256(
-        abi.encodePacked("Permit(address caller,uint256 amount,uint256 orderId,uint256 chainId)")
-    );
-
     mapping(address => bool) private whiteList;  // 手续费白名单
     mapping(uint24 => uint24) public  feeAmountTick; // 不同类型的手续费
 
@@ -127,7 +122,7 @@ contract UACERC20 is
         require(isWhiteListed(_address),"Address not in white list");
         whiteList[_address] = false;
     }
-    // 检查地址是否在黑名单中
+    // 检查地址是否在白名单中
     function isWhiteListed(address _address) public view returns (bool) {
         return  whiteList[_address];
     }

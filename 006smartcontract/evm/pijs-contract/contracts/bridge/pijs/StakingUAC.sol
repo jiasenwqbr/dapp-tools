@@ -338,14 +338,4 @@ contract StakingUAC is
     function getUserOrderCount(address user) public view returns (uint256) {
         return userOrderIds[user].length;
     }
-
-
-
-
-
-
-
-     
-
-
 }
