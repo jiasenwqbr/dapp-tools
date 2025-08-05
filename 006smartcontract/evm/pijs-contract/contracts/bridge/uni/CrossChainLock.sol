@@ -45,14 +45,13 @@ contract CrossChainLock is
     );
     bytes32 private constant WITHDRAWERC20_PERMIT_TYPEHASH = keccak256(
         abi.encodePacked(
-            "Permit(address caller,uint24 feeType,address tokenAddr,uint256 amount,address userAddr,uint256 orderId,uint256 chainId)"
+            "Permit(address caller,uint256 fee,address tokenAddr,uint256 amount,address userAddr,uint256 orderId,uint256 chainId)"
         )
     );
 
     // 签名者地址
     address public signer;
     // receiver：deposite() 时实际收币的地址。
-    address private receiver;
     // feeReceiver：存款产生的手续费去向。 手续费接收地址
     address private feeReceiver;
 
@@ -76,7 +75,6 @@ contract CrossChainLock is
     ) internal override onlyRole(MANAGE_ROLE) {}
 
     function initialize(
-        address _receiver,
         address _feeReceiver,
         address _signer,
         address _operator,
@@ -89,8 +87,6 @@ contract CrossChainLock is
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(MANAGE_ROLE, msg.sender);
         _grantRole(OPERATE_ROLE, _operator);
-
-        receiver = _receiver;
         feeReceiver = _feeReceiver;
         signer = _signer;
         // feePercent = _feePercent;
@@ -124,11 +120,7 @@ contract CrossChainLock is
     function setSigner(address _signer) public onlyRole(MANAGE_ROLE) {
         signer = _signer;
     }
-
-    function setReceiver(address _receiver) public onlyRole(MANAGE_ROLE) {
-        receiver = _receiver;
-    }
-
+    
     function setFeeReceiver(address _receiver) external onlyRole(DEFAULT_ADMIN_ROLE) {
         feeReceiver = _receiver;
         emit FeeReceiverUpdated(_receiver);
@@ -250,7 +242,7 @@ contract CrossChainLock is
     struct WithDrawData {
         uint256 amount;
         address userAddr;
-        uint24 feeType;
+        uint256 fee;
         uint256 orderId;
         uint256 chainId;
     }
@@ -259,13 +251,13 @@ contract CrossChainLock is
         require(withDrawData.amount > 0,"UnionBridgeSource:No ETH withdraw");
         require(withDrawData.amount <= address(this).balance,"UnionBridgeSource:");
 
-        uint256 feeAmount = (withDrawData.amount * getFeeAmountTick(withDrawData.feeType)) / FEE_DENOMINATOR;
-        uint256 userAmount = withDrawData.amount - feeAmount;
-         (bool sentFee, ) = payable(feeReceiver).call{value: feeAmount}("");
+       // uint256 feeAmount = (withDrawData.amount * getFeeAmountTick(withDrawData.feeType)) / FEE_DENOMINATOR;
+      //  uint256 userAmount = withDrawData.amount - feeAmount;
+        (bool sentFee, ) = payable(feeReceiver).call{value: withDrawData.fee}("");
         require(sentFee, "ETH transfer failed");
-        (bool sendUserValue,) = payable(withDrawData.userAddr).call{value: userAmount}("");
+        (bool sendUserValue,) = payable(withDrawData.userAddr).call{value: withDrawData.amount}("");
         require(sendUserValue, "ETH transfer failed");
-        emit WithDrawUNI(msg.sender,feeReceiver,feeAmount,withDrawData.userAddr,userAmount,withDrawData.orderId,withDrawData.chainId);
+        emit WithDrawUNI(msg.sender,feeReceiver,withDrawData.fee,withDrawData.userAddr,withDrawData.amount,withDrawData.orderId,withDrawData.chainId);
     }
 
     function parseWithDrawData(bytes calldata data) internal view returns (WithDrawData memory) {
@@ -273,7 +265,7 @@ contract CrossChainLock is
             address callerAddr,
             uint256 amount,
             address userAddr,
-            uint24 feeType,
+            uint256  fee,
             uint256 orderId,
             uint256 chainId,
             bytes memory signature
@@ -283,7 +275,7 @@ contract CrossChainLock is
                 address,
                 uint256,
                 address,
-                uint24,
+                uint256,
                 uint256,
                 uint256,
                 bytes
@@ -301,7 +293,7 @@ contract CrossChainLock is
                         callerAddr,
                         amount,
                         userAddr,
-                        feeType,
+                        fee,
                         orderId,
                         chainId
                     )
@@ -315,7 +307,7 @@ contract CrossChainLock is
         return WithDrawData({
             amount:amount,
             userAddr:userAddr,
-            feeType:feeType,
+            fee:fee,
             orderId:orderId,
             chainId:chainId
         });
@@ -398,7 +390,7 @@ contract CrossChainLock is
         address tokenAddr;
         uint256 amount;
         address userAddr;
-        uint24 feeType;
+        uint256 fee;
         uint256 orderId;
         uint256 chainId;
     } 
@@ -406,11 +398,11 @@ contract CrossChainLock is
         WithDrawERC20Data memory withDrawERC20Data = parseWithDrawERC20Data(data);
         require(withDrawERC20Data.amount > 0,"UnionBridgeSource:No ETH withdraw");
         require(withDrawERC20Data.amount <= IERC20(withDrawERC20Data.tokenAddr).balanceOf(address(this)), "UnionBridgeSource:Insufficient token balance");
-        uint256 feeAmount = (withDrawERC20Data.amount * getFeeAmountTick(withDrawERC20Data.feeType)) / FEE_DENOMINATOR;
-        uint256 userAmount = withDrawERC20Data.amount - feeAmount;
-        IERC20(withDrawERC20Data.tokenAddr).safeTransfer(feeReceiver, feeAmount);
-        IERC20(withDrawERC20Data.tokenAddr).safeTransfer(withDrawERC20Data.userAddr, userAmount);
-        emit WithdrawERC20(msg.sender,withDrawERC20Data.tokenAddr,feeReceiver,feeAmount,withDrawERC20Data.userAddr,userAmount,withDrawERC20Data.orderId,withDrawERC20Data.chainId);
+        // uint256 feeAmount = (withDrawERC20Data.amount * getFeeAmountTick(withDrawERC20Data.feeType)) / FEE_DENOMINATOR;
+        // uint256 userAmount = withDrawERC20Data.amount - feeAmount;
+        IERC20(withDrawERC20Data.tokenAddr).safeTransfer(feeReceiver, withDrawERC20Data.fee);
+        IERC20(withDrawERC20Data.tokenAddr).safeTransfer(withDrawERC20Data.userAddr, withDrawERC20Data.amount);
+        emit WithdrawERC20(msg.sender,withDrawERC20Data.tokenAddr,feeReceiver,withDrawERC20Data.fee,withDrawERC20Data.userAddr,withDrawERC20Data.amount,withDrawERC20Data.orderId,withDrawERC20Data.chainId);
     }
 
     function parseWithDrawERC20Data(bytes calldata data) internal view returns (WithDrawERC20Data memory) {
@@ -419,7 +411,7 @@ contract CrossChainLock is
             address tokenAddr,
             uint256 amount,
             address userAddr,
-            uint24 feeType,
+            uint256 fee,
             uint256 orderId,
             uint256 chainId,
             bytes memory signature
@@ -448,7 +440,7 @@ contract CrossChainLock is
                         tokenAddr,
                         amount,
                         userAddr,
-                        feeType,
+                        fee,
                         orderId,
                         chainId
                     )
@@ -463,7 +455,7 @@ contract CrossChainLock is
             tokenAddr:tokenAddr,
             amount:amount,
             userAddr:userAddr,
-            feeType:feeType,
+            fee:fee,
             orderId:orderId,
             chainId:chainId
         });

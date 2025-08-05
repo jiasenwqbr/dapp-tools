@@ -114,7 +114,7 @@ contract WithdrawContract is AccessControlUpgradeable, OwnableUpgradeable, Reent
         require(caller == msg.sender, "WithdrawContract: INVALID_USER");
         (uint8 v, bytes32 r, bytes32 s) = splitSignature(signature);
 
-         bytes32 signHash = keccak256(
+        bytes32 signHash = keccak256(
             abi.encodePacked(
                 "\x19\x01",
                 DOMAIN_SEPARATOR,

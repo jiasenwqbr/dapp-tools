@@ -31,7 +31,6 @@ contract UACERC20 is
     address public signer;
     // EIP‑712 签名域（domain）哈希，用于防重放攻击。
     bytes32 public DOMAIN_SEPARATOR;
-    address public withdrawContract;
     bytes32 private constant  PERMIT_MINT_TYPEHASH = keccak256(
         abi.encodePacked(
             "Permit(address caller,address to,uint256 amount,uint256 orderId,uint256 chainId)"
@@ -44,7 +43,7 @@ contract UACERC20 is
 
     event FeeUpdated(uint256 newFee);
     event FeeReceiverUpdated(address newReceiver);
-    event MintToken(address caller,address indexed to, uint256 amount, uint256 fee, address withdrawContract,uint256 orderId);
+    event MintToken(address caller,uint256 amount, uint256 fee, address withdrawContract,uint256 orderId);
    
     function _authorizeUpgrade(
         address newImplementation
@@ -57,7 +56,6 @@ contract UACERC20 is
         address operator,
         address _feeReceiver,
         uint24 _feePercent,
-        address  _withdrawContract,
         address _signer
     ) public initializer {
         __ERC20_init(name, symbol);
@@ -75,7 +73,6 @@ contract UACERC20 is
         feeAmountTick[1] = _feePercent;
         feeReceiver = _feeReceiver;
         signer = _signer;
-        withdrawContract = _withdrawContract;
         uint256 chainId;
         assembly {
             chainId := chainid()
@@ -140,9 +137,9 @@ contract UACERC20 is
     //////////////////////////////////   mintUAC
     struct MintTokenData {
         address caller;
-        address to;
+        address withdrawContract;
         uint256 amount;
-        uint24 feeType;
+        uint256 fee;
         uint256 orderId;
         uint256 chainId;
     }
@@ -152,22 +149,22 @@ contract UACERC20 is
         
         MintTokenData memory mintTokenData = parseMintTokenData(data);
         
-        uint256 feeAmount = (mintTokenData.amount * getFeeAmountTick(mintTokenData.feeType)) / FEE_DENOMINATOR;
-        uint256 userAmount = mintTokenData.amount - feeAmount;
+        //uint256 feeAmount = (mintTokenData.amount * getFeeAmountTick(mintTokenData.feeType)) / FEE_DENOMINATOR;
+        //uint256 userAmount = mintTokenData.amount - feeAmount;
 
-        require(mintTokenData.to != address(0), "Invalid address");
-        _mint(feeReceiver, feeAmount); // 收手续费
-        _mint(withdrawContract, userAmount); // 将用户的mint至withdrawContract合约
+        require(mintTokenData.withdrawContract != address(0), "Invalid address");
+        _mint(feeReceiver, mintTokenData.fee); // 收手续费
+        _mint(mintTokenData.withdrawContract, mintTokenData.amount); // 将用户的mint至withdrawContract合约
 
-        emit MintToken(mintTokenData.caller,mintTokenData.to, userAmount, feeAmount,withdrawContract, mintTokenData.orderId);
+        emit MintToken(mintTokenData.caller,mintTokenData.amount, mintTokenData.fee,mintTokenData.withdrawContract, mintTokenData.orderId);
     }
 
     function parseMintTokenData(bytes calldata data) internal view returns (MintTokenData memory) {
         (
             address caller,
-            address to,
+            address withdrawContract,
             uint256 amount,
-            uint24 feeType,
+            uint256 fee,
             uint256 orderId,
             uint256 chainId,
             bytes memory signature
@@ -177,7 +174,7 @@ contract UACERC20 is
                 address,
                 address,
                 uint256,
-                uint24,
+                uint256,
                 uint256,
                 uint256,
                 bytes
@@ -194,9 +191,9 @@ contract UACERC20 is
                     abi.encode(
                         PERMIT_MINT_TYPEHASH,
                         caller,
-                        to,
+                        withdrawContract,
                         amount,
-                        feeType,
+                        fee,
                         orderId,
                         chainId
                     )
@@ -209,9 +206,9 @@ contract UACERC20 is
         );
         return MintTokenData({
             caller:caller,
-            to:to,
+            withdrawContract:withdrawContract,
             amount:amount,
-            feeType:feeType,
+            fee:fee,
             orderId:orderId,
             chainId:chainId
         });

@@ -23,13 +23,14 @@ contract CrossBackContract is AccessControlUpgradeable, OwnableUpgradeable, Reen
         address caller;
         uint256 amount;
         uint256 orderId;
+        address receiver;
         uint256 chainId;
     }
     bytes32 private constant PERMIT_BURN_TYPEHASH = keccak256(
-        abi.encodePacked("Permit(address caller,uint256 amount,uint256 orderId,uint256 chainId)")
+        abi.encodePacked("Permit(address caller,address receiver,uint256 amount,uint256 orderId,uint256 chainId)")
     );
 
-    event TokenBurned(address indexed from, uint256 amount, uint256 orderId);
+    event TokenBurned(address caller, address receiver ,uint256 amount, uint256 orderId);
 
     function _authorizeUpgrade(
         address newImplementation
@@ -43,6 +44,7 @@ contract CrossBackContract is AccessControlUpgradeable, OwnableUpgradeable, Reen
         __Ownable_init();
         __ReentrancyGuard_init();
         __UUPSUpgradeable_init();
+        __Pausable_init();
         
 
         uacToken = ERC20BurnableUpgradeable(uacToken_);
@@ -82,7 +84,7 @@ contract CrossBackContract is AccessControlUpgradeable, OwnableUpgradeable, Reen
         require(burnTokenData.amount<=uacToken.balanceOf(burnTokenData.caller),"CrossBackContract:amount should less than the balance");
         uacToken.burn(burnTokenData.amount);
 
-        emit TokenBurned(msg.sender, burnTokenData.amount, burnTokenData.orderId);
+        emit TokenBurned(msg.sender,burnTokenData.receiver,burnTokenData.amount, burnTokenData.orderId);
     }
 
     function parseBurnTokenData(bytes calldata data) internal view returns (BurnTokenData memory) {
@@ -90,6 +92,7 @@ contract CrossBackContract is AccessControlUpgradeable, OwnableUpgradeable, Reen
             address caller,
             uint256 amount,
             uint256 orderId,
+            address receiver,
             uint256 chainId,
             bytes memory signature
         ) =  abi.decode(
@@ -98,6 +101,7 @@ contract CrossBackContract is AccessControlUpgradeable, OwnableUpgradeable, Reen
                 address,
                 uint256,
                 uint256,
+                address,
                 uint256,
                 bytes
             )
@@ -114,6 +118,7 @@ contract CrossBackContract is AccessControlUpgradeable, OwnableUpgradeable, Reen
                         PERMIT_BURN_TYPEHASH,
                         caller,
                         amount,
+                        receiver,
                         orderId,
                         chainId
                     )
@@ -128,6 +133,7 @@ contract CrossBackContract is AccessControlUpgradeable, OwnableUpgradeable, Reen
         return BurnTokenData({
             caller:caller,
             amount:amount,
+            receiver:receiver,
             orderId:orderId,
             chainId:chainId
         });
