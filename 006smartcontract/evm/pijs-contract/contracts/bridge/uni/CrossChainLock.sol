@@ -9,7 +9,7 @@ import "@openzeppelin/contracts-upgradeable/access/AccessControlEnumerableUpgrad
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-
+import "../../utils/SafeMath.sol";
 
 
 contract CrossChainLock is
@@ -21,6 +21,7 @@ contract CrossChainLock is
 
     using SafeERC20Upgradeable for IERC20Upgradeable;
     using SafeERC20 for IERC20;
+    using SafeMath for uint;
     // 拥有合约升级、参数配置权限。
     bytes32 public constant MANAGE_ROLE = keccak256("MANAGE_ROLE");
     // 可调用 withdraw()、执行出金操作。
@@ -251,23 +252,62 @@ contract CrossChainLock is
         uint256 orderId;
         uint256 chainId;
     }
-    function withdrawUNI(bytes calldata data) public nonReentrant onlyRole(OPERATE_ROLE) {
-        WithDrawData memory withDrawData = parseWithDrawData(data);
-        require(withDrawData.amount > 0,"UnionBridgeSource:No ETH withdraw");
-        require(withDrawData.amount <= address(this).balance,"UnionBridgeSource:");
+    // function withdrawUNI(bytes calldata data) public nonReentrant onlyRole(OPERATE_ROLE) {
+    //     WithDrawData memory withDrawData = parseWithDrawData(data);
+    //     require(withDrawData.amount > 0,"UnionBridgeSource:No ETH withdraw");
+    //     require(withDrawData.amount <= address(this).balance,"UnionBridgeSource:");
 
-       // uint256 feeAmount = (withDrawData.amount * getFeeAmountTick(withDrawData.feeType)) / FEE_DENOMINATOR;
-      //  uint256 userAmount = withDrawData.amount - feeAmount;
-        (bool sentFee, ) = payable(feeReceiver).call{value: withDrawData.fee}("");
-        require(sentFee, "ETH transfer failed");
-        (bool sendUserValue,) = payable(withDrawData.userAddr).call{value: withDrawData.amount}("");
-        require(sendUserValue, "ETH transfer failed");
-        emit WithDrawUNI(msg.sender,feeReceiver,withDrawData.fee,withDrawData.userAddr,withDrawData.amount,withDrawData.pairId,withDrawData.orderId,withDrawData.chainId);
+    //    // uint256 feeAmount = (withDrawData.amount * getFeeAmountTick(withDrawData.feeType)) / FEE_DENOMINATOR;
+    //   //  uint256 userAmount = withDrawData.amount - feeAmount;
+    //     (bool sentFee, ) = payable(feeReceiver).call{value: withDrawData.fee}("");
+    //     require(sentFee, "ETH transfer failed");
+    //     (bool sendUserValue,) = payable(withDrawData.userAddr).call{value: withDrawData.amount.sub(withDrawData.fee)}("");
+    //     require(sendUserValue, "ETH transfer failed");
+    //     emit WithDrawUNI(msg.sender,feeReceiver,withDrawData.fee,withDrawData.userAddr,withDrawData.amount.sub(withDrawData.fee),withDrawData.pairId,withDrawData.orderId,withDrawData.chainId);
+    // }
+
+    function withdrawUNI(bytes calldata data)  public  nonReentrant  onlyRole(OPERATE_ROLE) {
+        // 解析输入数据
+        WithDrawData memory withDrawData = parseWithDrawData(data);
+        
+        // 输入验证
+        require(withDrawData.amount > 0, "UnionBridgeSource: Zero amount");
+        require(withDrawData.userAddr != address(0), "UnionBridgeSource: Invalid user address");
+        require(feeReceiver != address(0), "UnionBridgeSource: Invalid fee receiver");
+        require(withDrawData.fee <= withDrawData.amount, "UnionBridgeSource: Fee exceeds amount");
+        require(withDrawData.amount <= address(this).balance, "UnionBridgeSource: Insufficient contract balance");
+        
+        // 计算用户实际应得金额
+        uint256 userAmount = withDrawData.amount - withDrawData.fee;
+        
+        // 转账手续费 - 使用更安全的转账方式
+        (bool sentFee, ) = feeReceiver.call{
+            value: withDrawData.fee
+        }("");
+        require(sentFee, "UnionBridgeSource: Fee transfer failed");
+        
+        // 转账给用户
+        (bool sentUser, ) = withDrawData.userAddr.call{
+            value: userAmount
+        }("");
+        require(sentUser, "UnionBridgeSource: User transfer failed");
+        
+        // 发出事件
+        emit WithDrawUNI(
+            msg.sender,
+            feeReceiver,
+            withDrawData.fee,
+            withDrawData.userAddr,
+            userAmount,
+            withDrawData.pairId,
+            withDrawData.orderId,
+            withDrawData.chainId
+        );
     }
 
     function parseWithDrawData(bytes calldata data) internal view returns (WithDrawData memory) {
         (
-            address callerAddr,
+            address caller,
             uint256 amount,
             address userAddr,
             uint256  fee,
@@ -288,7 +328,7 @@ contract CrossChainLock is
                 bytes
             )
         );
-        require(callerAddr == msg.sender, "UnionBridgeSource: INVALID_USER");
+        require(caller == msg.sender, "UnionBridgeSource: INVALID_USER");
         (uint8 v, bytes32 r, bytes32 s) = splitSignature(signature);
          bytes32 signHash = keccak256(
             abi.encodePacked(
@@ -297,10 +337,10 @@ contract CrossChainLock is
                 keccak256(
                     abi.encode(
                         WITHDRAW_PERMIT_TYPEHASH,
-                        callerAddr,
+                        caller,
+                        fee,
                         amount,
                         userAddr,
-                        fee,
                         orderId,
                         chainId
                     )

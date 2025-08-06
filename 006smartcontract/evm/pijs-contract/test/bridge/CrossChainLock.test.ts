@@ -186,16 +186,14 @@ describe("CrossChainLock",()=> {
         });
         it("withdrawUNI the balance of user and receiver is correct",async () => {
             const params = {
-                callerAddr:owner.address,
+                caller:owner.address,
+                fee:ethers.utils.parseEther("0.1"),
                 amount:ethers.utils.parseEther("1"),
                 userAddr:owner.address,
-                fee:ethers.utils.parseEther("0.1"),
                 orderId:1,
                 chainId:(await ethers.provider.getNetwork()).chainId
-
             };
-
-            const type = {
+            const types = {
                 Permit: [
                     { name: "caller", type: "address" },
                     { name: "fee", type: "uint256" },
@@ -205,16 +203,57 @@ describe("CrossChainLock",()=> {
                     { name: "chainId", type: "uint256" },
                 ],
             };
+            const domain = {
+                name: "UnionBridgeSource",
+                version: "1",
+                chainId: (await ethers.provider.getNetwork()).chainId,
+                verifyingContract: crossChainLock.address,
+            };
+            const signature = await owner._signTypedData(domain, types, params);
+            const data = ethers.utils.defaultAbiCoder.encode(
+                [
+                   "address",
+                   "uint256",
+                   "address",
+                   "uint256", 
+                   "uint256", 
+                   "uint256",
+                   "uint256",
+                   "bytes"
+                ],[
+                    params.caller,
+                    params.amount,
+                    params.userAddr,
+                    params.fee,
+                    1,
+                    params.orderId,
+                    params.chainId,
+                    signature
+                ]
+            );
 
-            
+            const beforeOwnerBanlance = await  ethers.provider.getBalance(owner.address);
+            const beforeReceiverBalance = await  ethers.provider.getBalance(feeReceiver.address);
+            const beforeContractBanalce = await crossChainLock.balance(ethers.constants.AddressZero);
 
+            console.log("beforeOwnerBanlance:",beforeOwnerBanlance);
+            console.log("beforeReceiverBalance:",beforeReceiverBalance);
+             console.log("beforeContractBanalce:",beforeContractBanalce);
 
+            const tx = await crossChainLock.connect(owner).withdrawUNI(data,{
+                gasLimit: 1_000_000
+            });
 
+            const afterOwnerBanlance = await  ethers.provider.getBalance(owner.address);
+            const afterReceiverBalance = await  ethers.provider.getBalance(feeReceiver.address);
+            const afterContractBanalce = await crossChainLock.balance(ethers.constants.AddressZero);
 
+            console.log("afterOwnerBanlance:",afterOwnerBanlance);
+            console.log("afterReceiverBalance:",afterReceiverBalance);
+            console.log("afterContractBanalce:",afterContractBanalce);
 
-
-
-
+            expect(afterReceiverBalance).to.equal(beforeReceiverBalance.add(ethers.utils.parseEther("0.1")));
+            expect(afterContractBanalce).to.equal(beforeContractBanalce.sub(ethers.utils.parseEther("1")));
         });
     });
 
