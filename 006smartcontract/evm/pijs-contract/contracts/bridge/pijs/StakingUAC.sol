@@ -23,6 +23,7 @@ contract StakingUAC is
     bool private funcSwitch;
 
     IERC20Upgradeable private uacToken;
+    IERC20Upgradeable private lpToken;
     // 签名地址
     address public signer;
     bytes32 public DOMAIN_SEPARATOR;
@@ -38,6 +39,7 @@ contract StakingUAC is
         uint8 renewable; // 是否允许续期
         uint8 status; // 0 -staking; 1- unstaking  状态
         uint256 renewTime; // 续期时间
+        uint8 isActive;//是否激活 0 未激活 1 已激活
     }
     struct RenewOrder {
         uint256 orderId;
@@ -65,12 +67,21 @@ contract StakingUAC is
                 "Permit(uint256 orderId)"
             )
         );
+    bytes32 private constant STAKELP_TYPEHASH =
+        keccak256(
+            abi.encodePacked(
+                "Permit(address caller,uint256 amount,uint256 stakingId)"
+            )
+    );
+
+    
 
     event StakeUAC(address caller,address contractAddress,uint256 orderId,uint256 userId,uint256 amount,uint24 balanceSource,uint256 startTimestamp,uint256 endTimestamp,uint8 renewable,uint8 status);
     event ReNewOrder(address caller, uint256 orderId, uint256 renewTime);
     event BetBackOrder(address caller, uint256 orderId, uint256 amount);
+    event StakeLP(address caller,uint256 amount,uint256 stakingId);
 
-    function initialize(IERC20Upgradeable _uacToken,address _signer) public initializer {
+    function initialize(IERC20Upgradeable _uacToken,address _LPToken,address _signer) public initializer {
         __AccessControlEnumerable_init();
         __ReentrancyGuard_init();
         __UUPSUpgradeable_init();
@@ -80,6 +91,7 @@ contract StakingUAC is
 
         uacToken = _uacToken;
         signer = _signer;
+        lpToken = IERC20Upgradeable(_LPToken);
 
         uint256 chainId;
         assembly {
@@ -140,6 +152,47 @@ contract StakingUAC is
         }
     }
 
+     function stakeLP(bytes memory data) public payable nonReentrant {
+         (
+            address caller,
+            uint256 amount,
+            uint256 stakingId,
+            bytes memory signature
+        ) = abi.decode(
+            data,(address,uint256,uint256,bytes)
+        );
+
+        (uint8 v, bytes32 r, bytes32 s) = splitSignature(signature);
+        bytes32 signHash = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                DOMAIN_SEPARATOR,
+                keccak256(
+                    abi.encode(
+                        STAKELP_TYPEHASH,
+                        caller,
+                        amount,
+                        stakingId
+                    )
+                )
+            )
+        );
+         require(signer == ecrecover(signHash, v, r, s),"INVALID_REQUEST");
+
+
+
+        require(amount > 0, "LPStaking: amount error");
+        require(caller == msg.sender,"LPStaking: caller error");
+        require(userOrders[msg.sender][stakingId].orderId != 0, "LPStaking: UAC order is not exist");
+        lpToken.safeTransferFrom(msg.sender, address(this), amount);
+        // 激活订单
+        userOrders[msg.sender][stakingId].isActive = 1;
+
+        emit StakeLP(caller,amount,stakingId);
+
+
+     }
+
     function parseOrder(bytes memory data) internal view returns(Order memory) {
         (
             uint256 orderId,
@@ -195,7 +248,8 @@ contract StakingUAC is
             startTimestamp: startTimestamp,
             renewable: renewable,
             status: 0,
-            renewTime:0
+            renewTime:0,
+            isActive:0
         });
         
 

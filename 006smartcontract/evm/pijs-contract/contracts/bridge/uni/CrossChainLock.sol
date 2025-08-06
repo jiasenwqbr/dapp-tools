@@ -35,7 +35,7 @@ contract CrossChainLock is
     );
     bytes32 private constant WITHDRAW_PERMIT_TYPEHASH = keccak256(
         abi.encodePacked(
-            "Permit(address caller,uint24 feeType,uint256 amount,address userAddr,uint256 orderId,uint256 chainId)"
+            "Permit(address caller,uint256 fee,uint256 amount,address userAddr,uint256 orderId,uint256 chainId)"
         )
     );
     bytes32 private constant PERMIT_DEPOSIT_ERC20_TYPEHASH = keccak256(
@@ -61,10 +61,10 @@ contract CrossChainLock is
     mapping(uint24 => uint24) public  feeAmountTick; // 不同类型的手续费
 
     // event
-    event DepositeUNI(address caller,uint256 amount, address receiver, uint256 order, uint256 chainId);
-    event WithDrawUNI(address caller,address feeReceiver, uint256 feeAmount,address userAddr,uint256 userAmount,uint256 orderId,uint256 chainId);
-    event DepositeERC20(address caller,address tokenAddr,address receiver,uint256 amount,uint256 orderId,uint256 chainId);
-    event WithdrawERC20(address caller,address tokenAddr,address feeReceiver,uint256 feeAmount,address userAddr,uint256 userAmount,uint256 orderId,uint256 chainId);
+    event DepositeUNI(address caller,uint256 amount, address receiver, uint256 pairId,uint256 order, uint256 chainId);
+    event WithDrawUNI(address caller,address feeReceiver, uint256 feeAmount,address userAddr,uint256 userAmount,uint256 pairId,uint256 orderId,uint256 chainId);
+    event DepositeERC20(address caller,address tokenAddr,address receiver,uint256 amount,uint256 pairId,uint256 orderId,uint256 chainId);
+    event WithdrawERC20(address caller,address tokenAddr,address feeReceiver,uint256 feeAmount,address userAddr,uint256 userAmount,uint256 pairId,uint256 orderId,uint256 chainId);
 
     event FeeUpdated(uint256 newFee);
     event FeeReceiverUpdated(address newReceiver);
@@ -163,13 +163,14 @@ contract CrossChainLock is
     struct DepositeData {
         address receiver;
         uint256 amount;
+        uint256 pairId;
         uint256 orderId;
         uint256 chainId;
     }
     function depositeUNI(bytes calldata data) external nonReentrant payable {
         require(msg.value > 0, "No ETH sent");
         DepositeData memory depositeData = parseDepositeData(data);
-        emit DepositeUNI(msg.sender,depositeData.amount,depositeData.receiver,depositeData.orderId,depositeData.chainId);
+        emit DepositeUNI(msg.sender,depositeData.amount,depositeData.receiver,depositeData.pairId,depositeData.orderId,depositeData.chainId);
 
     }
 
@@ -178,6 +179,7 @@ contract CrossChainLock is
             address userAddr,
             address _receiver,
             uint256 amount,
+            uint256 pairId,
             uint256 orderId,
             uint256 chainId,
             bytes memory signature
@@ -186,6 +188,7 @@ contract CrossChainLock is
             (
                 address,
                 address,
+                uint256,
                 uint256,
                 uint256,
                 uint256,
@@ -220,6 +223,7 @@ contract CrossChainLock is
                 receiver:_receiver,
                 amount:amount,
                 orderId:orderId,
+                pairId:pairId,
                 chainId:chainId
             });
     }
@@ -243,6 +247,7 @@ contract CrossChainLock is
         uint256 amount;
         address userAddr;
         uint256 fee;
+        uint256 pairId;
         uint256 orderId;
         uint256 chainId;
     }
@@ -257,7 +262,7 @@ contract CrossChainLock is
         require(sentFee, "ETH transfer failed");
         (bool sendUserValue,) = payable(withDrawData.userAddr).call{value: withDrawData.amount}("");
         require(sendUserValue, "ETH transfer failed");
-        emit WithDrawUNI(msg.sender,feeReceiver,withDrawData.fee,withDrawData.userAddr,withDrawData.amount,withDrawData.orderId,withDrawData.chainId);
+        emit WithDrawUNI(msg.sender,feeReceiver,withDrawData.fee,withDrawData.userAddr,withDrawData.amount,withDrawData.pairId,withDrawData.orderId,withDrawData.chainId);
     }
 
     function parseWithDrawData(bytes calldata data) internal view returns (WithDrawData memory) {
@@ -266,6 +271,7 @@ contract CrossChainLock is
             uint256 amount,
             address userAddr,
             uint256  fee,
+            uint256 pairId,
             uint256 orderId,
             uint256 chainId,
             bytes memory signature
@@ -275,6 +281,7 @@ contract CrossChainLock is
                 address,
                 uint256,
                 address,
+                uint256,
                 uint256,
                 uint256,
                 uint256,
@@ -308,6 +315,7 @@ contract CrossChainLock is
             amount:amount,
             userAddr:userAddr,
             fee:fee,
+            pairId:pairId,
             orderId:orderId,
             chainId:chainId
         });
@@ -317,6 +325,7 @@ contract CrossChainLock is
         address tokenAddr;
         address receiver;
         uint256 amount;
+        uint256 pairId;
         uint256 orderId;
         uint256 chainId;
     }
@@ -328,7 +337,7 @@ contract CrossChainLock is
             address(this),
             depositeERC20Data.amount
         );
-        emit DepositeERC20(msg.sender,depositeERC20Data.tokenAddr,depositeERC20Data.receiver,depositeERC20Data.amount,depositeERC20Data.orderId,depositeERC20Data.chainId);
+        emit DepositeERC20(msg.sender,depositeERC20Data.tokenAddr,depositeERC20Data.receiver,depositeERC20Data.amount,depositeERC20Data.pairId,depositeERC20Data.orderId,depositeERC20Data.chainId);
     }
 
     function parseDepositeERC20Data(bytes calldata data) internal view returns (DepositeERC20Data memory) {
@@ -337,6 +346,7 @@ contract CrossChainLock is
             address tokenAddr,
             address _receiver,
             uint256 amount,
+            uint256 pairId,
             uint256 orderId,
             uint256 chainId,
             bytes memory signature
@@ -346,6 +356,7 @@ contract CrossChainLock is
                 address,
                 address,
                 address,
+                uint256,
                 uint256,
                 uint256,
                 uint256,
@@ -380,6 +391,7 @@ contract CrossChainLock is
             tokenAddr:tokenAddr,
             receiver:_receiver,
             amount:amount,
+            pairId:pairId,
             orderId:orderId,
             chainId:chainId
         });
@@ -391,6 +403,7 @@ contract CrossChainLock is
         uint256 amount;
         address userAddr;
         uint256 fee;
+        uint256 pairId;
         uint256 orderId;
         uint256 chainId;
     } 
@@ -402,7 +415,7 @@ contract CrossChainLock is
         // uint256 userAmount = withDrawERC20Data.amount - feeAmount;
         IERC20(withDrawERC20Data.tokenAddr).safeTransfer(feeReceiver, withDrawERC20Data.fee);
         IERC20(withDrawERC20Data.tokenAddr).safeTransfer(withDrawERC20Data.userAddr, withDrawERC20Data.amount);
-        emit WithdrawERC20(msg.sender,withDrawERC20Data.tokenAddr,feeReceiver,withDrawERC20Data.fee,withDrawERC20Data.userAddr,withDrawERC20Data.amount,withDrawERC20Data.orderId,withDrawERC20Data.chainId);
+        emit WithdrawERC20(msg.sender,withDrawERC20Data.tokenAddr,feeReceiver,withDrawERC20Data.fee,withDrawERC20Data.userAddr,withDrawERC20Data.amount,withDrawERC20Data.pairId,withDrawERC20Data.orderId,withDrawERC20Data.chainId);
     }
 
     function parseWithDrawERC20Data(bytes calldata data) internal view returns (WithDrawERC20Data memory) {
@@ -412,6 +425,7 @@ contract CrossChainLock is
             uint256 amount,
             address userAddr,
             uint256 fee,
+            uint256 pairId,
             uint256 orderId,
             uint256 chainId,
             bytes memory signature
@@ -422,6 +436,7 @@ contract CrossChainLock is
                 uint256,
                 address,
                 uint24,
+                uint256,
                 uint256,
                 uint256,
                 bytes
@@ -456,6 +471,7 @@ contract CrossChainLock is
             amount:amount,
             userAddr:userAddr,
             fee:fee,
+            pairId:pairId,
             orderId:orderId,
             chainId:chainId
         });

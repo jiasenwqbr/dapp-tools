@@ -8,8 +8,10 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/ERC20BurnableUpgradeable.sol";
+import "../../utils/SafeMath.sol";
 
 contract CrossBackContract is AccessControlUpgradeable, OwnableUpgradeable, ReentrancyGuardUpgradeable, UUPSUpgradeable,PausableUpgradeable{
+    using SafeMath for uint;
     using SafeERC20Upgradeable for ERC20BurnableUpgradeable;
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
     // 拥有合约升级、参数配置权限。
@@ -22,15 +24,17 @@ contract CrossBackContract is AccessControlUpgradeable, OwnableUpgradeable, Reen
     struct BurnTokenData {
         address caller;
         uint256 amount;
+        uint256 fee;
         uint256 orderId;
         address receiver;
+        uint256 pairId;
         uint256 chainId;
     }
     bytes32 private constant PERMIT_BURN_TYPEHASH = keccak256(
-        abi.encodePacked("Permit(address caller,address receiver,uint256 amount,uint256 orderId,uint256 chainId)")
+        abi.encodePacked("Permit(address caller,address receiver,uint256 amount,uint256 fee,uint256 orderId,uint256 chainId)")
     );
 
-    event TokenBurned(address caller, address receiver ,uint256 amount, uint256 orderId);
+    event TokenBurned(address caller, address receiver ,uint256 amount,uint256 fee, uint256 pairId,uint256 orderId);
 
     function _authorizeUpgrade(
         address newImplementation
@@ -78,21 +82,27 @@ contract CrossBackContract is AccessControlUpgradeable, OwnableUpgradeable, Reen
 
     /// @notice 用户 burn 表示要跨回原链
     function tokenBurned(bytes calldata data) external whenNotPaused nonReentrant {
+
         BurnTokenData memory burnTokenData = parseBurnTokenData(data);
+        // 收取手续费
+        uacToken.safeTransfer(burnTokenData.receiver, burnTokenData.fee);
         require(burnTokenData.amount>0,"CrossBackContract:amount should not be zero");
 
         require(burnTokenData.amount<=uacToken.balanceOf(burnTokenData.caller),"CrossBackContract:amount should less than the balance");
-        uacToken.burn(burnTokenData.amount);
+        // burn 
+        uacToken.burn(burnTokenData.amount.sub(burnTokenData.fee));
 
-        emit TokenBurned(msg.sender,burnTokenData.receiver,burnTokenData.amount, burnTokenData.orderId);
+        emit TokenBurned(msg.sender,burnTokenData.receiver,burnTokenData.amount.sub(burnTokenData.fee), burnTokenData.fee,burnTokenData.pairId,burnTokenData.orderId);
     }
 
     function parseBurnTokenData(bytes calldata data) internal view returns (BurnTokenData memory) {
         (
             address caller,
             uint256 amount,
+            uint256 fee,
             uint256 orderId,
             address receiver,
+            uint256 pairId,
             uint256 chainId,
             bytes memory signature
         ) =  abi.decode(
@@ -101,7 +111,9 @@ contract CrossBackContract is AccessControlUpgradeable, OwnableUpgradeable, Reen
                 address,
                 uint256,
                 uint256,
+                uint256,
                 address,
+                uint256,
                 uint256,
                 bytes
             )
@@ -109,7 +121,7 @@ contract CrossBackContract is AccessControlUpgradeable, OwnableUpgradeable, Reen
         require(caller == msg.sender, "CrossBackContract: INVALID_USER");
         (uint8 v, bytes32 r, bytes32 s) = splitSignature(signature);
 
-         bytes32 signHash = keccak256(
+        bytes32 signHash = keccak256(
             abi.encodePacked(
                 "\x19\x01",
                 DOMAIN_SEPARATOR,
@@ -118,6 +130,7 @@ contract CrossBackContract is AccessControlUpgradeable, OwnableUpgradeable, Reen
                         PERMIT_BURN_TYPEHASH,
                         caller,
                         amount,
+                        fee,
                         receiver,
                         orderId,
                         chainId
@@ -133,8 +146,10 @@ contract CrossBackContract is AccessControlUpgradeable, OwnableUpgradeable, Reen
         return BurnTokenData({
             caller:caller,
             amount:amount,
+            fee:fee,
             receiver:receiver,
             orderId:orderId,
+            pairId:pairId,
             chainId:chainId
         });
     }

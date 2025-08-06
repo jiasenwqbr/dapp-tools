@@ -151,6 +151,8 @@ contract UACERC20 is
         
         //uint256 feeAmount = (mintTokenData.amount * getFeeAmountTick(mintTokenData.feeType)) / FEE_DENOMINATOR;
         //uint256 userAmount = mintTokenData.amount - feeAmount;
+       
+
 
         require(mintTokenData.withdrawContract != address(0), "Invalid address");
         _mint(feeReceiver, mintTokenData.fee); // 收手续费
