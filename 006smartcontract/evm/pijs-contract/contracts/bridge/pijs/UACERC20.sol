@@ -10,7 +10,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
-
+import "../../utils/SafeMath.sol";
 contract UACERC20 is
     Initializable,
     ERC20BurnableUpgradeable,
@@ -19,6 +19,7 @@ contract UACERC20 is
     ReentrancyGuardUpgradeable,
     UUPSUpgradeable
 {
+    using SafeMath for uint256;
     // 拥有合约升级、参数配置权限。
     bytes32 public constant MANAGE_ROLE = keccak256("MANAGE_ROLE");
     // 可调用 withdraw()、执行出金操作。
@@ -33,7 +34,7 @@ contract UACERC20 is
     bytes32 public DOMAIN_SEPARATOR;
     bytes32 private constant  PERMIT_MINT_TYPEHASH = keccak256(
         abi.encodePacked(
-            "Permit(address caller,address to,uint256 amount,uint256 orderId,uint256 chainId)"
+            "Permit(address caller,address withdrawContract,uint256 amount,uint256 fee,uint256 orderId,uint256 chainId)"
         )
     );
 
@@ -143,20 +144,22 @@ contract UACERC20 is
         uint256 orderId;
         uint256 chainId;
     }
+    function mint(address to, uint256 amount) external whenNotPaused nonReentrant onlyRole(OPERATE_ROLE) {
+        _mint(to, amount);
+    }
 
     /// @notice 由 OPERATOR 在收到原链锁定后调用，给用户 mint
     function mintToken(bytes calldata data) external whenNotPaused nonReentrant onlyRole(OPERATE_ROLE) {
         
         MintTokenData memory mintTokenData = parseMintTokenData(data);
-        
-        //uint256 feeAmount = (mintTokenData.amount * getFeeAmountTick(mintTokenData.feeType)) / FEE_DENOMINATOR;
-        //uint256 userAmount = mintTokenData.amount - feeAmount;
-       
-
-
+        require(feeReceiver != address(0), "UnionBridgeSource: Invalid fee receiver");
+        require(mintTokenData.fee <= mintTokenData.amount, "UnionBridgeSource: Fee exceeds amount");
+        require(mintTokenData.amount > 0, "UnionBridgeSource: Amount must be positive");
+        // 计算用户实际应得金额
+        uint256 userAmount = mintTokenData.amount.sub(mintTokenData.fee);
         require(mintTokenData.withdrawContract != address(0), "Invalid address");
         _mint(feeReceiver, mintTokenData.fee); // 收手续费
-        _mint(mintTokenData.withdrawContract, mintTokenData.amount); // 将用户的mint至withdrawContract合约
+        _mint(mintTokenData.withdrawContract, userAmount); // 将用户的mint至withdrawContract合约
 
         emit MintToken(mintTokenData.caller,mintTokenData.amount, mintTokenData.fee,mintTokenData.withdrawContract, mintTokenData.orderId);
     }

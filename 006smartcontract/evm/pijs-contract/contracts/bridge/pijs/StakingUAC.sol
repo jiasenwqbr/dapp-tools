@@ -52,7 +52,7 @@ contract StakingUAC is
 
     bytes32 private constant PERMIT_TYPEHASH = keccak256(
             abi.encodePacked(
-                "Permit(uint256 productId,uint256 orderId,uint256 userId,uint256 phase,uint256 purchaseNum,uint256 payNum,uint256 anchorCoinNum,string anchorCoin)"
+                "Permit(uint256 orderId,uint256 userId,uint256 amount,uint24 balanceSource,uint256 endTimestamp,uint256 startTimestamp,uint8 renewable)"
             )
     );
     bytes32 private constant RENEW_TYPEHASH =
@@ -81,7 +81,7 @@ contract StakingUAC is
     event BetBackOrder(address caller, uint256 orderId, uint256 amount);
     event StakeLP(address caller,uint256 amount,uint256 stakingId);
 
-    function initialize(IERC20Upgradeable _uacToken,address _LPToken,address _signer) public initializer {
+    function initialize(address _uacToken,address _LPToken,address _signer) public initializer {
         __AccessControlEnumerable_init();
         __ReentrancyGuard_init();
         __UUPSUpgradeable_init();
@@ -89,7 +89,7 @@ contract StakingUAC is
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _grantRole(MANAGE_ROLE, msg.sender);
 
-        uacToken = _uacToken;
+        uacToken = IERC20Upgradeable(_uacToken);
         signer = _signer;
         lpToken = IERC20Upgradeable(_LPToken);
 
@@ -216,6 +216,7 @@ contract StakingUAC is
                 bytes
             )
         );
+
         require(endTimestamp > block.timestamp, "StakingUAC: order invalid");
         (uint8 v, bytes32 r, bytes32 s) = splitSignature(signature);
          bytes32 signHash = keccak256(
@@ -231,8 +232,7 @@ contract StakingUAC is
                         balanceSource,
                         endTimestamp,
                         startTimestamp,
-                        renewable,
-                        signature
+                        renewable
                     )
                 )
             )
@@ -257,14 +257,20 @@ contract StakingUAC is
 
     function splitSignature(
         bytes memory sig
-    ) internal pure returns (uint8 v, bytes32 r, bytes32 s) {
-        require(sig.length == 65, "EIP712: invalid signature length");
+    ) internal pure returns (uint8, bytes32, bytes32) {
+        require(sig.length == 65, "PIJSBridgeTarget:Not Invalid Signature Data");
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
         assembly {
             r := mload(add(sig, 32))
             s := mload(add(sig, 64))
             v := byte(0, mload(add(sig, 96)))
         }
+
+        return (v, r, s);
     }
+
 
     // renew  oder
     function reNewOrder( bytes memory data) public nonReentrant {
@@ -392,4 +398,6 @@ contract StakingUAC is
     function getUserOrderCount(address user) public view returns (uint256) {
         return userOrderIds[user].length;
     }
+
+    
 }

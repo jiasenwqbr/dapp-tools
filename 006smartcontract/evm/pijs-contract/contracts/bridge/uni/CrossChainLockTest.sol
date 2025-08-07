@@ -12,7 +12,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../utils/SafeMath.sol";
 
 
-contract CrossChainLock is
+contract CrossChainLockTest is
     Initializable,
     AccessControlEnumerableUpgradeable,
     ReentrancyGuardUpgradeable,
